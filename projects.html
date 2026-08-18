@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Projects — Drishya AR</title>
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">Drishya <span>AR</span></div>
+    <a class="nav-link" data-page="dashboard" href="dashboard.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-link" data-page="projects" href="projects.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
+      Projects
+    </a>
+    <a class="nav-link" data-page="create" href="create.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      New Project
+    </a>
+    <div class="sidebar-footer">
+      <button class="btn btn-sm btn-default" id="logout-btn" style="width:100%">Logout</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <div class="page-title">Projects <span id="count" style="font-size:13px;font-weight:400;color:var(--muted)"></span></div>
+      <a href="create.html" class="btn btn-primary">+ New Project</a>
+    </div>
+
+    <div class="filter-bar">
+      <input class="form-control" type="text" id="search" placeholder="Search by name or client…" />
+      <div class="seg-ctrl">
+        <button class="seg-btn active" data-f="all">All</button>
+        <button class="seg-btn" data-f="active">Active</button>
+        <button class="seg-btn" data-f="expired">Expired</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:70px">Image</th>
+            <th>Project</th>
+            <th>Client</th>
+            <th>Status</th>
+            <th>Expires</th>
+            <th style="text-align:right;width:140px">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="proj-body">
+          <tr><td colspan="6" class="empty">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+  import { requireAuth, initNav } from './js/auth.js?v=2';
+  import { getAllProjects, deleteProject, deleteFiles } from './js/db.js?v=2';
+  import { fmt, isExpired, statusBadge, toast } from './js/utils.js?v=2';
+
+  requireAuth(); 
+  initNav('projects');
+
+  let all = [];
+  let filter = 'all';
+  let search = '';
+
+  all = (await getAllProjects()).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+  renderTable();
+
+  document.getElementById('search').addEventListener('input', e => { search = e.target.value.toLowerCase(); renderTable(); });
+  document.querySelectorAll('.seg-btn').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.seg-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active'); filter = b.dataset.f; renderTable();
+  }));
+
+  function renderTable() {
+    let data = all;
+    if (filter === 'active')  data = data.filter(p => !isExpired(p.expiresAt));
+    if (filter === 'expired') data = data.filter(p => isExpired(p.expiresAt));
+    if (search) data = data.filter(p => p.name.toLowerCase().includes(search) || (p.client||'').toLowerCase().includes(search));
+
+    document.getElementById('count').textContent = `(${data.length})`;
+    const body = document.getElementById('proj-body');
+    if (!data.length) {
+      body.innerHTML = `<tr><td colspan="6" class="empty">${all.length ? 'No results' : 'No projects yet. <a href="create.html">Create one</a>'}</td></tr>`;
+      return;
+    }
+    body.innerHTML = data.map(p => `
+      <tr>
+        <td style="width:70px">
+          ${p.imageUrl ? `<img class="td-thumb" src="${p.imageUrl}" />` : `<div class="td-thumb-placeholder"></div>`}
+        </td>
+        <td><a href="project.html?id=${p.id}" style="font-weight:500">${p.name}</a></td>
+        <td style="color:var(--muted)">${p.client || '—'}</td>
+        <td>${statusBadge(p.expiresAt)}</td>
+        <td style="color:var(--muted)">${fmt(p.expiresAt)}</td>
+        <td style="text-align:right">
+          <div class="actions" style="justify-content:flex-end">
+            <a href="project.html?id=${p.id}" class="btn btn-sm btn-default">View</a>
+            <button class="btn btn-sm btn-danger" onclick="delProj('${p.id}', '${p.name.replace(/'/g, "\\'")}')">Delete</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  window.delProj = async function(id, name) {
+    if (confirm(`Delete "${name}"?`)) {
+      await deleteProject(id);
+      await deleteFiles(id);
+      all = all.filter(p => p.id !== id);
+      renderTable();
+      toast('Project deleted');
+    }
+  };
+</script>
+</body>
+</html>

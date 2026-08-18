@@ -1,0 +1,11 @@
+node_modules/
+.env
+uploads/*.jpg
+uploads/*.mp4
+uploads/*.mind
+uploads/*.json
+!uploads/.gitkeep
+test-results/
+test_8w.mjs
+cleanup_corrupt.js
+*.log

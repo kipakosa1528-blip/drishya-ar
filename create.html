@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>New Project — Drishya AR</title>
+  <link rel="stylesheet" href="css/app.css" />
+  <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
+  <script>
+    window.imageFile = null;
+    window.videoFile = null;
+    window.currentStep = 1;
+
+    window.next = function(from) {
+      if (from === 1) {
+        const name = document.getElementById('f-name').value.trim();
+        if (!name) { alert('Please enter a project name'); return; }
+      }
+      if (from === 2) {
+        if (!window.imageFile) { alert('Please upload a target image'); return; }
+      }
+      if (from === 3) {
+        if (!window.videoFile) { alert('Please upload a video'); return; }
+      }
+      if (from === 4) {
+        const d = document.getElementById('f-expiry').value;
+        if (!d || new Date(d) <= new Date()) { alert('Please pick a future expiry date'); return; }
+        if (window.fillReview) window.fillReview();
+      }
+      goStep(from + 1);
+    };
+
+    window.prev = function(from) { goStep(from - 1); };
+
+    window.goStep = function(n) {
+      document.querySelectorAll('.step-body').forEach(b => b.classList.remove('active'));
+      const targetSb = document.getElementById('sb-' + n);
+      if (targetSb) targetSb.classList.add('active');
+      document.querySelectorAll('.step-item').forEach((el, i) => {
+        el.classList.toggle('active', i + 1 === n);
+        el.classList.toggle('done', i + 1 < n);
+      });
+      window.currentStep = n;
+    };
+
+    window.setExpiry = function(days) {
+      const d = new Date(); d.setDate(d.getDate() + days);
+      document.getElementById('f-expiry').value = d.toISOString().split('T')[0];
+    };
+  </script>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">Drishya <span>AR</span></div>
+    <a class="nav-link" data-page="dashboard" href="dashboard.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-link" data-page="projects" href="projects.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
+      Projects
+    </a>
+    <a class="nav-link" data-page="create" href="create.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      New Project
+    </a>
+    <div class="sidebar-footer">
+      <button class="btn btn-sm btn-default" id="logout-btn" style="width:100%">Logout</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <div class="page-title">New AR Project</div>
+    </div>
+
+    <!-- Step indicator -->
+    <div class="steps">
+      <div class="step-item active" id="si-1">1. Info</div>
+      <div class="step-item" id="si-2">2. Target Image</div>
+      <div class="step-item" id="si-3">3. Video</div>
+      <div class="step-item" id="si-4">4. Expiry</div>
+      <div class="step-item" id="si-5">5. Compile & QR</div>
+    </div>
+
+    <!-- Step 1: Info -->
+    <div class="step-body active" id="sb-1">
+      <div class="panel" style="max-width:520px">
+        <div class="form-group">
+          <label>Project name *</label>
+          <input class="form-control" type="text" id="f-name" placeholder="e.g. Sharma Wedding 2025" />
+        </div>
+        <div class="form-group">
+          <label>Client name</label>
+          <input class="form-control" type="text" id="f-client" placeholder="e.g. Ram Sharma" />
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Notes (optional)</label>
+          <textarea class="form-control" id="f-notes" placeholder="Any notes..."></textarea>
+        </div>
+      </div>
+      <div style="margin-top:16px"><button class="btn btn-primary" id="btn-next-1" onclick="next(1)">Continue →</button></div>
+    </div>
+
+    <!-- Step 2: Image -->
+    <div class="step-body" id="sb-2">
+      <div class="panel" style="max-width:520px">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
+          Upload the printed photo frame image. This is what customers will point their camera at. 
+          High-contrast images with rich borders work best.
+        </p>
+        <label class="file-zone" id="img-zone" for="img-input" style="display:block">
+          <input type="file" id="img-input" accept="image/*" style="display:none" />
+          <div class="file-zone-label" id="img-label">Click to browse — or drag & drop an image</div>
+          <div class="file-zone-name" id="img-name" style="display:none"></div>
+        </label>
+        <div id="img-preview-wrap" style="display:none;margin-top:12px">
+          <img id="img-preview" style="max-height:180px;border-radius:4px;border:1px solid var(--border)" />
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <button class="btn btn-default" onclick="prev(2)">← Back</button>
+        <button class="btn btn-primary" id="btn-next-2" onclick="next(2)">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Video -->
+    <div class="step-body" id="sb-3">
+      <div class="panel" style="max-width:520px">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
+          Upload the video that will play on top of the photo frame in AR. MP4 recommended.
+        </p>
+        <label class="file-zone" id="vid-zone" for="vid-input" style="display:block">
+          <input type="file" id="vid-input" accept="video/*" style="display:none" />
+          <div class="file-zone-label" id="vid-label">Click to browse — or drag & drop a video</div>
+          <div class="file-zone-name" id="vid-name" style="display:none"></div>
+        </label>
+        <div id="vid-preview-wrap" style="display:none;margin-top:12px">
+          <video id="vid-preview" controls style="max-height:180px;max-width:100%;border-radius:4px;border:1px solid var(--border)"></video>
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <button class="btn btn-default" onclick="prev(3)">← Back</button>
+        <button class="btn btn-primary" id="btn-next-3" onclick="next(3)">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Expiry -->
+    <div class="step-body" id="sb-4">
+      <div class="panel" style="max-width:520px">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
+          After this date the QR code will show an "expired" page to customers.
+        </p>
+        <div class="form-group">
+          <label>Expiry date *</label>
+          <input class="form-control" type="date" id="f-expiry" style="max-width:200px" />
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-default" onclick="setExpiry(30)">+30 days</button>
+          <button class="btn btn-sm btn-default" onclick="setExpiry(60)">+60 days</button>
+          <button class="btn btn-sm btn-default" onclick="setExpiry(90)">+90 days</button>
+          <button class="btn btn-sm btn-default" onclick="setExpiry(180)">+6 months</button>
+          <button class="btn btn-sm btn-default" onclick="setExpiry(365)">+1 year</button>
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <button class="btn btn-default" onclick="prev(4)">← Back</button>
+        <button class="btn btn-primary" id="btn-next-4" onclick="next(4)">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Step 5: Compile -->
+    <div class="step-body" id="sb-5">
+      <!-- Review -->
+      <div id="review-block" class="panel" style="max-width:520px;margin-bottom:16px">
+        <div class="panel-title">Review</div>
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <tr><td style="color:var(--muted);padding:4px 0;width:120px">Name</td><td id="r-name" style="font-weight:500"></td></tr>
+          <tr><td style="color:var(--muted);padding:4px 0">Client</td><td id="r-client"></td></tr>
+          <tr><td style="color:var(--muted);padding:4px 0">Image</td><td id="r-img"></td></tr>
+          <tr><td style="color:var(--muted);padding:4px 0">Video</td><td id="r-vid"></td></tr>
+          <tr><td style="color:var(--muted);padding:4px 0">Expires</td><td id="r-exp"></td></tr>
+        </table>
+      </div>
+
+      <!-- Compile progress (hidden until started) -->
+      <div id="compile-block" style="display:none;max-width:520px">
+        <div class="panel" style="margin-bottom:16px">
+          <div class="panel-title">Compiling AR target</div>
+          <div class="compile-log" id="compile-log"></div>
+          <div class="progress-track" style="margin-bottom:6px"><div class="progress-fill" id="compile-bar" style="width:0%"></div></div>
+          <div style="font-size:12px;color:var(--muted)" id="compile-pct">0%</div>
+        </div>
+      </div>
+
+      <!-- Success (hidden until done) -->
+      <div id="success-block" style="display:none;max-width:520px">
+        <div class="panel" style="margin-bottom:16px">
+          <div class="panel-title">✓ Project created</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Scan or share this QR code with your customer. It links to the AR experience.</p>
+          <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+            <div>
+              <div class="qr-box" id="qr-out"></div>
+              <button class="btn btn-sm btn-default" style="margin-top:8px;width:100%" id="dl-qr">Download QR</button>
+            </div>
+            <div style="flex:1;min-width:200px">
+              <div style="font-size:12px;color:var(--muted);margin-bottom:6px">AR Link</div>
+              <div class="copy-row">
+                <input class="form-control" readonly id="ar-link-val" />
+                <button class="btn btn-sm btn-default" id="copy-btn">Copy</button>
+              </div>
+              <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
+                <a id="open-ar" href="#" target="_blank" class="btn btn-sm btn-default">Open AR viewer</a>
+                <a href="projects.html" class="btn btn-sm btn-default">All projects</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="create-nav" style="display:flex;gap:8px">
+        <button class="btn btn-default" onclick="prev(5)">← Back</button>
+        <button class="btn btn-primary" id="create-btn" onclick="startCreate()">Compile & Create</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script type="module">
+  import { requireAuth, initNav } from './js/auth.js?v=2';
+  import { fmt, arUrl, toast, generateQR, downloadQR, copyText } from './js/utils.js?v=2';
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  requireAuth();
+  initNav('create');
+  setExpiry(90);
+
+  // Load Supabase config from server (keeps keys out of static files)
+  let supabase = null;
+  let BUCKET = 'uploads';
+  const cfgResp = await fetch('/api/config');
+  if (cfgResp.ok) {
+    const cfg = await cfgResp.json();
+    supabase = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+    BUCKET = cfg.bucket || 'uploads';
+  }
+
+  setupFile('img-input', 'img-zone', 'img-label', 'img-name', (f) => {
+    window.imageFile = f;
+    document.getElementById('img-preview').src = URL.createObjectURL(f);
+    document.getElementById('img-preview-wrap').style.display = '';
+  });
+  setupFile('vid-input', 'vid-zone', 'vid-label', 'vid-name', (f) => {
+    window.videoFile = f;
+    document.getElementById('vid-preview').src = URL.createObjectURL(f);
+    document.getElementById('vid-preview-wrap').style.display = '';
+  });
+
+  function setupFile(inputId, zoneId, labelId, nameId, onFile) {
+    const input = document.getElementById(inputId);
+    const zone  = document.getElementById(zoneId);
+    input.addEventListener('change', () => { if (input.files?.[0]) handleFile(input.files[0]); });
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('has-file'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('has-file'));
+    zone.addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer?.files?.[0]) handleFile(e.dataTransfer.files[0]); });
+    function handleFile(f) {
+      zone.classList.add('has-file');
+      document.getElementById(labelId).style.display = 'none';
+      const nameEl = document.getElementById(nameId);
+      nameEl.textContent = `${f.name} (${(f.size/1024/1024).toFixed(1)} MB)`;
+      nameEl.style.display = '';
+      onFile(f);
+    }
+  }
+
+  window.fillReview = function() {
+    document.getElementById('r-name').textContent   = document.getElementById('f-name').value.trim();
+    document.getElementById('r-client').textContent = document.getElementById('f-client').value.trim() || '—';
+    document.getElementById('r-img').textContent    = window.imageFile?.name || '';
+    document.getElementById('r-vid').textContent    = window.videoFile?.name || '';
+    document.getElementById('r-exp').textContent    = document.getElementById('f-expiry').value;
+  };
+
+  window.startCreate = async function() {
+    document.getElementById('review-block').style.display  = 'none';
+    document.getElementById('create-nav').style.display    = 'none';
+    document.getElementById('compile-block').style.display = '';
+
+    const log = document.getElementById('compile-log');
+    const bar = document.getElementById('compile-bar');
+    const pct = document.getElementById('compile-pct');
+    const addLog = (msg) => { log.textContent += msg + '\n'; log.scrollTop = log.scrollHeight; };
+
+    try {
+      const id = crypto.randomUUID();
+      let imagePath, videoPath;
+
+      if (supabase) {
+        // ── Direct upload to Supabase Storage (bypasses Vercel 4.5MB limit) ──
+        addLog('Uploading target image to storage...');
+        bar.style.width = '20%'; pct.textContent = '20%';
+        const { error: imgErr } = await supabase.storage.from(BUCKET)
+          .upload(`${id}/original.jpg`, window.imageFile, { contentType: window.imageFile.type, upsert: true });
+        if (imgErr) throw new Error('Image upload failed: ' + imgErr.message);
+
+        addLog('Uploading video to storage...');
+        bar.style.width = '50%'; pct.textContent = '50%';
+        const { error: vidErr } = await supabase.storage.from(BUCKET)
+          .upload(`${id}/video.mp4`, window.videoFile, { contentType: window.videoFile.type, upsert: true });
+        if (vidErr) throw new Error('Video upload failed: ' + vidErr.message);
+
+        imagePath = `${id}/original.jpg`;
+        videoPath = `${id}/video.mp4`;
+        addLog('Files uploaded. Preparing AR target...');
+        bar.style.width = '70%'; pct.textContent = '70%';
+      } else {
+        // ── Fallback: local dev without Supabase config ──
+        addLog('No Supabase config — using base64 fallback (local dev only)...');
+        bar.style.width = '40%'; pct.textContent = '40%';
+      }
+
+      const body = {
+        id,
+        name:      document.getElementById('f-name').value.trim(),
+        client:    document.getElementById('f-client').value.trim(),
+        notes:     document.getElementById('f-notes').value.trim(),
+        expiresAt: new Date(document.getElementById('f-expiry').value + 'T23:59:59').toISOString(),
+      };
+
+      if (imagePath) {
+        body.imagePath = imagePath;
+        body.videoPath = videoPath;
+      } else {
+        // base64 fallback for local dev
+        const toB64 = f => new Promise((res, rej) => {
+          const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f);
+        });
+        [body.imageBase64, body.videoBase64] = await Promise.all([
+          toB64(window.imageFile), toB64(window.videoFile)
+        ]);
+      }
+
+      const resp = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: resp.statusText }));
+        throw new Error(err.error || 'Server error');
+      }
+
+      bar.style.width = '100%'; pct.textContent = '100%';
+      addLog('Done! AR experience ready.');
+
+      document.getElementById('compile-block').style.display = 'none';
+      document.getElementById('success-block').style.display = '';
+
+      const url = arUrl(id);
+      document.getElementById('ar-link-val').value = url;
+      document.getElementById('open-ar').href = url;
+      generateQR(url, document.getElementById('qr-out'), 160);
+      document.getElementById('dl-qr').onclick   = () => downloadQR(url, `qr-${id}`);
+      document.getElementById('copy-btn').onclick = () => copyText(url);
+
+      toast('Project created!');
+    } catch (err) {
+      addLog('ERROR: ' + err.message);
+      toast('Failed: ' + err.message, 'err');
+      document.getElementById('create-nav').style.display    = 'flex';
+      document.getElementById('review-block').style.display  = '';
+      document.getElementById('compile-block').style.display = 'none';
+    }
+  };
+</script>
+</body>
+</html>

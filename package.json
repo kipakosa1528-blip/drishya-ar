@@ -1,0 +1,20 @@
+{
+  "name": "drishya-admin-ar",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.2",
+    "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
+}
