@@ -230,37 +230,29 @@
 <script type="module">
   import { requireAuth, initNav } from './js/auth.js?v=2';
   import { fmt, arUrl, toast, generateQR, downloadQR, copyText } from './js/utils.js?v=2';
-  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
   requireAuth();
   initNav('create');
   setExpiry(90);
 
-  // Load Supabase config from server (keeps keys out of static files)
-  let supabase = null;
-  let BUCKET = 'uploads';
+  let hasR2 = true;
   const cfgResp = await fetch('/api/config');
   if (cfgResp.ok) {
     const cfg = await cfgResp.json();
-    supabase = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
-    BUCKET = cfg.bucket || 'uploads';
+    hasR2 = cfg.hasR2;
   }
 
   setupFile('img-input', 'img-zone', 'img-label', 'img-name', (f) => {
-    if (f.size > 10 * 1024 * 1024) {
-      toast(`Image too large (${(f.size/1024/1024).toFixed(0)}MB). Max is 10MB.`, 'err');
+    if (f.size > 25 * 1024 * 1024) {
+      toast(`Image too large (${(f.size/1024/1024).toFixed(0)}MB). Max is 25MB.`, 'err');
       return;
     }
     window.imageFile = f;
     document.getElementById('img-preview').src = URL.createObjectURL(f);
     document.getElementById('img-preview-wrap').style.display = '';
   });
+
   setupFile('vid-input', 'vid-zone', 'vid-label', 'vid-name', (f) => {
-    const MAX_VIDEO_MB = 50;
-    if (f.size > MAX_VIDEO_MB * 1024 * 1024) {
-      toast(`Video too large (${(f.size/1024/1024).toFixed(0)}MB). Max is ${MAX_VIDEO_MB}MB. Compress it first with HandBrake or Clideo.com.`, 'err');
-      return;
-    }
     window.videoFile = f;
     document.getElementById('vid-preview').src = URL.createObjectURL(f);
     document.getElementById('vid-preview-wrap').style.display = '';
@@ -291,6 +283,19 @@
     document.getElementById('r-exp').textContent    = document.getElementById('f-expiry').value;
   };
 
+  async function uploadToR2(file, key) {
+    const presignResp = await fetch(`/api/presign?key=${encodeURIComponent(key)}&type=${encodeURIComponent(file.type)}`);
+    if (!presignResp.ok) throw new Error('Failed to get presigned upload URL for ' + key);
+    const { url: presignUrl } = await presignResp.json();
+
+    const putResp = await fetch(presignUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    });
+    if (!putResp.ok) throw new Error(`R2 upload failed for ${key}: ${putResp.status}`);
+  }
+
   window.startCreate = async function() {
     document.getElementById('review-block').style.display  = 'none';
     document.getElementById('create-nav').style.display    = 'none';
@@ -305,38 +310,28 @@
       const id = crypto.randomUUID();
       let imagePath, videoPath;
 
-      if (supabase) {
-        // ── Image → Supabase Storage ──────────────────────────────────────────
-        addLog('Uploading target image...');
-        bar.style.width = '20%'; pct.textContent = '20%';
-        const { error: imgErr } = await supabase.storage.from(BUCKET)
-          .upload(`${id}/original.jpg`, window.imageFile, { contentType: window.imageFile.type, upsert: true });
-        if (imgErr) throw new Error('Image upload failed: ' + imgErr.message);
-        imagePath = `${id}/original.jpg`;
+      if (hasR2) {
+        // ── Upload Image to Cloudflare R2 ─────────────────────────────────────
+        addLog('Uploading target image to Cloudflare R2...');
+        bar.style.width = '25%'; pct.textContent = '25%';
+        const imgKey = `${id}/original.jpg`;
+        await uploadToR2(window.imageFile, imgKey);
+        imagePath = imgKey;
 
-        // ── Video → R2 via presigned PUT (no size limit, no Vercel routing) ──
+        // ── Upload Video to Cloudflare R2 ─────────────────────────────────────
         addLog('Uploading video to Cloudflare R2...');
-        bar.style.width = '40%'; pct.textContent = '40%';
+        bar.style.width = '55%'; pct.textContent = '55%';
         const videoKey = `${id}/video.mp4`;
-        const presignResp = await fetch(`/api/presign?key=${encodeURIComponent(videoKey)}&type=${encodeURIComponent(window.videoFile.type)}`);
-        if (!presignResp.ok) throw new Error('Failed to get upload URL');
-        const { url: presignUrl } = await presignResp.json();
-
-        const putResp = await fetch(presignUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': window.videoFile.type },
-          body: window.videoFile,
-        });
-        if (!putResp.ok) throw new Error(`R2 upload failed: ${putResp.status} ${putResp.statusText}`);
+        await uploadToR2(window.videoFile, videoKey);
         videoPath = videoKey;
 
-        addLog('Files uploaded. Preparing AR target...');
-        bar.style.width = '70%'; pct.textContent = '70%';
+        addLog('Files uploaded to R2! Preparing AR target...');
+        bar.style.width = '75%'; pct.textContent = '75%';
       } else {
-        // ── Fallback: local dev without Supabase config ──
-        addLog('No Supabase config — using base64 fallback (local dev only)...');
+        addLog('Using base64 upload fallback...');
         bar.style.width = '40%'; pct.textContent = '40%';
       }
+
 
 
       const body = {

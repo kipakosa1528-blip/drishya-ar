@@ -8,21 +8,18 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ── Supabase clients ─────────────────────────────────────────────────────────
+// ── Supabase database client ──────────────────────────────────────────────────
 const SUPABASE_URL    = process.env.SUPABASE_URL;
-const SUPABASE_ANON   = process.env.SUPABASE_ANON_KEY;
 const SUPABASE_SECRET = process.env.SUPABASE_SERVICE_KEY;
-const BUCKET          = process.env.STORAGE_BUCKET || 'uploads';
 
 if (!SUPABASE_URL || !SUPABASE_SECRET) {
   console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_KEY in environment');
   process.exit(1);
 }
 
-// Server-side Supabase client (service key — bypasses RLS)
 const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET);
 
-// Cloudflare R2 client (S3-compatible) — for video storage
+// ── Cloudflare R2 client (S3-compatible) ───────────────────────────────────────
 const R2_ACCOUNT_ID   = process.env.R2_ACCOUNT_ID   || 'f7baea90c7809632483abe5522780560';
 const R2_ACCESS_KEY   = process.env.R2_ACCESS_KEY_ID;
 const R2_SECRET_KEY   = process.env.R2_SECRET_ACCESS_KEY;
@@ -41,12 +38,11 @@ if (R2_ACCESS_KEY && R2_SECRET_KEY) {
 const LUM_W = 480;
 const LUM_H = 640;
 
-// Build a public Supabase Storage URL for a given path
-function storageUrl(path) {
-  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+function r2Url(key) {
+  return `${R2_PUBLIC_URL}/${key}`;
 }
 
-// Prepare 8th Wall target from image buffer — mirrors prepare-8w-target.mjs
+// Prepare 8th Wall target from image buffer and upload luminance to R2
 async function prepareTarget(imageBuffer, projectId) {
   const meta = await sharp(imageBuffer).metadata();
   const W = meta.width, H = meta.height;
@@ -69,16 +65,20 @@ async function prepareTarget(imageBuffer, projectId) {
     .jpeg({ quality: 90 })
     .toBuffer();
 
-  // Upload luminance image to Supabase Storage
-  const lumPath = `${projectId}/luminance.jpg`;
-  const { error: lumErr } = await supabase.storage.from(BUCKET)
-    .upload(lumPath, lumBuffer, { contentType: 'image/jpeg', upsert: true });
-  if (lumErr) throw new Error('Failed to upload luminance: ' + lumErr.message);
+  const lumKey = `${projectId}/luminance.jpg`;
+  if (r2) {
+    await r2.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: lumKey,
+      Body: lumBuffer,
+      ContentType: 'image/jpeg',
+    }));
+  }
 
   const targetData = {
     name: 'target0',
     type: 'PLANAR',
-    imagePath: storageUrl(lumPath),  // absolute URL the 8th Wall engine will fetch
+    imagePath: r2Url(lumKey),
     metadata: {},
     properties: { left, top, width: cw, height: ch, originalWidth: W, originalHeight: H, isRotated: false }
   };
@@ -89,26 +89,25 @@ async function prepareTarget(imageBuffer, projectId) {
 app.use(express.json({ limit: '150mb' }));
 app.use(express.static(process.cwd()));
 
-// ── Presign endpoint — browser calls this to get a temporary R2 upload URL ───
-// Returns a signed PUT URL valid for 1 hour. No credentials leave the server.
+// ── Presign endpoint for direct client uploads to R2 ─────────────────────────
 app.get('/api/presign', async (req, res) => {
   const { key, type } = req.query;
   if (!key) return res.status(400).json({ error: 'Missing key' });
   if (!r2)  return res.status(503).json({ error: 'R2 not configured' });
   try {
-    const cmd = new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, ContentType: type || 'video/mp4' });
+    const cmd = new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, ContentType: type || 'application/octet-stream' });
     const url = await getSignedUrl(r2, cmd, { expiresIn: 3600 });
-    res.json({ url, publicUrl: `${R2_PUBLIC_URL}/${key}` });
+    res.json({ url, publicUrl: r2Url(key) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ── Config endpoint (safe to expose anon key to browser) ─────────────────────
+// ── Config endpoint ──────────────────────────────────────────────────────────
 app.get('/api/config', (req, res) => {
   res.json({
-    supabaseUrl: SUPABASE_URL, supabaseAnonKey: SUPABASE_ANON, bucket: BUCKET,
-    r2PublicUrl: R2_PUBLIC_URL, hasR2: !!r2
+    r2PublicUrl: R2_PUBLIC_URL,
+    hasR2: !!r2
   });
 });
 
@@ -131,11 +130,7 @@ app.get('/ar', async (req, res) => {
   const targetData = project.target_data;
   if (!targetData) return res.status(404).send('<h2>Target not ready. Please re-create the project.</h2>');
 
-  // Video served from R2 CDN (if available) otherwise Supabase Storage
-  const videoPath = project.video_path || `${id}/video.mp4`;
-  const videoUrl = r2
-    ? `${R2_PUBLIC_URL}/${videoPath}`
-    : storageUrl(videoPath);
+  const videoUrl = project.video_path.startsWith('http') ? project.video_path : r2Url(project.video_path);
   const planeW = 0.75, planeH = 1.3333; // JS adjusts after video loads
 
   res.setHeader('Content-Type', 'text/html');
@@ -225,42 +220,38 @@ app.post('/api/projects', async (req, res) => {
     const { id, name, client, notes, expiresAt, imagePath, videoPath, imageBase64, videoBase64 } = req.body;
     if (!id || !name) return res.status(400).json({ error: 'Missing required fields' });
 
-    let resolvedImagePath = imagePath;
-    let resolvedVideoPath = videoPath || `${id}/video.mp4`; // R2 path
+    let resolvedImagePath = imagePath || `${id}/original.jpg`;
+    let resolvedVideoPath = videoPath || `${id}/video.mp4`;
 
-    // Image: upload to Supabase Storage if sent as base64 (local dev fallback)
-    if (!imagePath && imageBase64) {
+    // Local dev fallback if base64 sent
+    if (imageBase64 && r2) {
       const buf = Buffer.from(imageBase64.split(',')[1] || imageBase64, 'base64');
-      const { error } = await supabase.storage.from(BUCKET)
-        .upload(`${id}/original.jpg`, buf, { contentType: 'image/jpeg', upsert: true });
-      if (error) throw new Error('Image upload failed: ' + error.message);
-      resolvedImagePath = `${id}/original.jpg`;
+      await r2.send(new PutObjectCommand({
+        Bucket: R2_BUCKET, Key: resolvedImagePath, Body: buf, ContentType: 'image/jpeg'
+      }));
     }
 
-    // Video: upload to R2 if sent as base64 (local dev fallback, bypasses presign flow)
-    if (!videoPath && videoBase64 && r2) {
+    if (videoBase64 && r2) {
       const buf = Buffer.from(videoBase64.split(',')[1] || videoBase64, 'base64');
       await r2.send(new PutObjectCommand({
-        Bucket: R2_BUCKET, Key: `${id}/video.mp4`,
-        Body: buf, ContentType: 'video/mp4'
+        Bucket: R2_BUCKET, Key: resolvedVideoPath, Body: buf, ContentType: 'video/mp4'
       }));
-      resolvedVideoPath = `${id}/video.mp4`;
     }
 
-    // Download image from Supabase Storage and run sharp
-    const { data: imgData, error: dlErr } = await supabase.storage
-      .from(BUCKET).download(resolvedImagePath);
-    if (dlErr) throw new Error('Cannot fetch image: ' + dlErr.message);
+    // Download image from R2 to run sharp target compilation
+    const imgUrl = r2Url(resolvedImagePath);
+    const imgFetch = await fetch(imgUrl);
+    if (!imgFetch.ok) throw new Error('Cannot fetch image from R2: ' + imgFetch.statusText);
+    const imgBuffer = Buffer.from(await imgFetch.arrayBuffer());
 
-    const imgBuffer = Buffer.from(await imgData.arrayBuffer());
     const targetData = await prepareTarget(imgBuffer, id);
 
-    // Save project to database
+    // Save metadata to Supabase DB
     const { error: dbErr } = await supabase.from('projects').insert({
       id, name, client, notes,
       expires_at: expiresAt || null,
       image_path: resolvedImagePath,
-      video_path: resolvedVideoPath,   // R2 key e.g. "{id}/video.mp4"
+      video_path: resolvedVideoPath,
       target_data: targetData,
     });
     if (dbErr) throw new Error('DB insert failed: ' + dbErr.message);
@@ -274,14 +265,6 @@ app.post('/api/projects', async (req, res) => {
 
 app.delete('/api/projects/:id', async (req, res) => {
   const { id } = req.params;
-
-  // Remove all files for this project from Storage
-  const { data: files } = await supabase.storage.from(BUCKET).list(id);
-  if (files?.length) {
-    const paths = files.map(f => `${id}/${f.name}`);
-    await supabase.storage.from(BUCKET).remove(paths);
-  }
-
   const { error } = await supabase.from('projects').delete().eq('id', id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
@@ -292,3 +275,4 @@ app.listen(PORT, () => {
 });
 
 export default app;
+
