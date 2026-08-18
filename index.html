@@ -6,10 +6,10 @@
   <title>Admin Login — Kipakosa AR</title>
   <link rel="stylesheet" href="css/app.css" />
   <style>
-    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #09090b; }
-    .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 32px; width: 100%; max-width: 360px; }
-    .brand { font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 6px; }
-    .brand span { font-size: 10px; background: rgba(99,102,241,.15); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #090d16; }
+    .login-card { background: var(--surface-card); border: 1.5px solid var(--border); border-radius: 14px; padding: 36px 32px; width: 100%; max-width: 380px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .brand { font-size: 20px; font-weight: 800; margin-bottom: 24px; display: flex; align-items: center; gap: 8px; color: var(--text); }
+    .brand span { font-size: 11px; background: var(--accent-gradient); color: #fff; padding: 2px 7px; border-radius: 4px; font-weight: 700; }
   </style>
 </head>
 <body>
@@ -18,12 +18,13 @@
   <form id="login-form">
     <div class="form-group">
       <label>Admin Password</label>
-      <input class="form-control" type="password" id="pw" placeholder="Enter admin password" required autofocus />
+      <input class="form-control" type="password" id="pw" placeholder="Enter password (default: drishya2024)" required autofocus />
     </div>
-    <div id="err-msg" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none">Incorrect password</div>
+    <div id="err-msg" style="color:var(--red);font-size:13px;font-weight:600;margin-bottom:14px;display:none">Incorrect password</div>
     <button type="submit" class="btn btn-primary" style="width:100%" id="login-btn">Log In</button>
   </form>
 </div>
+
 
 <script type="module">
   import { isLoggedIn, login } from './js/auth.js';
