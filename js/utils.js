@@ -30,11 +30,21 @@ export function toast(msg, type = 'info') {
     document.body.appendChild(c);
   }
   const t = document.createElement('div');
-  t.className = `toast ${type === 'err' ? 'toast-err' : ''}`;
-  t.textContent = msg;
+  const isErr = type === 'err' || type === 'error';
+  const isSuccess = type === 'success' || type === 'ok';
+  
+  t.className = `toast ${isErr ? 'toast-err' : ''}`;
+  const icon = isErr ? '❌' : (isSuccess ? '✅' : 'ℹ️');
+  t.innerHTML = `<span style="font-size:15px">${icon}</span> <span>${msg}</span>`;
   c.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+  setTimeout(() => {
+    t.style.opacity = '0';
+    t.style.transform = 'translateY(10px)';
+    t.style.transition = 'all 0.3s ease';
+    setTimeout(() => t.remove(), 300);
+  }, 4000);
 }
+
 
 export function generateQR(text, containerEl, size = 160) {
   containerEl.innerHTML = '';

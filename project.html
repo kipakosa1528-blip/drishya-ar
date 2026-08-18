@@ -172,9 +172,36 @@
     document.getElementById('edit-panel').style.display = 'block';
   };
 
+  document.getElementById('save-edit-btn').onclick = async () => {
+
+    const name = document.getElementById('e-name').value.trim();
+    const client = document.getElementById('e-client').value.trim();
+    const expVal = document.getElementById('e-expiry').value;
+    if (!name) { toast('Please enter a project name', 'err'); return; }
+
+    try {
+      const resp = await fetch(`/api/projects/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name, client,
+          expiresAt: expVal ? new Date(expVal + 'T23:59:59').toISOString() : null
+        })
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      project = await resp.json();
+      render();
+      document.getElementById('edit-panel').style.display = 'none';
+      toast('Project updated successfully!', 'success');
+    } catch (err) {
+      toast('Update failed: ' + err.message, 'err');
+    }
+  };
+
   document.getElementById('cancel-edit-btn').onclick = () => {
     document.getElementById('edit-panel').style.display = 'none';
   };
 </script>
 </body>
 </html>
+

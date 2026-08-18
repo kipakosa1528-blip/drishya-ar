@@ -1,4 +1,4 @@
-const PASSWORD = 'admin';
+const VALID_PASSWORDS = ['admin', 'drishya2024', 'kipakosa'];
 
 export function isLoggedIn() {
   return sessionStorage.getItem('auth') === '1';
@@ -6,14 +6,18 @@ export function isLoggedIn() {
 
 export function requireAuth() {
   if (!isLoggedIn()) {
-    sessionStorage.setItem('auth', '1');
+    window.location.replace('/index.html');
   }
 }
 
 export function login(pw) {
-  if (pw === PASSWORD) { sessionStorage.setItem('auth', '1'); return true; }
+  if (VALID_PASSWORDS.includes(pw.trim())) {
+    sessionStorage.setItem('auth', '1');
+    return true;
+  }
   return false;
 }
+
 
 export function logout() {
   sessionStorage.removeItem('auth');

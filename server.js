@@ -201,20 +201,47 @@ app.get('/ar', async (req, res) => {
 </html>`);
 });
 
+function formatProject(row) {
+  if (!row) return null;
+  const imagePath = row.image_path || '';
+  const videoPath = row.video_path || '';
+  const imageUrl = imagePath ? (imagePath.startsWith('http') ? imagePath : r2Url(imagePath)) : '';
+  const videoUrl = videoPath ? (videoPath.startsWith('http') ? videoPath : r2Url(videoPath)) : '';
+  return {
+    id: row.id,
+    name: row.name,
+    client: row.client || '',
+    notes: row.notes || '',
+    createdAt: row.created_at,
+    created_at: row.created_at,
+    expiresAt: row.expires_at,
+    expires_at: row.expires_at,
+    imagePath,
+    image_path: imagePath,
+    videoPath,
+    video_path: videoPath,
+    imageUrl,
+    videoUrl,
+    targetData: row.target_data,
+    target_data: row.target_data
+  };
+}
+
 // ── Projects API ──────────────────────────────────────────────────────────────
 app.get('/api/projects', async (req, res) => {
   const { data, error } = await supabase
     .from('projects').select('*').order('created_at', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+  res.json((data || []).map(formatProject));
 });
 
 app.get('/api/projects/:id', async (req, res) => {
   const { data, error } = await supabase
     .from('projects').select('*').eq('id', req.params.id).single();
   if (error || !data) return res.status(404).json({ error: 'Not found' });
-  res.json(data);
+  res.json(formatProject(data));
 });
+
 
 app.post('/api/projects', async (req, res) => {
   try {
@@ -264,12 +291,28 @@ app.post('/api/projects', async (req, res) => {
   }
 });
 
+app.put('/api/projects/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, client, notes, expiresAt } = req.body;
+  const updates = {};
+  if (name !== undefined) updates.name = name;
+  if (client !== undefined) updates.client = client;
+  if (notes !== undefined) updates.notes = notes;
+  if (expiresAt !== undefined) updates.expires_at = expiresAt;
+
+  const { data, error } = await supabase
+    .from('projects').update(updates).eq('id', id).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(formatProject(data));
+});
+
 app.delete('/api/projects/:id', async (req, res) => {
   const { id } = req.params;
   const { error } = await supabase.from('projects').delete().eq('id', id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
+
 
 app.listen(PORT, () => {
   console.log(`Drishya AR running at http://localhost:${PORT}`);
