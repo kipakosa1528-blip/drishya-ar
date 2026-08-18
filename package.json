@@ -9,6 +9,8 @@
     "test": "playwright test"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1112.0",
+    "@aws-sdk/s3-request-presigner": "^3.1112.0",
     "@supabase/supabase-js": "^2.112.3",
     "dotenv": "^16.6.1",
     "express": "^4.22.2",

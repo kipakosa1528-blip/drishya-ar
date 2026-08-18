@@ -2,6 +2,8 @@ import 'dotenv/config';
 import express from 'express';
 import sharp from 'sharp';
 import { createClient } from '@supabase/supabase-js';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,8 +19,24 @@ if (!SUPABASE_URL || !SUPABASE_SECRET) {
   process.exit(1);
 }
 
-// Server-side client (service key — bypasses RLS, never sent to browser)
+// Server-side Supabase client (service key — bypasses RLS)
 const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET);
+
+// Cloudflare R2 client (S3-compatible) — for video storage
+const R2_ACCOUNT_ID   = process.env.R2_ACCOUNT_ID   || 'f7baea90c7809632483abe5522780560';
+const R2_ACCESS_KEY   = process.env.R2_ACCESS_KEY_ID;
+const R2_SECRET_KEY   = process.env.R2_SECRET_ACCESS_KEY;
+const R2_BUCKET       = process.env.R2_BUCKET        || 'kipakosa-videos';
+const R2_PUBLIC_URL   = process.env.R2_PUBLIC_URL    || 'https://pub-f2ad2c43aa344d4bb911e991b04b1fbd.r2.dev';
+
+let r2 = null;
+if (R2_ACCESS_KEY && R2_SECRET_KEY) {
+  r2 = new S3Client({
+    region: 'auto',
+    endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
+  });
+}
 
 const LUM_W = 480;
 const LUM_H = 640;
@@ -71,9 +89,27 @@ async function prepareTarget(imageBuffer, projectId) {
 app.use(express.json({ limit: '150mb' }));
 app.use(express.static(process.cwd()));
 
+// ── Presign endpoint — browser calls this to get a temporary R2 upload URL ───
+// Returns a signed PUT URL valid for 1 hour. No credentials leave the server.
+app.get('/api/presign', async (req, res) => {
+  const { key, type } = req.query;
+  if (!key) return res.status(400).json({ error: 'Missing key' });
+  if (!r2)  return res.status(503).json({ error: 'R2 not configured' });
+  try {
+    const cmd = new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, ContentType: type || 'video/mp4' });
+    const url = await getSignedUrl(r2, cmd, { expiresIn: 3600 });
+    res.json({ url, publicUrl: `${R2_PUBLIC_URL}/${key}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Config endpoint (safe to expose anon key to browser) ─────────────────────
 app.get('/api/config', (req, res) => {
-  res.json({ supabaseUrl: SUPABASE_URL, supabaseAnonKey: SUPABASE_ANON, bucket: BUCKET });
+  res.json({
+    supabaseUrl: SUPABASE_URL, supabaseAnonKey: SUPABASE_ANON, bucket: BUCKET,
+    r2PublicUrl: R2_PUBLIC_URL, hasR2: !!r2
+  });
 });
 
 // ── Server-rendered AR viewer ─────────────────────────────────────────────────
@@ -95,8 +131,11 @@ app.get('/ar', async (req, res) => {
   const targetData = project.target_data;
   if (!targetData) return res.status(404).send('<h2>Target not ready. Please re-create the project.</h2>');
 
-  // Video served directly from Supabase Storage CDN
-  const videoUrl = storageUrl(`${id}/video.mp4`);
+  // Video served from R2 CDN (if available) otherwise Supabase Storage
+  const videoPath = project.video_path || `${id}/video.mp4`;
+  const videoUrl = r2
+    ? `${R2_PUBLIC_URL}/${videoPath}`
+    : storageUrl(videoPath);
   const planeW = 0.75, planeH = 1.3333; // JS adjusts after video loads
 
   res.setHeader('Content-Type', 'text/html');
@@ -187,9 +226,9 @@ app.post('/api/projects', async (req, res) => {
     if (!id || !name) return res.status(400).json({ error: 'Missing required fields' });
 
     let resolvedImagePath = imagePath;
-    let resolvedVideoPath = videoPath;
+    let resolvedVideoPath = videoPath || `${id}/video.mp4`; // R2 path
 
-    // Fallback: if browser sent base64 directly (local dev mode), upload to Supabase
+    // Image: upload to Supabase Storage if sent as base64 (local dev fallback)
     if (!imagePath && imageBase64) {
       const buf = Buffer.from(imageBase64.split(',')[1] || imageBase64, 'base64');
       const { error } = await supabase.storage.from(BUCKET)
@@ -198,11 +237,13 @@ app.post('/api/projects', async (req, res) => {
       resolvedImagePath = `${id}/original.jpg`;
     }
 
-    if (!videoPath && videoBase64) {
+    // Video: upload to R2 if sent as base64 (local dev fallback, bypasses presign flow)
+    if (!videoPath && videoBase64 && r2) {
       const buf = Buffer.from(videoBase64.split(',')[1] || videoBase64, 'base64');
-      const { error } = await supabase.storage.from(BUCKET)
-        .upload(`${id}/video.mp4`, buf, { contentType: 'video/mp4', upsert: true });
-      if (error) throw new Error('Video upload failed: ' + error.message);
+      await r2.send(new PutObjectCommand({
+        Bucket: R2_BUCKET, Key: `${id}/video.mp4`,
+        Body: buf, ContentType: 'video/mp4'
+      }));
       resolvedVideoPath = `${id}/video.mp4`;
     }
 
@@ -219,7 +260,7 @@ app.post('/api/projects', async (req, res) => {
       id, name, client, notes,
       expires_at: expiresAt || null,
       image_path: resolvedImagePath,
-      video_path: resolvedVideoPath,
+      video_path: resolvedVideoPath,   // R2 key e.g. "{id}/video.mp4"
       target_data: targetData,
     });
     if (dbErr) throw new Error('DB insert failed: ' + dbErr.message);

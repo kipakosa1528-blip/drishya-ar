@@ -247,11 +247,20 @@
   }
 
   setupFile('img-input', 'img-zone', 'img-label', 'img-name', (f) => {
+    if (f.size > 10 * 1024 * 1024) {
+      toast(`Image too large (${(f.size/1024/1024).toFixed(0)}MB). Max is 10MB.`, 'err');
+      return;
+    }
     window.imageFile = f;
     document.getElementById('img-preview').src = URL.createObjectURL(f);
     document.getElementById('img-preview-wrap').style.display = '';
   });
   setupFile('vid-input', 'vid-zone', 'vid-label', 'vid-name', (f) => {
+    const MAX_VIDEO_MB = 50;
+    if (f.size > MAX_VIDEO_MB * 1024 * 1024) {
+      toast(`Video too large (${(f.size/1024/1024).toFixed(0)}MB). Max is ${MAX_VIDEO_MB}MB. Compress it first with HandBrake or Clideo.com.`, 'err');
+      return;
+    }
     window.videoFile = f;
     document.getElementById('vid-preview').src = URL.createObjectURL(f);
     document.getElementById('vid-preview-wrap').style.display = '';
@@ -297,21 +306,30 @@
       let imagePath, videoPath;
 
       if (supabase) {
-        // ── Direct upload to Supabase Storage (bypasses Vercel 4.5MB limit) ──
-        addLog('Uploading target image to storage...');
+        // ── Image → Supabase Storage ──────────────────────────────────────────
+        addLog('Uploading target image...');
         bar.style.width = '20%'; pct.textContent = '20%';
         const { error: imgErr } = await supabase.storage.from(BUCKET)
           .upload(`${id}/original.jpg`, window.imageFile, { contentType: window.imageFile.type, upsert: true });
         if (imgErr) throw new Error('Image upload failed: ' + imgErr.message);
-
-        addLog('Uploading video to storage...');
-        bar.style.width = '50%'; pct.textContent = '50%';
-        const { error: vidErr } = await supabase.storage.from(BUCKET)
-          .upload(`${id}/video.mp4`, window.videoFile, { contentType: window.videoFile.type, upsert: true });
-        if (vidErr) throw new Error('Video upload failed: ' + vidErr.message);
-
         imagePath = `${id}/original.jpg`;
-        videoPath = `${id}/video.mp4`;
+
+        // ── Video → R2 via presigned PUT (no size limit, no Vercel routing) ──
+        addLog('Uploading video to Cloudflare R2...');
+        bar.style.width = '40%'; pct.textContent = '40%';
+        const videoKey = `${id}/video.mp4`;
+        const presignResp = await fetch(`/api/presign?key=${encodeURIComponent(videoKey)}&type=${encodeURIComponent(window.videoFile.type)}`);
+        if (!presignResp.ok) throw new Error('Failed to get upload URL');
+        const { url: presignUrl } = await presignResp.json();
+
+        const putResp = await fetch(presignUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': window.videoFile.type },
+          body: window.videoFile,
+        });
+        if (!putResp.ok) throw new Error(`R2 upload failed: ${putResp.status} ${putResp.statusText}`);
+        videoPath = videoKey;
+
         addLog('Files uploaded. Preparing AR target...');
         bar.style.width = '70%'; pct.textContent = '70%';
       } else {
@@ -319,6 +337,7 @@
         addLog('No Supabase config — using base64 fallback (local dev only)...');
         bar.style.width = '40%'; pct.textContent = '40%';
       }
+
 
       const body = {
         id,
