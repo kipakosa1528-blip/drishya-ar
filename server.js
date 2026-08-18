@@ -100,6 +100,15 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// Explicit logo route with correct image/svg+xml header
+app.get('/assets/logo.svg', (req, res) => {
+  const logoPath = path.join(__dirname, 'assets', 'logo.svg');
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.sendFile(logoPath);
+});
+
+
 
 // ── Presign endpoint for direct client uploads to R2 ─────────────────────────
 app.get('/api/presign', async (req, res) => {
