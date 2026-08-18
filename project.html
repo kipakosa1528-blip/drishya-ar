@@ -122,8 +122,9 @@
 
 <script type="module">
   import { requireAuth, initNav } from './js/auth.js?v=2';
-  import { getProject, saveProjectWithFiles, deleteProject, deleteFiles } from './js/db.js?v=2';
+  import { getProject, updateProject, deleteProject } from './js/db.js?v=2';
   import { fmt, isExpired, statusBadge, arUrl, toast, generateQR, downloadQR, copyText } from './js/utils.js?v=2';
+
 
   requireAuth(); 
   initNav('projects');

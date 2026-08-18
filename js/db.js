@@ -116,3 +116,21 @@ export async function deleteFiles(id) {
 export async function saveProject(proj) {
   return proj;
 }
+
+export async function updateProject(id, updates) {
+  const res = await fetch(`/api/projects/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates)
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const fresh = await res.json();
+  const current = getLocalProjects() || [];
+  setLocalProjects([fresh, ...current.filter(p => p.id !== id)]);
+  return fresh;
+}
+
+export async function saveProjectWithFiles(data) {
+  return data;
+}
+
