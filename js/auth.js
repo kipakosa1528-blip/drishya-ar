@@ -28,8 +28,11 @@ export function initNav(activePage) {
   document.querySelectorAll('.nav-link').forEach(l => {
     l.classList.toggle('active', l.dataset.page === activePage);
   });
-  document.getElementById('logout-btn')?.addEventListener('click', logout);
+  document.querySelectorAll('#logout-btn, #mobile-logout-btn, .logout-btn').forEach(btn => {
+    btn.addEventListener('click', logout);
+  });
 }
+
 
 export const ICONS = {
   home:    `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>`,
