@@ -87,7 +87,7 @@
   function updateDashboard(list) {
     projects = (list || []).sort((a,b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at));
     const total = projects.length;
-    const expired = projects.filter(p => isExpired(p.expiresAt || p.expires_at)).length;
+    const expired = projects.filter(p => isExpired(p)).length;
     const active = total - expired;
     const totalScans = projects.reduce((acc, p) => acc + (p.viewsCount || p.views_count || 0), 0);
 
@@ -119,8 +119,9 @@
         <td><a href="project.html?id=${p.id}" style="font-weight:600;color:var(--text)">${p.name}</a></td>
         <td style="color:var(--text-secondary)">${p.client || '—'}</td>
         <td><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--accent)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ${p.viewsCount || p.views_count || 0}</span></td>
-        <td>${statusBadge(p.expiresAt || p.expires_at)}</td>
+        <td>${statusBadge(p)}</td>
         <td style="color:var(--text-secondary)">${fmt(p.expiresAt || p.expires_at)}</td>
+
         <td style="text-align:right">
           <div class="actions" style="display:flex;gap:6px;justify-content:flex-end">
             <a href="project.html?id=${p.id}" class="btn btn-sm btn-default">View</a>

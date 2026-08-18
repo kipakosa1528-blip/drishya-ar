@@ -143,25 +143,40 @@ app.get('/ar', async (req, res) => {
   if (error || !project) return res.status(404).send('<h2>Project not found</h2>');
 
   if (project.expires_at && new Date(project.expires_at) < new Date()) {
-    return res.status(403).send(`<!DOCTYPE html><html><body style="font-family:system-ui;text-align:center;padding:60px;background:#111;color:#fff">
-      <h2 style="color:#ff9800">Experience Expired</h2>
-      <p>This AR experience has expired.</p></body></html>`);
+    return res.status(403).send(`<!DOCTYPE html><html><body style="font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:60px 20px;background:#090d16;color:#fff">
+      <div style="max-width:400px;margin:0 auto;background:#162032;padding:32px 24px;border-radius:16px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 10px 30px rgba(0,0,0,0.5)">
+        <div style="font-size:44px;margin-bottom:12px">⏰</div>
+        <h2 style="color:#f59e0b;margin:0 0 10px;font-size:22px;font-weight:700">Experience Expired</h2>
+        <p style="color:#94a3b8;font-size:14px;line-height:1.6">This AR experience has passed its expiration date.</p>
+      </div></body></html>`);
+  }
+
+  const td = (typeof project.target_data === 'object' && project.target_data) ? { ...project.target_data } : {};
+  const maxScans = project.max_scans || td._max_scans || null;
+  const currentViews = project.views_count || td._views_count || 0;
+
+  if (maxScans && currentViews >= maxScans) {
+    return res.status(403).send(`<!DOCTYPE html><html><body style="font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:60px 20px;background:#090d16;color:#fff">
+      <div style="max-width:400px;margin:0 auto;background:#162032;padding:32px 24px;border-radius:16px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 10px 30px rgba(0,0,0,0.5)">
+        <div style="font-size:44px;margin-bottom:12px">🔒</div>
+        <h2 style="color:#ef4444;margin:0 0 10px;font-size:22px;font-weight:700">Scan Limit Reached</h2>
+        <p style="color:#94a3b8;font-size:14px;line-height:1.6">This AR experience has reached its limit of <strong>${maxScans} scans</strong>.</p>
+      </div></body></html>`);
   }
 
   const targetData = project.target_data;
   if (!targetData) return res.status(404).send('<h2>Target not ready. Please re-create the project.</h2>');
 
   // Increment view/scan count asynchronously in DB
-  const td = (typeof project.target_data === 'object' && project.target_data) ? { ...project.target_data } : {};
-  const currentViews = (project.views_count || td._views_count || 0) + 1;
   const lastScanned = new Date().toISOString();
-  td._views_count = currentViews;
+  td._views_count = currentViews + 1;
   td._last_scanned_at = lastScanned;
   supabase.from('projects')
     .update({ target_data: td })
     .eq('id', id)
     .then()
     .catch(() => {});
+
 
 
   const videoUrl = project.video_path.startsWith('http') ? project.video_path : r2Url(project.video_path);
@@ -340,6 +355,7 @@ function formatProject(row) {
   const videoUrl = videoPath ? (videoPath.startsWith('http') ? videoPath : r2Url(videoPath)) : '';
   const td = (typeof row.target_data === 'object' && row.target_data) ? row.target_data : {};
   const viewsCount = row.views_count || td._views_count || 0;
+  const maxScans = row.max_scans || td._max_scans || null;
   const lastScannedAt = row.last_scanned_at || td._last_scanned_at || null;
   return {
     id: row.id,
@@ -350,6 +366,8 @@ function formatProject(row) {
     created_at: row.created_at,
     expiresAt: row.expires_at,
     expires_at: row.expires_at,
+    maxScans,
+    max_scans: maxScans,
     imagePath,
     image_path: imagePath,
     videoPath,
@@ -385,7 +403,7 @@ app.get('/api/projects/:id', async (req, res) => {
 
 app.post('/api/projects', async (req, res) => {
   try {
-    const { id, name, client, notes, expiresAt, imagePath, videoPath, imageBase64, videoBase64 } = req.body;
+    const { id, name, client, notes, expiresAt, maxScans, imagePath, videoPath, imageBase64, videoBase64 } = req.body;
     if (!id || !name) return res.status(400).json({ error: 'Missing required fields' });
 
     let resolvedImagePath = imagePath || `${id}/original.jpg`;
@@ -413,6 +431,9 @@ app.post('/api/projects', async (req, res) => {
     const imgBuffer = Buffer.from(await imgFetch.arrayBuffer());
 
     const targetData = await prepareTarget(imgBuffer, id);
+    if (maxScans) {
+      targetData._max_scans = Number(maxScans);
+    }
 
     // Save metadata to Supabase DB
     const { error: dbErr } = await supabase.from('projects').insert({
@@ -433,18 +454,26 @@ app.post('/api/projects', async (req, res) => {
 
 app.put('/api/projects/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, client, notes, expiresAt } = req.body;
+  const { name, client, notes, expiresAt, maxScans } = req.body;
   const updates = {};
   if (name !== undefined) updates.name = name;
   if (client !== undefined) updates.client = client;
   if (notes !== undefined) updates.notes = notes;
   if (expiresAt !== undefined) updates.expires_at = expiresAt;
 
+  if (maxScans !== undefined) {
+    const { data: existing } = await supabase.from('projects').select('target_data').eq('id', id).single();
+    const td = (typeof existing?.target_data === 'object' && existing?.target_data) ? { ...existing.target_data } : {};
+    td._max_scans = maxScans ? Number(maxScans) : null;
+    updates.target_data = td;
+  }
+
   const { data, error } = await supabase
     .from('projects').update(updates).eq('id', id).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.json(formatProject(data));
 });
+
 
 app.delete('/api/projects/:id', async (req, res) => {
   const { id } = req.params;

@@ -4,18 +4,47 @@ export function fmt(dateStr) {
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-export function isExpired(expiresAt) {
-  if (!expiresAt) return false;
-  return new Date(expiresAt) < new Date();
+export function isExpired(projOrExpiresAt, viewsCount = null, maxScans = null) {
+  if (typeof projOrExpiresAt === 'object' && projOrExpiresAt !== null) {
+    const exp = projOrExpiresAt.expiresAt || projOrExpiresAt.expires_at;
+    const views = projOrExpiresAt.viewsCount || projOrExpiresAt.views_count || 0;
+    const limit = projOrExpiresAt.maxScans || projOrExpiresAt.max_scans;
+    if (exp && new Date(exp) < new Date()) return true;
+    if (limit && Number(views) >= Number(limit)) return true;
+    return false;
+  }
+  if (projOrExpiresAt && new Date(projOrExpiresAt) < new Date()) return true;
+  if (maxScans && viewsCount !== null && Number(viewsCount) >= Number(maxScans)) return true;
+  return false;
 }
 
-export function statusBadge(expiresAt) {
-  const exp = isExpired(expiresAt);
-  if (exp) {
-    return `<span class="badge badge-red"><span class="badge-dot"></span>Expired</span>`;
+export function statusBadge(projOrExpiresAt, viewsCount = null, maxScans = null) {
+  let expDate = null;
+  let views = 0;
+  let limit = null;
+
+  if (typeof projOrExpiresAt === 'object' && projOrExpiresAt !== null) {
+    expDate = projOrExpiresAt.expiresAt || projOrExpiresAt.expires_at;
+    views = projOrExpiresAt.viewsCount || projOrExpiresAt.views_count || 0;
+    limit = projOrExpiresAt.maxScans || projOrExpiresAt.max_scans;
+  } else {
+    expDate = projOrExpiresAt;
+    views = viewsCount || 0;
+    limit = maxScans;
+  }
+
+  if (expDate && new Date(expDate) < new Date()) {
+    return `<span class="badge badge-red"><span class="badge-dot"></span>Time Expired</span>`;
+  }
+  if (limit && Number(views) >= Number(limit)) {
+    return `<span class="badge badge-red"><span class="badge-dot"></span>Limit Reached</span>`;
+  }
+  if (limit) {
+    return `<span class="badge badge-green"><span class="badge-dot"></span>Active (${views}/${limit})</span>`;
   }
   return `<span class="badge badge-green"><span class="badge-dot"></span>Active</span>`;
 }
+
 
 export function arUrl(id) {
   return `${window.location.origin}/ar?id=${id}`;

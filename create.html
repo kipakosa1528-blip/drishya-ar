@@ -9,6 +9,20 @@
     window.imageFile = null;
     window.videoFile = null;
     window.currentStep = 1;
+    window.expMode = 'time';
+
+    window.setExpMode = function(mode) {
+      window.expMode = mode;
+      document.querySelectorAll('.exp-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+      
+      const timeSec = document.getElementById('sec-time-exp');
+      const scanSec = document.getElementById('sec-scan-exp');
+      const noneSec = document.getElementById('sec-none-exp');
+
+      if (timeSec) timeSec.style.display = (mode === 'time' || mode === 'both') ? 'block' : 'none';
+      if (scanSec) scanSec.style.display = (mode === 'scans' || mode === 'both') ? 'block' : 'none';
+      if (noneSec) noneSec.style.display = (mode === 'none') ? 'block' : 'none';
+    };
 
     window.next = function(from) {
       if (from === 1) {
@@ -22,8 +36,15 @@
         if (!window.videoFile) { alert('Please upload a video'); return; }
       }
       if (from === 4) {
-        const d = document.getElementById('f-expiry').value;
-        if (!d || new Date(d) <= new Date()) { alert('Please pick a future expiry date'); return; }
+        const mode = window.expMode || 'time';
+        if (mode === 'time' || mode === 'both') {
+          const d = document.getElementById('f-expiry').value;
+          if (!d) { alert('Please choose an expiry date or select another expiration method'); return; }
+        }
+        if (mode === 'scans' || mode === 'both') {
+          const s = document.getElementById('f-max-scans').value;
+          if (!s || Number(s) <= 0) { alert('Please enter a valid scan limit (at least 1 scan)'); return; }
+        }
         if (window.fillReview) window.fillReview();
       }
       goStep(from + 1);
@@ -43,9 +64,15 @@
     };
 
     window.setExpiry = function(days) {
+      if (!days) { document.getElementById('f-expiry').value = ''; return; }
       const d = new Date(); d.setDate(d.getDate() + days);
       document.getElementById('f-expiry').value = d.toISOString().split('T')[0];
     };
+
+    window.setScanLimit = function(limit) {
+      document.getElementById('f-max-scans').value = limit || '';
+    };
+
   </script>
 </head>
 <body>
@@ -83,14 +110,12 @@
   <main class="main">
     <div class="page-header">
       <div class="page-title">New AR Project</div>
-    </div>
-
-    <!-- Step indicator -->
+    </div>    <!-- Step indicator -->
     <div class="steps">
       <div class="step-item active" id="si-1">1. Info</div>
       <div class="step-item" id="si-2">2. Target Image</div>
       <div class="step-item" id="si-3">3. Video</div>
-      <div class="step-item" id="si-4">4. Expiry</div>
+      <div class="step-item" id="si-4">4. Expiry & Limits</div>
       <div class="step-item" id="si-5">5. Compile & QR</div>
     </div>
 
@@ -99,34 +124,36 @@
       <div class="panel" style="max-width:520px">
         <div class="form-group">
           <label>Project name *</label>
-          <input class="form-control" type="text" id="f-name" placeholder="e.g. Sharma Wedding 2025" />
+          <input class="form-control" type="text" id="f-name" placeholder="e.g. Maya & Arjun Wedding Album" />
         </div>
         <div class="form-group">
           <label>Client name</label>
-          <input class="form-control" type="text" id="f-client" placeholder="e.g. Ram Sharma" />
+          <input class="form-control" type="text" id="f-client" placeholder="e.g. Arjun Maharjan" />
         </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label>Notes (optional)</label>
-          <textarea class="form-control" id="f-notes" placeholder="Any notes..."></textarea>
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea class="form-control" id="f-notes" rows="2" placeholder="Internal notes or customer requests…"></textarea>
         </div>
       </div>
-      <div style="margin-top:16px"><button class="btn btn-primary" id="btn-next-1" onclick="next(1)">Continue →</button></div>
+      <div style="margin-top:16px">
+        <button class="btn btn-primary" onclick="next(1)">Continue →</button>
+      </div>
     </div>
 
-    <!-- Step 2: Image -->
+    <!-- Step 2: Target Image -->
     <div class="step-body" id="sb-2">
       <div class="panel" style="max-width:520px">
         <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
-          Upload the printed photo frame image. This is what customers will point their camera at. 
-          High-contrast images with rich borders work best.
+          Upload the printed photo or artwork customers will point their camera at.
         </p>
-        <label class="file-zone" id="img-zone" for="img-input" style="display:block">
-          <input type="file" id="img-input" accept="image/*" style="display:none" />
-          <div class="file-zone-label" id="img-label">Click to browse — or drag & drop an image</div>
-          <div class="file-zone-name" id="img-name" style="display:none"></div>
-        </label>
-        <div id="img-preview-wrap" style="display:none;margin-top:12px">
-          <img id="img-preview" style="max-height:180px;border-radius:4px;border:1px solid var(--border)" />
+        <div class="upload-zone" id="img-zone" onclick="document.getElementById('img-input').click()">
+          <input type="file" id="img-input" accept="image/*" />
+          <div class="upload-icon">🖼️</div>
+          <div class="upload-label" id="img-label">Choose an image or drop it here</div>
+          <div class="file-name" id="img-name"></div>
+        </div>
+        <div id="img-preview-wrap" style="display:none;margin-top:14px;text-align:center">
+          <img id="img-preview" style="max-height:180px;max-width:100%;border-radius:4px;border:1px solid var(--border)" />
         </div>
       </div>
       <div style="margin-top:16px;display:flex;gap:8px">
@@ -139,14 +166,15 @@
     <div class="step-body" id="sb-3">
       <div class="panel" style="max-width:520px">
         <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
-          Upload the video that will play on top of the photo frame in AR. MP4 recommended.
+          Upload the video that plays overlaid on the photo in AR.
         </p>
-        <label class="file-zone" id="vid-zone" for="vid-input" style="display:block">
-          <input type="file" id="vid-input" accept="video/*" style="display:none" />
-          <div class="file-zone-label" id="vid-label">Click to browse — or drag & drop a video</div>
-          <div class="file-zone-name" id="vid-name" style="display:none"></div>
-        </label>
-        <div id="vid-preview-wrap" style="display:none;margin-top:12px">
+        <div class="upload-zone" id="vid-zone" onclick="document.getElementById('vid-input').click()">
+          <input type="file" id="vid-input" accept="video/*" />
+          <div class="upload-icon">🎬</div>
+          <div class="upload-label" id="vid-label">Choose a video or drop it here</div>
+          <div class="file-name" id="vid-name"></div>
+        </div>
+        <div id="vid-preview-wrap" style="display:none;margin-top:14px;text-align:center">
           <video id="vid-preview" controls style="max-height:180px;max-width:100%;border-radius:4px;border:1px solid var(--border)"></video>
         </div>
       </div>
@@ -156,44 +184,105 @@
       </div>
     </div>
 
-    <!-- Step 4: Expiry -->
+    <!-- Step 4: Expiry & Limits -->
     <div class="step-body" id="sb-4">
-      <div class="panel" style="max-width:520px">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
-          After this date the QR code will show an "expired" page to customers.
-        </p>
-        <div class="form-group">
-          <label>Expiry date *</label>
-          <input class="form-control" type="date" id="f-expiry" style="max-width:200px" />
+      <div style="display:flex;flex-direction:column;gap:16px;max-width:560px">
+        
+        <!-- Mode Switcher Panel -->
+        <div class="panel">
+          <div class="panel-title" style="margin-bottom:8px">Choose Expiration Method</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
+            Select how you want this AR experience to expire for customers.
+          </p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));gap:8px">
+            <button type="button" class="btn btn-default exp-mode-btn active" data-mode="time" onclick="setExpMode('time')">
+              ⏰ Time Only
+            </button>
+            <button type="button" class="btn btn-default exp-mode-btn" data-mode="scans" onclick="setExpMode('scans')">
+              🔒 Scans Only
+            </button>
+            <button type="button" class="btn btn-default exp-mode-btn" data-mode="both" onclick="setExpMode('both')">
+              ⚡ Both (Or)
+            </button>
+            <button type="button" class="btn btn-default exp-mode-btn" data-mode="none" onclick="setExpMode('none')">
+              ∞ Never Expire
+            </button>
+          </div>
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-sm btn-default" onclick="setExpiry(30)">+30 days</button>
-          <button class="btn btn-sm btn-default" onclick="setExpiry(60)">+60 days</button>
-          <button class="btn btn-sm btn-default" onclick="setExpiry(90)">+90 days</button>
-          <button class="btn btn-sm btn-default" onclick="setExpiry(180)">+6 months</button>
-          <button class="btn btn-sm btn-default" onclick="setExpiry(365)">+1 year</button>
+
+        <!-- 1. Time Expiry Section -->
+        <div class="panel" id="sec-time-exp">
+          <div class="panel-title" style="display:flex;align-items:center;gap:6px">
+            <span>⏰</span> <span>Time-Based Expiration</span>
+          </div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
+            The AR viewer will show "Expired" after this date passes.
+          </p>
+          <div class="form-group">
+            <label>Expiry Date *</label>
+            <input class="form-control" type="date" id="f-expiry" style="max-width:220px" />
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-sm btn-default" onclick="setExpiry(30)">+30 days</button>
+            <button type="button" class="btn btn-sm btn-default" onclick="setExpiry(90)">+90 days</button>
+            <button type="button" class="btn btn-sm btn-default" onclick="setExpiry(180)">+6 months</button>
+            <button type="button" class="btn btn-sm btn-default" onclick="setExpiry(365)">+1 year</button>
+          </div>
         </div>
+
+        <!-- 2. Scan Limit Expiry Section -->
+        <div class="panel" id="sec-scan-exp" style="display:none">
+          <div class="panel-title" style="display:flex;align-items:center;gap:6px">
+            <span>🔒</span> <span>Scan Limit Expiration</span>
+          </div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
+            The AR viewer will lock after reaching this total number of customer camera scans.
+          </p>
+          <div class="form-group">
+            <label>Max Scan Limit *</label>
+            <input class="form-control" type="number" id="f-max-scans" placeholder="e.g. 500 scans" min="1" style="max-width:260px" />
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-sm btn-default" onclick="setScanLimit(100)">100 scans</button>
+            <button type="button" class="btn btn-sm btn-default" onclick="setScanLimit(250)">250 scans</button>
+            <button type="button" class="btn btn-sm btn-default" onclick="setScanLimit(500)">500 scans</button>
+            <button type="button" class="btn btn-sm btn-default" onclick="setScanLimit(1000)">1,000 scans</button>
+          </div>
+        </div>
+
+        <!-- 3. Never Expire Section -->
+        <div class="panel" id="sec-none-exp" style="display:none;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2)">
+          <div class="panel-title" style="color:var(--green);display:flex;align-items:center;gap:6px">
+            <span>✓</span> <span>Permanent Experience</span>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary);margin:0">
+            This project has no time expiration and unlimited scans. It will remain active forever until manually deleted.
+          </p>
+        </div>
+
       </div>
+
       <div style="margin-top:16px;display:flex;gap:8px">
         <button class="btn btn-default" onclick="prev(4)">← Back</button>
         <button class="btn btn-primary" id="btn-next-4" onclick="next(4)">Continue →</button>
       </div>
     </div>
 
+
     <!-- Step 5: Compile -->
     <div class="step-body" id="sb-5">
       <!-- Review -->
-      <div id="review-block" class="panel" style="max-width:520px;margin-bottom:16px">
-        <div class="panel-title">Review</div>
+      <div id="review-block" class="panel" style="max-width:560px;margin-bottom:16px">
+        <div class="panel-title">Review Project</div>
         <table style="width:100%;font-size:14px;border-collapse:collapse">
-          <tr><td style="color:var(--text-muted);padding:8px 0;width:120px;font-weight:600">Name</td><td id="r-name" style="color:var(--text);font-weight:700"></td></tr>
+          <tr><td style="color:var(--text-muted);padding:8px 0;width:130px;font-weight:600">Name</td><td id="r-name" style="color:var(--text);font-weight:700"></td></tr>
           <tr><td style="color:var(--text-muted);padding:8px 0;font-weight:600">Client</td><td id="r-client" style="color:var(--text);font-weight:500"></td></tr>
           <tr><td style="color:var(--text-muted);padding:8px 0;font-weight:600">Image</td><td id="r-img" style="color:var(--text);font-weight:500"></td></tr>
           <tr><td style="color:var(--text-muted);padding:8px 0;font-weight:600">Video</td><td id="r-vid" style="color:var(--text);font-weight:500"></td></tr>
-          <tr><td style="color:var(--text-muted);padding:8px 0;font-weight:600">Expires</td><td id="r-exp" style="color:var(--text);font-weight:500"></td></tr>
+          <tr><td style="color:var(--text-muted);padding:8px 0;font-weight:600">Time Expiry</td><td id="r-exp" style="color:var(--text);font-weight:500"></td></tr>
+          <tr><td style="color:var(--text-muted);padding:8px 0;font-weight:600">Scan Limit</td><td id="r-scans" style="color:var(--accent);font-weight:600"></td></tr>
         </table>
       </div>
-
 
       <!-- Compile progress (hidden until started) -->
       <div id="compile-block" style="display:none;max-width:520px">
@@ -294,7 +383,24 @@
     document.getElementById('r-client').textContent = document.getElementById('f-client').value.trim() || '—';
     document.getElementById('r-img').textContent    = window.imageFile?.name || '';
     document.getElementById('r-vid').textContent    = window.videoFile?.name || '';
-    document.getElementById('r-exp').textContent    = document.getElementById('f-expiry').value;
+    
+    const mode = window.expMode || 'time';
+    const expVal = document.getElementById('f-expiry').value;
+    const scanVal = document.getElementById('f-max-scans').value;
+
+    if (mode === 'time') {
+      document.getElementById('r-exp').textContent = expVal ? fmt(expVal) : '—';
+      document.getElementById('r-scans').textContent = '∞ Unlimited';
+    } else if (mode === 'scans') {
+      document.getElementById('r-exp').textContent = '∞ No time limit';
+      document.getElementById('r-scans').textContent = scanVal ? `${scanVal} scans` : '—';
+    } else if (mode === 'both') {
+      document.getElementById('r-exp').textContent = expVal ? fmt(expVal) : '—';
+      document.getElementById('r-scans').textContent = scanVal ? `${scanVal} scans` : '—';
+    } else {
+      document.getElementById('r-exp').textContent = '∞ No time limit';
+      document.getElementById('r-scans').textContent = '∞ Unlimited';
+    }
   };
 
   async function uploadToR2(file, key) {
@@ -346,15 +452,19 @@
         bar.style.width = '40%'; pct.textContent = '40%';
       }
 
-
+      const mode = window.expMode || 'time';
+      const expDateVal = document.getElementById('f-expiry').value;
+      const maxScansVal = document.getElementById('f-max-scans').value;
 
       const body = {
         id,
         name:      document.getElementById('f-name').value.trim(),
         client:    document.getElementById('f-client').value.trim(),
         notes:     document.getElementById('f-notes').value.trim(),
-        expiresAt: new Date(document.getElementById('f-expiry').value + 'T23:59:59').toISOString(),
+        expiresAt: (mode === 'time' || mode === 'both') && expDateVal ? new Date(expDateVal + 'T23:59:59').toISOString() : null,
+        maxScans:  (mode === 'scans' || mode === 'both') && maxScansVal ? Number(maxScansVal) : null,
       };
+
 
       if (imagePath) {
         body.imagePath = imagePath;
@@ -390,7 +500,9 @@
         notes: body.notes,
         createdAt: new Date().toISOString(),
         expiresAt: body.expiresAt,
+        maxScans: body.maxScans,
         imagePath: body.imagePath,
+
         videoPath: body.videoPath,
         imageUrl: body.imagePath ? `https://pub-f2ad2c43aa344d4bb911e991b04b1fbd.r2.dev/${body.imagePath}` : '',
         videoUrl: body.videoPath ? `https://pub-f2ad2c43aa344d4bb911e991b04b1fbd.r2.dev/${body.videoPath}` : '',

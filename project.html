@@ -73,11 +73,21 @@
         <div class="panel">
           <div class="panel-title">Project Details & Analytics</div>
           <table style="width:100%;font-size:13px;border-collapse:collapse">
-            <tr><td style="color:var(--muted);padding:8px 0;width:120px">Status</td><td id="p-status"></td></tr>
-            <tr><td style="color:var(--muted);padding:8px 0">Total Scans</td><td><span id="p-scans" style="display:inline-flex;align-items:center;gap:5px;font-size:14px;font-weight:700;color:var(--accent)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> 0 scans</span></td></tr>
+            <tr><td style="color:var(--muted);padding:8px 0;width:130px">Status</td><td id="p-status"></td></tr>
+            <tr>
+              <td style="color:var(--muted);padding:8px 0">Total Scans</td>
+              <td>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <span id="p-scans" style="display:inline-flex;align-items:center;gap:5px;font-size:14px;font-weight:700;color:var(--accent)">0 scans</span>
+                  <div id="p-scan-track" style="display:none;width:100%;max-width:240px;height:6px;background:rgba(255,255,255,0.1);border-radius:999px;overflow:hidden">
+                    <div id="p-scan-fill" style="height:100%;background:var(--accent);width:0%"></div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr><td style="color:var(--muted);padding:8px 0">Expiration Method</td><td id="p-exp-method" style="font-weight:600"></td></tr>
             <tr><td style="color:var(--muted);padding:8px 0">Last Scanned</td><td id="p-last-scan" style="color:var(--text-secondary)">Never</td></tr>
             <tr><td style="color:var(--muted);padding:8px 0">Client</td><td id="p-client"></td></tr>
-            <tr><td style="color:var(--muted);padding:8px 0">Expires</td><td id="p-expiry"></td></tr>
             <tr><td style="color:var(--muted);padding:8px 0">Created</td><td id="p-created"></td></tr>
             <tr id="notes-row" style="display:none"><td style="color:var(--muted);padding:8px 0">Notes</td><td id="p-notes"></td></tr>
           </table>
@@ -106,7 +116,7 @@
 </div>
 
     <!-- Edit Form Panel (Hidden by default) -->
-    <div id="edit-panel" class="panel" style="max-width:520px;display:none;margin-top:20px">
+    <div id="edit-panel" class="panel" style="max-width:540px;display:none;margin-top:20px">
       <div class="panel-title">Edit Project Details</div>
       <div class="form-group">
         <label>Project Name</label>
@@ -116,11 +126,28 @@
         <label>Client Name</label>
         <input class="form-control" type="text" id="e-client" />
       </div>
+
       <div class="form-group">
+        <label style="margin-bottom:8px">Expiration Method</label>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:6px;margin-bottom:12px">
+          <button type="button" class="btn btn-default exp-btn" data-mode="time" id="ebtn-time">⏰ Time</button>
+          <button type="button" class="btn btn-default exp-btn" data-mode="scans" id="ebtn-scans">🔒 Scans</button>
+          <button type="button" class="btn btn-default exp-btn" data-mode="both" id="ebtn-both">⚡ Both</button>
+          <button type="button" class="btn btn-default exp-btn" data-mode="none" id="ebtn-none">∞ Never</button>
+        </div>
+      </div>
+
+      <div class="form-group" id="egroup-time" style="display:none">
         <label>Expiry Date</label>
         <input class="form-control" type="date" id="e-expiry" />
       </div>
-      <div style="display:flex;gap:8px">
+
+      <div class="form-group" id="egroup-scans" style="display:none">
+        <label>Max Scan Limit</label>
+        <input class="form-control" type="number" id="e-max-scans" min="1" placeholder="e.g. 500" />
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:16px">
         <button class="btn btn-primary btn-sm" id="save-edit-btn">Save Changes</button>
         <button class="btn btn-default btn-sm" id="cancel-edit-btn">Cancel</button>
       </div>
@@ -135,7 +162,6 @@
   import { getProject, updateProject, deleteProject } from './js/db.js?v=2';
   import { fmt, isExpired, statusBadge, arUrl, toast, generateQR, downloadQR, copyText } from './js/utils.js?v=2';
 
-
   requireAuth(); 
   initNav('projects');
 
@@ -143,18 +169,54 @@
   if (!id) location.replace('/projects.html');
 
   let currentProject = null;
+  let editExpMode = 'time';
+
+  function setEditExpMode(mode) {
+    editExpMode = mode;
+    document.querySelectorAll('.exp-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    document.getElementById('egroup-time').style.display = (mode === 'time' || mode === 'both') ? 'block' : 'none';
+    document.getElementById('egroup-scans').style.display = (mode === 'scans' || mode === 'both') ? 'block' : 'none';
+  }
+
+  document.querySelectorAll('.exp-btn').forEach(b => {
+    b.addEventListener('click', () => setEditExpMode(b.dataset.mode));
+  });
 
   function render(p) {
     if (!p) return;
     currentProject = p;
     document.getElementById('p-title').textContent    = p.name;
-    document.getElementById('p-status').innerHTML     = statusBadge(p.expiresAt || p.expires_at);
+    document.getElementById('p-status').innerHTML     = statusBadge(p);
+    
     const scans = p.viewsCount || p.views_count || 0;
-    document.getElementById('p-scans').innerHTML      = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ${scans} ${scans === 1 ? 'scan' : 'scans'}`;
+    const maxScans = p.maxScans || p.max_scans;
+    const expDate = p.expiresAt || p.expires_at;
+
+    if (maxScans) {
+      document.getElementById('p-scans').innerHTML = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ${scans} / ${maxScans} scans`;
+      const pct = Math.min(100, Math.round((scans / maxScans) * 100));
+      document.getElementById('p-scan-track').style.display = 'block';
+      document.getElementById('p-scan-fill').style.width = pct + '%';
+      if (pct >= 100) document.getElementById('p-scan-fill').style.background = 'var(--red)';
+    } else {
+      document.getElementById('p-scans').innerHTML = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ${scans} ${scans === 1 ? 'scan' : 'scans'}`;
+      document.getElementById('p-scan-track').style.display = 'none';
+    }
+
+    // Expiration Method Description
+    if (expDate && maxScans) {
+      document.getElementById('p-exp-method').innerHTML = `⚡ Both <span style="font-weight:400;color:var(--text-secondary)">(${fmt(expDate)} or ${maxScans} scans)</span>`;
+    } else if (expDate) {
+      document.getElementById('p-exp-method').innerHTML = `⏰ Time-Based <span style="font-weight:400;color:var(--text-secondary)">(${fmt(expDate)})</span>`;
+    } else if (maxScans) {
+      document.getElementById('p-exp-method').innerHTML = `🔒 Scan Limit <span style="font-weight:400;color:var(--text-secondary)">(${maxScans} scans)</span>`;
+    } else {
+      document.getElementById('p-exp-method').innerHTML = `∞ Permanent <span style="font-weight:400;color:var(--text-secondary)">(Never expires)</span>`;
+    }
+
     const lastScan = p.lastScannedAt || p.last_scanned_at;
     document.getElementById('p-last-scan').textContent = lastScan ? fmt(lastScan) : 'Never';
     document.getElementById('p-client').textContent   = p.client || '—';
-    document.getElementById('p-expiry').textContent   = fmt(p.expiresAt || p.expires_at);
     document.getElementById('p-created').textContent  = fmt(p.createdAt || p.created_at);
 
     if (p.notes) {
@@ -201,31 +263,35 @@
     if (!currentProject) return;
     document.getElementById('e-name').value = currentProject.name;
     document.getElementById('e-client').value = currentProject.client || '';
+    
     const exp = currentProject.expiresAt || currentProject.expires_at;
+    const scans = currentProject.maxScans || currentProject.max_scans;
+
     document.getElementById('e-expiry').value = exp ? exp.split('T')[0] : '';
+    document.getElementById('e-max-scans').value = scans || '';
+
+    if (exp && scans) setEditExpMode('both');
+    else if (exp)      setEditExpMode('time');
+    else if (scans)    setEditExpMode('scans');
+    else               setEditExpMode('none');
+
     document.getElementById('edit-panel').style.display = 'block';
   };
 
-
   document.getElementById('save-edit-btn').onclick = async () => {
-
     const name = document.getElementById('e-name').value.trim();
     const client = document.getElementById('e-client').value.trim();
     const expVal = document.getElementById('e-expiry').value;
+    const scanVal = document.getElementById('e-max-scans').value;
+
     if (!name) { toast('Please enter a project name', 'err'); return; }
 
+    const expiresAt = (editExpMode === 'time' || editExpMode === 'both') && expVal ? new Date(expVal + 'T23:59:59').toISOString() : null;
+    const maxScans = (editExpMode === 'scans' || editExpMode === 'both') && scanVal ? Number(scanVal) : null;
+
     try {
-      const resp = await fetch(`/api/projects/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name, client,
-          expiresAt: expVal ? new Date(expVal + 'T23:59:59').toISOString() : null
-        })
-      });
-      if (!resp.ok) throw new Error(await resp.text());
-      project = await resp.json();
-      render();
+      const updated = await updateProject(id, { name, client, expiresAt, maxScans });
+      render(updated);
       document.getElementById('edit-panel').style.display = 'none';
       toast('Project updated successfully!', 'success');
     } catch (err) {
@@ -237,6 +303,7 @@
     document.getElementById('edit-panel').style.display = 'none';
   };
 </script>
+
 </body>
 </html>
 
