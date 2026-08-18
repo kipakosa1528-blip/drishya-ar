@@ -132,29 +132,21 @@
   const id = new URLSearchParams(location.search).get('id');
   if (!id) location.replace('/projects.html');
 
-  let project = await getProject(id, (fresh) => {
-    if (fresh) {
-      project = fresh;
-      render();
-    }
-  });
+  let currentProject = null;
 
-  if (!project) {
-    document.getElementById('not-found').style.display = '';
-  } else {
-    render();
-  }
-
-  function render() {
-    document.getElementById('p-title').textContent    = project.name;
-    document.getElementById('p-status').innerHTML     = statusBadge(project.expiresAt || project.expires_at);
-    document.getElementById('p-client').textContent   = project.client || '—';
-    document.getElementById('p-expiry').textContent   = fmt(project.expiresAt || project.expires_at);
-    document.getElementById('p-created').textContent  = fmt(project.createdAt || project.created_at);
-    if (project.notes) {
-
-      document.getElementById('p-notes').textContent = project.notes;
+  function render(p) {
+    if (!p) return;
+    currentProject = p;
+    document.getElementById('p-title').textContent    = p.name;
+    document.getElementById('p-status').innerHTML     = statusBadge(p.expiresAt || p.expires_at);
+    document.getElementById('p-client').textContent   = p.client || '—';
+    document.getElementById('p-expiry').textContent   = fmt(p.expiresAt || p.expires_at);
+    document.getElementById('p-created').textContent  = fmt(p.createdAt || p.created_at);
+    if (p.notes) {
+      document.getElementById('p-notes').textContent = p.notes;
       document.getElementById('notes-row').style.display = '';
+    } else {
+      document.getElementById('notes-row').style.display = 'none';
     }
 
     const url = arUrl(id);
@@ -164,27 +156,41 @@
     document.getElementById('dl-qr').onclick   = () => downloadQR(url, `qr-${id}`);
     document.getElementById('copy-link').onclick = () => copyText(url);
 
-    if (project.imageUrl) document.getElementById('preview-img').src = project.imageUrl;
-    if (project.videoUrl) document.getElementById('preview-vid').src = project.videoUrl;
+    if (p.imageUrl) document.getElementById('preview-img').src = p.imageUrl;
+    if (p.videoUrl) document.getElementById('preview-vid').src = p.videoUrl;
 
     document.getElementById('detail-grid').style.display = '';
+    document.getElementById('not-found').style.display = 'none';
+  }
+
+  const initial = await getProject(id, (fresh) => {
+    if (fresh) render(fresh);
+  });
+
+  if (initial) {
+    render(initial);
+  } else {
+    document.getElementById('not-found').style.display = '';
   }
 
   document.getElementById('del-btn').onclick = async () => {
-    if (confirm(`Delete project "${project.name}"?`)) {
+    if (!currentProject) return;
+    if (confirm(`Delete project "${currentProject.name}"?`)) {
       await deleteProject(id);
-      await deleteFiles(id);
-      toast('Project deleted');
+      toast('Project deleted', 'success');
       location.replace('/projects.html');
     }
   };
 
   document.getElementById('edit-btn').onclick = () => {
-    document.getElementById('e-name').value = project.name;
-    document.getElementById('e-client').value = project.client || '';
-    document.getElementById('e-expiry').value = project.expiresAt ? project.expiresAt.split('T')[0] : '';
+    if (!currentProject) return;
+    document.getElementById('e-name').value = currentProject.name;
+    document.getElementById('e-client').value = currentProject.client || '';
+    const exp = currentProject.expiresAt || currentProject.expires_at;
+    document.getElementById('e-expiry').value = exp ? exp.split('T')[0] : '';
     document.getElementById('edit-panel').style.display = 'block';
   };
+
 
   document.getElementById('save-edit-btn').onclick = async () => {
 
