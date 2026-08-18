@@ -79,24 +79,29 @@
   requireAuth(); 
   initNav('dashboard');
 
-  let projects = await getAllProjects();
-  projects.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+  function updateDashboard(list) {
+    projects = (list || []).sort((a,b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at));
+    const total = projects.length;
+    const expired = projects.filter(p => isExpired(p.expiresAt || p.expires_at)).length;
+    const active = total - expired;
 
-  const total = projects.length;
-  const expired = projects.filter(p => isExpired(p.expiresAt)).length;
-  const active = total - expired;
+    document.getElementById('st-total').textContent   = total;
+    document.getElementById('st-active').textContent  = active;
+    document.getElementById('st-expired').textContent = expired;
+    renderRecent();
+  }
 
-  document.getElementById('st-total').textContent   = total;
-  document.getElementById('st-active').textContent  = active;
-  document.getElementById('st-expired').textContent = expired;
-
-  renderRecent();
+  let projects = [];
+  const initial = await getAllProjects((freshList) => {
+    updateDashboard(freshList);
+  });
+  updateDashboard(initial);
 
   function renderRecent() {
     const recent = projects.slice(0, 5);
     const body = document.getElementById('recent-body');
     if (!recent.length) {
-      body.innerHTML = `<tr><td colspan="6" class="empty">No projects yet. <a href="create.html">Create one</a></td></tr>`;
+      body.innerHTML = `<tr><td colspan="6" class="empty">No projects yet. <a href="create.html" style="color:var(--accent);font-weight:600">Create one</a></td></tr>`;
       return;
     }
     body.innerHTML = recent.map(p => `
@@ -104,12 +109,12 @@
         <td style="width:70px">
           ${p.imageUrl ? `<img class="td-thumb" src="${p.imageUrl}" />` : `<div class="td-thumb-placeholder"></div>`}
         </td>
-        <td><a href="project.html?id=${p.id}" style="font-weight:500">${p.name}</a></td>
-        <td style="color:var(--muted)">${p.client || '—'}</td>
-        <td>${statusBadge(p.expiresAt)}</td>
-        <td style="color:var(--muted)">${fmt(p.expiresAt)}</td>
+        <td><a href="project.html?id=${p.id}" style="font-weight:600;color:var(--text)">${p.name}</a></td>
+        <td style="color:var(--text-secondary)">${p.client || '—'}</td>
+        <td>${statusBadge(p.expiresAt || p.expires_at)}</td>
+        <td style="color:var(--text-secondary)">${fmt(p.expiresAt || p.expires_at)}</td>
         <td style="text-align:right">
-          <div class="actions" style="justify-content:flex-end">
+          <div class="actions" style="display:flex;gap:6px;justify-content:flex-end">
             <a href="project.html?id=${p.id}" class="btn btn-sm btn-default">View</a>
             <button class="btn btn-sm btn-danger" onclick="delProj('${p.id}', '${p.name.replace(/'/g, "\\'")}')">Delete</button>
           </div>
@@ -120,12 +125,12 @@
   window.delProj = async function(id, name) {
     if (confirm(`Delete "${name}"?`)) {
       await deleteProject(id);
-      await deleteFiles(id);
       projects = projects.filter(p => p.id !== id);
-      renderRecent();
-      toast('Project deleted');
+      updateDashboard(projects);
+      toast('Project deleted', 'success');
     }
   };
 </script>
+
 </body>
 </html>

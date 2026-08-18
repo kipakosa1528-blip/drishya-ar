@@ -131,7 +131,13 @@
   const id = new URLSearchParams(location.search).get('id');
   if (!id) location.replace('/projects.html');
 
-  let project = await getProject(id);
+  let project = await getProject(id, (fresh) => {
+    if (fresh) {
+      project = fresh;
+      render();
+    }
+  });
+
   if (!project) {
     document.getElementById('not-found').style.display = '';
   } else {
@@ -140,11 +146,12 @@
 
   function render() {
     document.getElementById('p-title').textContent    = project.name;
-    document.getElementById('p-status').innerHTML     = statusBadge(project.expiresAt);
+    document.getElementById('p-status').innerHTML     = statusBadge(project.expiresAt || project.expires_at);
     document.getElementById('p-client').textContent   = project.client || '—';
-    document.getElementById('p-expiry').textContent   = fmt(project.expiresAt);
-    document.getElementById('p-created').textContent  = fmt(project.createdAt);
+    document.getElementById('p-expiry').textContent   = fmt(project.expiresAt || project.expires_at);
+    document.getElementById('p-created').textContent  = fmt(project.createdAt || project.created_at);
     if (project.notes) {
+
       document.getElementById('p-notes').textContent = project.notes;
       document.getElementById('notes-row').style.display = '';
     }

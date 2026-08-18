@@ -1,39 +1,109 @@
-// DB API client - communicates with server API & uploads directory
+// Fast Local Storage Caching & Synchronization Client for Kipakosa AR
 
-export async function getAllProjects() {
-  const res = await fetch('/api/projects');
-  if (!res.ok) return [];
-  return res.json();
+const CACHE_KEY = 'kipakosa_projects_cache';
+const CACHE_TIME_KEY = 'kipakosa_cache_time';
+const CACHE_TTL_MS = 60000; // 60 seconds TTL for background revalidation
+
+// Read cached projects synchronously from localStorage (0ms instant render)
+export function getLocalProjects() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
-export async function getProject(id) {
-  const res = await fetch(`/api/projects/${id}`);
-  if (!res.ok) return null;
-  return res.json();
+// Save projects to localStorage
+export function setLocalProjects(projects) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(projects));
+    localStorage.setItem(CACHE_TIME_KEY, String(Date.now()));
+  } catch (err) {
+    console.warn('LocalStorage quota exceeded or unavailable:', err);
+  }
 }
 
-export async function saveProjectWithFiles({ id, name, client, notes, expiresAt, imageFile, videoFile, mindBuffer }) {
-  const imageBase64 = await fileToBase64(imageFile);
-  const videoBase64 = await fileToBase64(videoFile);
-  const mindBase64  = bufferToBase64(mindBuffer);
-
-  const res = await fetch('/api/projects', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      id, name, client, notes, expiresAt,
-      imageBase64, videoBase64, mindBase64
-    })
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+// Invalidate cache
+export function invalidateCache() {
+  try {
+    localStorage.removeItem(CACHE_KEY);
+    localStorage.removeItem(CACHE_TIME_KEY);
+  } catch {}
 }
 
-export async function saveProject(proj) {
-  return proj;
+// Stale-While-Revalidate: returns cached immediately, fetches fresh in background
+export async function getAllProjects(onBackgroundUpdate = null) {
+  const cached = getLocalProjects();
+
+  // Trigger background fetch
+  const fetchPromise = (async () => {
+    try {
+      const res = await fetch('/api/projects');
+      if (!res.ok) throw new Error('API error: ' + res.status);
+      const fresh = await res.json();
+      setLocalProjects(fresh);
+      if (onBackgroundUpdate && typeof onBackgroundUpdate === 'function') {
+        onBackgroundUpdate(fresh);
+      }
+      return fresh;
+    } catch (err) {
+      console.warn('Background project fetch failed:', err);
+      return cached || [];
+    }
+  })();
+
+  // If we already have cached data, return it immediately (0ms instant load!)
+  if (cached && Array.isArray(cached) && cached.length > 0) {
+    return cached;
+  }
+
+  // Otherwise wait for network response
+  return await fetchPromise;
 }
 
+// Get single project by ID with local cache fallback
+export async function getProject(id, onBackgroundUpdate = null) {
+  const cachedList = getLocalProjects();
+  const cachedItem = cachedList?.find(p => p.id === id);
+
+  const fetchPromise = (async () => {
+    try {
+      const res = await fetch(`/api/projects/${id}`);
+      if (!res.ok) return null;
+      const fresh = await res.json();
+      if (fresh) {
+        // Update item in local cached list
+        const updatedList = (getLocalProjects() || []).filter(p => p.id !== id);
+        updatedList.unshift(fresh);
+        setLocalProjects(updatedList);
+        if (onBackgroundUpdate && typeof onBackgroundUpdate === 'function') {
+          onBackgroundUpdate(fresh);
+        }
+      }
+      return fresh;
+    } catch (err) {
+      console.warn('Background project detail fetch failed:', err);
+      return cachedItem || null;
+    }
+  })();
+
+  if (cachedItem) {
+    return cachedItem;
+  }
+
+  return await fetchPromise;
+}
+
+// Delete project and update local cache immediately
 export async function deleteProject(id) {
+  // Optimistically remove from local storage
+  const current = getLocalProjects();
+  if (current) {
+    setLocalProjects(current.filter(p => p.id !== id));
+  }
+
   const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
@@ -43,28 +113,6 @@ export async function deleteFiles(id) {
   return deleteProject(id);
 }
 
-export async function getFiles(id) {
-  return { imageBlob: null, videoBlob: null, mindBlob: null };
-}
-
-export async function saveFiles(id, files) {
-  return files;
-}
-
-function fileToBase64(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = e => res(e.target.result);
-    r.onerror = rej;
-    r.readAsDataURL(file);
-  });
-}
-
-function bufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return 'data:application/octet-stream;base64,' + btoa(binary);
+export async function saveProject(proj) {
+  return proj;
 }

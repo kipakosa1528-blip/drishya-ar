@@ -238,6 +238,8 @@
 <script type="module">
   import { requireAuth, initNav } from './js/auth.js?v=2';
   import { fmt, arUrl, toast, generateQR, downloadQR, copyText } from './js/utils.js?v=2';
+  import { getLocalProjects, setLocalProjects } from './js/db.js?v=2';
+
 
   requireAuth();
   initNav('create');
@@ -373,6 +375,24 @@
         const err = await resp.json().catch(() => ({ error: resp.statusText }));
         throw new Error(err.error || 'Server error');
       }
+      const createdProj = await resp.json();
+
+      // Update local storage cache immediately
+      const currentList = getLocalProjects() || [];
+      const newEntry = {
+        id,
+        name: body.name,
+        client: body.client,
+        notes: body.notes,
+        createdAt: new Date().toISOString(),
+        expiresAt: body.expiresAt,
+        imagePath: body.imagePath,
+        videoPath: body.videoPath,
+        imageUrl: body.imagePath ? `https://pub-f2ad2c43aa344d4bb911e991b04b1fbd.r2.dev/${body.imagePath}` : '',
+        videoUrl: body.videoPath ? `https://pub-f2ad2c43aa344d4bb911e991b04b1fbd.r2.dev/${body.videoPath}` : '',
+        targetData: createdProj.targetData
+      };
+      setLocalProjects([newEntry, ...currentList.filter(p => p.id !== id)]);
 
       bar.style.width = '100%'; pct.textContent = '100%';
       addLog('Done! AR experience ready.');
@@ -387,7 +407,8 @@
       document.getElementById('dl-qr').onclick   = () => downloadQR(url, `qr-${id}`);
       document.getElementById('copy-btn').onclick = () => copyText(url);
 
-      toast('Project created!');
+      toast('Project created successfully!', 'success');
+
     } catch (err) {
       addLog('ERROR: ' + err.message);
       toast('Failed: ' + err.message, 'err');

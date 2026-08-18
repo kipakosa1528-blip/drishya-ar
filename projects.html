@@ -80,8 +80,15 @@
   let filter = 'all';
   let search = '';
 
-  all = (await getAllProjects()).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-  renderTable();
+  function setProjectsList(list) {
+    all = (list || []).sort((a,b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at));
+    renderTable();
+  }
+
+  const initial = await getAllProjects((freshList) => {
+    setProjectsList(freshList);
+  });
+  setProjectsList(initial);
 
   document.getElementById('search').addEventListener('input', e => { search = e.target.value.toLowerCase(); renderTable(); });
   document.querySelectorAll('.seg-btn').forEach(b => b.addEventListener('click', () => {
@@ -91,14 +98,14 @@
 
   function renderTable() {
     let data = all;
-    if (filter === 'active')  data = data.filter(p => !isExpired(p.expiresAt));
-    if (filter === 'expired') data = data.filter(p => isExpired(p.expiresAt));
-    if (search) data = data.filter(p => p.name.toLowerCase().includes(search) || (p.client||'').toLowerCase().includes(search));
+    if (filter === 'active')  data = data.filter(p => !isExpired(p.expiresAt || p.expires_at));
+    if (filter === 'expired') data = data.filter(p => isExpired(p.expiresAt || p.expires_at));
+    if (search) data = data.filter(p => (p.name || '').toLowerCase().includes(search) || (p.client||'').toLowerCase().includes(search));
 
     document.getElementById('count').textContent = `(${data.length})`;
     const body = document.getElementById('proj-body');
     if (!data.length) {
-      body.innerHTML = `<tr><td colspan="6" class="empty">${all.length ? 'No results' : 'No projects yet. <a href="create.html">Create one</a>'}</td></tr>`;
+      body.innerHTML = `<tr><td colspan="6" class="empty">${all.length ? 'No matching projects found' : 'No projects yet. <a href="create.html" style="color:var(--accent);font-weight:600">Create one</a>'}</td></tr>`;
       return;
     }
     body.innerHTML = data.map(p => `
@@ -106,12 +113,12 @@
         <td style="width:70px">
           ${p.imageUrl ? `<img class="td-thumb" src="${p.imageUrl}" />` : `<div class="td-thumb-placeholder"></div>`}
         </td>
-        <td><a href="project.html?id=${p.id}" style="font-weight:500">${p.name}</a></td>
-        <td style="color:var(--muted)">${p.client || '—'}</td>
-        <td>${statusBadge(p.expiresAt)}</td>
-        <td style="color:var(--muted)">${fmt(p.expiresAt)}</td>
+        <td><a href="project.html?id=${p.id}" style="font-weight:600;color:var(--text)">${p.name}</a></td>
+        <td style="color:var(--text-secondary)">${p.client || '—'}</td>
+        <td>${statusBadge(p.expiresAt || p.expires_at)}</td>
+        <td style="color:var(--text-secondary)">${fmt(p.expiresAt || p.expires_at)}</td>
         <td style="text-align:right">
-          <div class="actions" style="justify-content:flex-end">
+          <div class="actions" style="display:flex;gap:6px;justify-content:flex-end">
             <a href="project.html?id=${p.id}" class="btn btn-sm btn-default">View</a>
             <button class="btn btn-sm btn-danger" onclick="delProj('${p.id}', '${p.name.replace(/'/g, "\\'")}')">Delete</button>
           </div>
@@ -122,12 +129,12 @@
   window.delProj = async function(id, name) {
     if (confirm(`Delete "${name}"?`)) {
       await deleteProject(id);
-      await deleteFiles(id);
       all = all.filter(p => p.id !== id);
       renderTable();
-      toast('Project deleted');
+      toast('Project deleted', 'success');
     }
   };
 </script>
+
 </body>
 </html>
