@@ -9,3 +9,5 @@ test-results/
 test_8w.mjs
 cleanup_corrupt.js
 *.log
+
+.vercel

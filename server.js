@@ -140,8 +140,9 @@ app.get('/ar', async (req, res) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>${project.name} — Drishya AR</title>
+  <title>${project.name} — Kipakosa AR</title>
   <script crossorigin="anonymous" src="/external/8frame-1.5.0.min.js"><\/script>
+
   <script src="/external/xr/xr.js" async crossorigin="anonymous" data-preload-chunks="slam"><\/script>
   <script src="https://cdn.jsdelivr.net/npm/@8thwall/xrextras@1/dist/xrextras.js" crossorigin="anonymous"><\/script>
   <style>

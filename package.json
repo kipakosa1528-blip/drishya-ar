@@ -1,6 +1,7 @@
 {
-  "name": "drishya-admin-ar",
+  "name": "kipakosa-ar",
   "version": "1.0.0",
+
   "type": "module",
   "main": "server.js",
   "scripts": {
