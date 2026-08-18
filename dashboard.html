@@ -7,13 +7,16 @@
 </head>
 <body>
 <div class="mobile-topbar">
-  <div class="brand">Kipakosa <span>AR</span></div>
+  <div class="brand"><img src="/assets/logo.svg" style="width:24px;height:24px;border-radius:6px;margin-right:8px;vertical-align:middle" />Kipakosa <span>AR</span></div>
   <button class="btn btn-sm btn-default logout-btn">Logout</button>
 </div>
 
 <div class="layout">
   <aside class="sidebar">
-    <div class="sidebar-brand">Kipakosa <span>AR</span></div>
+    <div class="sidebar-brand" style="display:flex;align-items:center;gap:10px">
+      <img src="/assets/logo.svg" style="width:28px;height:28px;border-radius:6px" />
+      <div>Kipakosa <span>AR</span></div>
+    </div>
 
     <a class="nav-link" data-page="dashboard" href="dashboard.html">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -41,6 +44,7 @@
 
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-lbl">Total Projects</div><div class="stat-val" id="st-total">0</div></div>
+      <div class="stat-card"><div class="stat-lbl">Total AR Scans</div><div class="stat-val" style="color:var(--accent)" id="st-scans">0</div></div>
       <div class="stat-card"><div class="stat-lbl">Active Projects</div><div class="stat-val" style="color:var(--green)" id="st-active">0</div></div>
       <div class="stat-card"><div class="stat-lbl">Expired Projects</div><div class="stat-val" style="color:var(--red)" id="st-expired">0</div></div>
     </div>
@@ -57,13 +61,14 @@
               <th style="width:70px">Image</th>
               <th>Project</th>
               <th>Client</th>
+              <th>Scans</th>
               <th>Status</th>
               <th>Expires</th>
               <th style="text-align:right;width:140px">Actions</th>
             </tr>
           </thead>
           <tbody id="recent-body">
-            <tr><td colspan="6" class="empty">Loading…</td></tr>
+            <tr><td colspan="7" class="empty">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -84,8 +89,10 @@
     const total = projects.length;
     const expired = projects.filter(p => isExpired(p.expiresAt || p.expires_at)).length;
     const active = total - expired;
+    const totalScans = projects.reduce((acc, p) => acc + (p.viewsCount || p.views_count || 0), 0);
 
     document.getElementById('st-total').textContent   = total;
+    document.getElementById('st-scans').textContent   = totalScans;
     document.getElementById('st-active').textContent  = active;
     document.getElementById('st-expired').textContent = expired;
     renderRecent();
@@ -101,7 +108,7 @@
     const recent = projects.slice(0, 5);
     const body = document.getElementById('recent-body');
     if (!recent.length) {
-      body.innerHTML = `<tr><td colspan="6" class="empty">No projects yet. <a href="create.html" style="color:var(--accent);font-weight:600">Create one</a></td></tr>`;
+      body.innerHTML = `<tr><td colspan="7" class="empty">No projects yet. <a href="create.html" style="color:var(--accent);font-weight:600">Create one</a></td></tr>`;
       return;
     }
     body.innerHTML = recent.map(p => `
@@ -111,6 +118,7 @@
         </td>
         <td><a href="project.html?id=${p.id}" style="font-weight:600;color:var(--text)">${p.name}</a></td>
         <td style="color:var(--text-secondary)">${p.client || '—'}</td>
+        <td><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--accent)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ${p.viewsCount || p.views_count || 0}</span></td>
         <td>${statusBadge(p.expiresAt || p.expires_at)}</td>
         <td style="color:var(--text-secondary)">${fmt(p.expiresAt || p.expires_at)}</td>
         <td style="text-align:right">
@@ -121,6 +129,7 @@
         </td>
       </tr>`).join('');
   }
+
 
   window.delProj = async function(id, name) {
     if (confirm(`Delete "${name}"?`)) {

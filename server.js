@@ -142,6 +142,19 @@ app.get('/ar', async (req, res) => {
   const targetData = project.target_data;
   if (!targetData) return res.status(404).send('<h2>Target not ready. Please re-create the project.</h2>');
 
+  // Increment view/scan count asynchronously in DB
+  const td = (typeof project.target_data === 'object' && project.target_data) ? { ...project.target_data } : {};
+  const currentViews = (project.views_count || td._views_count || 0) + 1;
+  const lastScanned = new Date().toISOString();
+  td._views_count = currentViews;
+  td._last_scanned_at = lastScanned;
+  supabase.from('projects')
+    .update({ target_data: td })
+    .eq('id', id)
+    .then()
+    .catch(() => {});
+
+
   const videoUrl = project.video_path.startsWith('http') ? project.video_path : r2Url(project.video_path);
   const planeW = 0.75, planeH = 1.3333; // JS adjusts after video loads
 
@@ -158,11 +171,93 @@ app.get('/ar', async (req, res) => {
   <script src="/external/xr/xr.js" async crossorigin="anonymous" data-preload-chunks="slam"><\/script>
   <script src="https://cdn.jsdelivr.net/npm/@8thwall/xrextras@1/dist/xrextras.js" crossorigin="anonymous"><\/script>
   <style>
-    html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; touch-action:none; }
+    html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; touch-action:none; background:#000; }
     .a-enter-vr, .a-enter-vr-button { display:none !important; }
+    
+    /* Elegant Holographic Watermark */
+    #ar-watermark {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(9, 13, 22, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 6px 14px 6px 8px;
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    
+    #ar-watermark img {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      display: block;
+    }
+    
+    #ar-watermark span {
+      color: #f8fafc;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    
+    #ar-watermark span span {
+      color: #38bdf8;
+      font-size: 10px;
+      font-weight: 800;
+      margin-left: 2px;
+    }
+    
+    /* Audio Prompt */
+    #audio-prompt {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      background: rgba(9, 13, 22, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #ffffff;
+      padding: 10px 20px;
+      border-radius: 9999px;
+      border: 1px solid rgba(59, 130, 246, 0.5);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      animation: pulsePrompt 2s infinite ease-in-out;
+    }
+    
+    @keyframes pulsePrompt {
+      0%, 100% { transform: translateX(-50%) scale(1); }
+      50% { transform: translateX(-50%) scale(1.04); }
+    }
   </style>
 </head>
 <body>
+  <!-- Watermark Badge -->
+  <div id="ar-watermark">
+    <img src="/assets/logo.svg" alt="Logo" />
+    <span>Kipakosa<span>AR</span></span>
+  </div>
+
+  <!-- Audio Tap Prompt -->
+  <div id="audio-prompt">
+    <span>🔊</span> <span>Tap screen for sound</span>
+  </div>
+
   <script>
     var targetData = ${JSON.stringify(targetData)};
     var onxrloaded = function() {
@@ -190,24 +285,39 @@ app.get('/ar', async (req, res) => {
   <script>
     var video = document.getElementById('ar-video');
     var plane = document.getElementById('ar-plane');
+    var audioPrompt = document.getElementById('audio-prompt');
+    
     video.addEventListener('loadedmetadata', function() {
       var a = video.videoWidth / video.videoHeight;
       if (a >= 0.75) { plane.setAttribute('width', a);    plane.setAttribute('height', 1); }
       else           { plane.setAttribute('width', 0.75); plane.setAttribute('height', (0.75/a).toFixed(4)); }
     });
+    
     var sceneEl = document.querySelector('a-scene');
     sceneEl.addEventListener('xrimagefound', function(ev) {
       if (ev.detail.name !== 'target0') return;
       video.muted = false;
-      video.play().catch(function() { video.muted = true; video.play().catch(function(){}); });
+      video.play().catch(function() {
+        video.muted = true;
+        video.play().catch(function(){});
+        audioPrompt.style.display = 'flex';
+      });
     });
+    
     sceneEl.addEventListener('xrimagelost', function(ev) {
       if (ev.detail.name !== 'target0') return;
       video.pause();
+      audioPrompt.style.display = 'none';
     });
-    document.addEventListener('touchstart', function() {
-      if (video.paused) video.play().catch(function(){});
-    }, { once: true });
+    
+    function unmuteUser() {
+      video.muted = false;
+      video.play().catch(function(){});
+      audioPrompt.style.display = 'none';
+    }
+    
+    document.addEventListener('touchstart', unmuteUser, { passive: true });
+    document.addEventListener('click', unmuteUser);
   <\/script>
 </body>
 </html>`);
@@ -219,6 +329,9 @@ function formatProject(row) {
   const videoPath = row.video_path || '';
   const imageUrl = imagePath ? (imagePath.startsWith('http') ? imagePath : r2Url(imagePath)) : '';
   const videoUrl = videoPath ? (videoPath.startsWith('http') ? videoPath : r2Url(videoPath)) : '';
+  const td = (typeof row.target_data === 'object' && row.target_data) ? row.target_data : {};
+  const viewsCount = row.views_count || td._views_count || 0;
+  const lastScannedAt = row.last_scanned_at || td._last_scanned_at || null;
   return {
     id: row.id,
     name: row.name,
@@ -234,10 +347,16 @@ function formatProject(row) {
     video_path: videoPath,
     imageUrl,
     videoUrl,
-    targetData: row.target_data,
-    target_data: row.target_data
+    viewsCount,
+    views_count: viewsCount,
+    lastScannedAt,
+    last_scanned_at: lastScannedAt,
+    targetData: td,
+    target_data: td
   };
 }
+
+
 
 // ── Projects API ──────────────────────────────────────────────────────────────
 app.get('/api/projects', async (req, res) => {

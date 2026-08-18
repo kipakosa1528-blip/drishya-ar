@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" fill="none">
+  <defs>
+    <!-- Brand Gradients -->
+    <linearGradient id="kipaPrimary" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+    <linearGradient id="kipaCyan" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f2fe" />
+      <stop offset="100%" stop-color="#4facfe" />
+    </linearGradient>
+    <linearGradient id="kipaPurple" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+    
+    <!-- Glow Filters -->
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Deep Navy / Obsidian Backdrop with Squircle Border -->
+  <rect width="200" height="200" rx="44" fill="#090d16" />
+  <rect x="4" y="4" width="192" height="192" rx="40" stroke="url(#kipaPrimary)" stroke-width="2" stroke-opacity="0.3" />
+
+  <!-- Outer Isometric Hexagonal AR Frame -->
+  <path d="M100 26 L160 60 V140 L100 174 L40 140 V60 Z" 
+        stroke="url(#kipaPrimary)" 
+        stroke-width="5" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"
+        filter="url(#neonGlow)" />
+
+  <!-- Isometric Inner Facets (3D Depth) -->
+  <path d="M100 26 V62 M160 60 L128 78 M160 140 L128 122 M100 174 V138 M40 140 L72 122 M40 60 L72 78" 
+        stroke="url(#kipaCyan)" 
+        stroke-width="2.5" 
+        stroke-opacity="0.5" 
+        stroke-linecap="round" />
+
+  <!-- Stylized Letter "K" Spine (Isometric Column) -->
+  <path d="M72 64 V136" 
+        stroke="url(#kipaCyan)" 
+        stroke-width="12" 
+        stroke-linecap="round" />
+
+  <!-- "K" Diagonal Upper Branch -->
+  <path d="M78 100 L124 64" 
+        stroke="url(#kipaPrimary)" 
+        stroke-width="10" 
+        stroke-linecap="round" />
+
+  <!-- "K" Diagonal Lower Branch -->
+  <path d="M84 94 L128 136" 
+        stroke="url(#kipaPurple)" 
+        stroke-width="10" 
+        stroke-linecap="round" />
+
+  <!-- Camera Aperture Iris at the Core -->
+  <g transform="translate(126, 100) scale(0.65)" filter="url(#neonGlow)">
+    <circle cx="0" cy="0" r="28" stroke="url(#kipaCyan)" stroke-width="3" fill="#090d16" />
+    <path d="M-18 -18 L10 -24 L-4 -4 Z" fill="url(#kipaPrimary)" opacity="0.9" />
+    <path d="M10 -24 L24 2 L2 -8 Z" fill="url(#kipaPrimary)" opacity="0.9" />
+    <path d="M24 2 L12 24 L2 2 Z" fill="url(#kipaPrimary)" opacity="0.9" />
+    <path d="M12 24 L-16 18 L-2 4 Z" fill="url(#kipaPrimary)" opacity="0.9" />
+    <path d="M-16 18 L-24 -8 L-6 2 Z" fill="url(#kipaPrimary)" opacity="0.9" />
+    <path d="M-24 -8 L-18 -18 L-2 -6 Z" fill="url(#kipaPrimary)" opacity="0.9" />
+    <circle cx="0" cy="0" r="6" fill="#38bdf8" />
+  </g>
+</svg>

@@ -56,9 +56,26 @@ export function generateQR(text, containerEl, size = 160) {
     width: size,
     height: size,
     data: text,
-    dotsOptions: { color: "#000000", type: "rounded" },
+    image: '/assets/logo.svg',
+    dotsOptions: {
+      color: "#0f172a",
+      type: "rounded"
+    },
+    cornersSquareOptions: {
+      color: "#2563eb",
+      type: "extra-rounded"
+    },
+    cornersDotOptions: {
+      color: "#4f46e5",
+      type: "dot"
+    },
     backgroundOptions: { color: "#ffffff" },
-    imageOptions: { crossOrigin: "anonymous", margin: 4 }
+    imageOptions: {
+      crossOrigin: "anonymous",
+      margin: 4,
+      imageSize: 0.36,
+      hideBackgroundDots: true
+    }
   });
   qr.append(containerEl);
   return qr;
@@ -67,14 +84,33 @@ export function generateQR(text, containerEl, size = 160) {
 export function downloadQR(text, filename = 'ar-qr') {
   if (!window.QRCodeStyling) return;
   const qr = new window.QRCodeStyling({
-    width: 600,
-    height: 600,
+    width: 1000,
+    height: 1000,
     data: text,
-    dotsOptions: { color: "#000000", type: "rounded" },
-    backgroundOptions: { color: "#ffffff" }
+    image: '/assets/logo.svg',
+    dotsOptions: {
+      color: "#0f172a",
+      type: "rounded"
+    },
+    cornersSquareOptions: {
+      color: "#2563eb",
+      type: "extra-rounded"
+    },
+    cornersDotOptions: {
+      color: "#4f46e5",
+      type: "dot"
+    },
+    backgroundOptions: { color: "#ffffff" },
+    imageOptions: {
+      crossOrigin: "anonymous",
+      margin: 8,
+      imageSize: 0.36,
+      hideBackgroundDots: true
+    }
   });
   qr.download({ name: filename, extension: "png" });
 }
+
 
 export async function copyText(str) {
   try {
