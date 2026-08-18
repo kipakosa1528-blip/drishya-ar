@@ -114,42 +114,47 @@
       </div>
     </div>
 
-    <!-- Edit Form Panel (Hidden by default) -->
-    <div id="edit-panel" class="panel" style="max-width:540px;display:none;margin-top:20px">
-
-      <div class="panel-title">Edit Project Details</div>
-      <div class="form-group">
-        <label>Project Name</label>
-        <input class="form-control" type="text" id="e-name" />
-      </div>
-      <div class="form-group">
-        <label>Client Name</label>
-        <input class="form-control" type="text" id="e-client" />
-      </div>
-
-      <div class="form-group">
-        <label style="margin-bottom:8px">Expiration Method</label>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:6px;margin-bottom:12px">
-          <button type="button" class="btn btn-default exp-btn" data-mode="time" id="ebtn-time">⏰ Time</button>
-          <button type="button" class="btn btn-default exp-btn" data-mode="scans" id="ebtn-scans">🔒 Scans</button>
-          <button type="button" class="btn btn-default exp-btn" data-mode="both" id="ebtn-both">⚡ Both</button>
-          <button type="button" class="btn btn-default exp-btn" data-mode="none" id="ebtn-none">∞ Never</button>
+    <!-- Edit Modal Dialog -->
+    <div id="edit-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(4,8,16,0.75);backdrop-filter:blur(6px);z-index:9999;align-items:center;justify-content:center;padding:16px">
+      <div class="panel" style="max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 50px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.15)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="panel-title" style="margin:0">Edit Project Details</div>
+          <button type="button" class="btn btn-sm btn-default" id="close-edit-modal" style="font-size:14px;line-height:1;padding:4px 8px">✕</button>
         </div>
-      </div>
 
-      <div class="form-group" id="egroup-time" style="display:none">
-        <label>Expiry Date</label>
-        <input class="form-control" type="date" id="e-expiry" />
-      </div>
+        <div class="form-group">
+          <label>Project Name</label>
+          <input class="form-control" type="text" id="e-name" />
+        </div>
+        <div class="form-group">
+          <label>Client Name</label>
+          <input class="form-control" type="text" id="e-client" />
+        </div>
 
-      <div class="form-group" id="egroup-scans" style="display:none">
-        <label>Max Scan Limit</label>
-        <input class="form-control" type="number" id="e-max-scans" min="1" placeholder="e.g. 500" />
-      </div>
+        <div class="form-group">
+          <label style="margin-bottom:8px">Expiration Method</label>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:6px;margin-bottom:12px">
+            <button type="button" class="btn btn-default exp-btn" data-mode="time" id="ebtn-time">⏰ Time</button>
+            <button type="button" class="btn btn-default exp-btn" data-mode="scans" id="ebtn-scans">🔒 Scans</button>
+            <button type="button" class="btn btn-default exp-btn" data-mode="both" id="ebtn-both">⚡ Both</button>
+            <button type="button" class="btn btn-default exp-btn" data-mode="none" id="ebtn-none">∞ Never</button>
+          </div>
+        </div>
 
-      <div style="display:flex;gap:8px;margin-top:16px">
-        <button class="btn btn-primary btn-sm" id="save-edit-btn">Save Changes</button>
-        <button class="btn btn-default btn-sm" id="cancel-edit-btn">Cancel</button>
+        <div class="form-group" id="egroup-time" style="display:none">
+          <label>Expiry Date</label>
+          <input class="form-control" type="date" id="e-expiry" />
+        </div>
+
+        <div class="form-group" id="egroup-scans" style="display:none">
+          <label>Max Scan Limit</label>
+          <input class="form-control" type="number" id="e-max-scans" min="1" placeholder="e.g. 500" />
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
+          <button type="button" class="btn btn-default" id="cancel-edit-btn">Cancel</button>
+          <button type="button" class="btn btn-primary" id="save-edit-btn">Save Changes</button>
+        </div>
       </div>
     </div>
 
@@ -259,9 +264,9 @@
     }
   };
 
-  document.getElementById('edit-btn').onclick = () => {
+  function openEditModal() {
     if (!currentProject) return;
-    document.getElementById('e-name').value = currentProject.name;
+    document.getElementById('e-name').value = currentProject.name || '';
     document.getElementById('e-client').value = currentProject.client || '';
     
     const exp = currentProject.expiresAt || currentProject.expires_at;
@@ -275,8 +280,19 @@
     else if (scans)    setEditExpMode('scans');
     else               setEditExpMode('none');
 
-    document.getElementById('edit-panel').style.display = 'block';
-  };
+    document.getElementById('edit-modal').style.display = 'flex';
+  }
+
+  function closeEditModal() {
+    document.getElementById('edit-modal').style.display = 'none';
+  }
+
+  document.getElementById('edit-btn').onclick = openEditModal;
+  document.getElementById('close-edit-modal').onclick = closeEditModal;
+  document.getElementById('cancel-edit-btn').onclick = closeEditModal;
+  document.getElementById('edit-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'edit-modal') closeEditModal();
+  });
 
   document.getElementById('save-edit-btn').onclick = async () => {
     const name = document.getElementById('e-name').value.trim();
@@ -292,17 +308,14 @@
     try {
       const updated = await updateProject(id, { name, client, expiresAt, maxScans });
       render(updated);
-      document.getElementById('edit-panel').style.display = 'none';
+      closeEditModal();
       toast('Project updated successfully!', 'success');
     } catch (err) {
       toast('Update failed: ' + err.message, 'err');
     }
   };
-
-  document.getElementById('cancel-edit-btn').onclick = () => {
-    document.getElementById('edit-panel').style.display = 'none';
-  };
 </script>
+
 
 </body>
 </html>
