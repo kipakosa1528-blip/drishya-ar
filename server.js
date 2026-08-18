@@ -86,8 +86,20 @@ async function prepareTarget(imageBuffer, projectId) {
   return targetData;
 }
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 app.use(express.json({ limit: '150mb' }));
-app.use(express.static(process.cwd()));
+app.use(express.static(__dirname));
+
+// Route root / to index.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 
 // ── Presign endpoint for direct client uploads to R2 ─────────────────────────
 app.get('/api/presign', async (req, res) => {
