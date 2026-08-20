@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kipakosa AR — Living Physical Media & WebAR</title>
-  <meta name="description" content="Kipakosa AR unlocks living augmented reality experiences from physical printed media. No apps required — point any mobile camera to reveal." />
+  <meta name="description" content="Turn physical printed media into living augmented reality experiences. Zero apps required — scan with any mobile browser." />
   
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg" />
   <link rel="stylesheet" href="/css/landing.css" />
@@ -28,14 +28,14 @@
 
       <nav class="nav-menu" id="nav-menu">
         <a href="#exhibition" class="nav-link">Exhibition</a>
+        <a href="#filmstrip" class="nav-link">Live Reel</a>
         <a href="#pipeline" class="nav-link">Optical Pipeline</a>
-        <a href="#specifications" class="nav-link">Specifications</a>
-        <a href="#inquiries" class="nav-link">Studio</a>
+        <a href="#specifications" class="nav-link">Specs</a>
         <a href="/admin.html" class="nav-link" style="color:var(--copper)">Admin Portal →</a>
       </nav>
 
       <div class="nav-actions">
-        <a href="/admin.html" class="btn-archival btn-archival-primary">Admin Portal</a>
+        <a href="/admin.html" class="btn-archival btn-archival-primary">Admin Studio</a>
       </div>
     </div>
   </header>
@@ -45,76 +45,163 @@
     <div class="container">
       <div class="hero-meta-strip">
         <span class="hero-meta-dot"></span>
-        <span>PLANAR WEBAR TRACKING • ZERO APPLICATION INSTALLS</span>
+        <span>PLANAR WEBAR TRACKING • ZERO APP DOWNLOADS • 60 FPS SURFACE LOCK</span>
       </div>
 
       <h1 class="hero-title">
-        Physical prints imbued with <em>living memory.</em>
+        Physical prints imbued with <em>living motion.</em>
       </h1>
 
       <p class="hero-lead">
-        Kipakosa AR binds high-definition digital video to physical printed surfaces. When scanned with any mobile browser camera, the printed artifact remains stationary while the living moment unlocks directly on top of the paper.
+        Kipakosa AR binds high-definition video directly to printed artifacts. Hover or drag across the print below: the physical paper remains frozen in time, while the aperture radius reveals the live moving memory in real time.
       </p>
 
-      <!-- Centerpiece: The Living Print Canvas (Image-to-Image Optical Reveal) -->
-      <div class="reveal-exhibition-stage" id="exhibition">
-        <div class="archival-frame-outer">
-          <!-- Crop marks & registration crosshairs -->
-          <div class="frame-corner top-left"></div>
-          <div class="frame-corner top-right"></div>
-          <div class="frame-corner bottom-left"></div>
-          <div class="frame-corner bottom-right"></div>
+      <!-- Exhibit Switcher Tabs -->
+      <div class="exhibit-switcher">
+        <button class="exhibit-tab active" data-exhibit="flags">
+          <span class="exhibit-tab-indicator"></span>
+          01. Mountain Ridge Flags
+        </button>
+        <button class="exhibit-tab" data-exhibit="stupa">
+          <span class="exhibit-tab-indicator"></span>
+          02. Holy Boudhanath Stupa
+        </button>
+        <button class="exhibit-tab" data-exhibit="annapurna">
+          <span class="exhibit-tab-indicator"></span>
+          03. Annapurna Golden Peak
+        </button>
+        <button class="exhibit-tab" data-exhibit="dancer">
+          <span class="exhibit-tab-indicator"></span>
+          04. Cultural Dance Portrait
+        </button>
+      </div>
 
-          <div class="frame-header">
-            <div>
-              <strong style="color:var(--text-paper)">CATALOG № 0824</strong> — HIMALAYAN CEREMONIAL PRINT (300 DPI MATTE)
-            </div>
-            <div class="frame-status">
-              <span class="frame-status-pulse"></span>
-              <span>CURSOR HOVER REVEALS LIVING MOMENT</span>
-            </div>
+      <!-- Centerpiece: The Living Print Canvas (Image-to-Video Optical Reveal) -->
+      <div class="archival-frame-outer" id="exhibition">
+        <!-- Corner registration crosshairs -->
+        <div class="frame-corner top-left"></div>
+        <div class="frame-corner top-right"></div>
+        <div class="frame-corner bottom-left"></div>
+        <div class="frame-corner bottom-right"></div>
+
+        <div class="frame-header">
+          <div id="hero-catalog-tag">
+            <strong style="color:var(--text-paper)">CATALOG № 0824</strong> — HIMALAYAN PRAYER FLAGS (16:9 ARCHIVAL PRINT)
           </div>
-
-          <!-- Interactive Registered Reveal Viewport -->
-          <div class="reveal-viewport js-reveal-container" aria-label="Interactive Living Print Reveal Area">
-            <!-- Image A: Physical Archival Print -->
-            <img 
-              src="/assets/showcase-wedding-print.jpg" 
-              alt="Physical Archival Wedding Print" 
-              class="layer-image-a"
-              loading="eager"
-            />
-
-            <!-- Image B: The Living AR Motion Reality (Registered 1:1) -->
-            <img 
-              src="/assets/showcase-wedding-motion.jpg" 
-              alt="Living AR Motion Moment" 
-              class="layer-image-b"
-              loading="eager"
-            />
-
-            <!-- Optical reticle indicator following cursor -->
-            <div class="reveal-optical-lens" aria-hidden="true"></div>
+          <div class="frame-status">
+            <span class="frame-status-pulse"></span>
+            <span>HOVER / DRAG POINTER TO REVEAL LIVING VIDEO</span>
           </div>
+        </div>
 
-          <div class="frame-footer">
-            <div>OPTICAL REGISTRATION: 1:1 PLANAR SYNC</div>
-            <div>SURFACE: COTTON RAG ARCHIVAL 310GSM</div>
-            <div>LATENCY: &lt; 40MS EDGE DECODE</div>
-            <div>WEBAR RUNTIME: 60 FPS SPATIAL LOCK</div>
-          </div>
+        <!-- Interactive Optical Reveal Viewport -->
+        <div class="reveal-viewport js-reveal-container" id="hero-viewport" aria-label="Interactive Living Print Reveal Area">
+          <!-- Image A: Static first-frame physical print -->
+          <img 
+            src="/assets/exhibition/himalayan-flags-poster.jpg" 
+            alt="Physical Archival Print" 
+            class="layer-image-a"
+            id="hero-poster"
+            loading="eager"
+          />
+
+          <!-- Image B: Live Playing Video revealed inside cursor radius -->
+          <video 
+            src="/assets/exhibition/himalayan-flags.mp4" 
+            class="layer-video"
+            id="hero-video"
+            autoplay 
+            loop 
+            muted 
+            playsinline
+            preload="auto"
+          ></video>
+
+          <!-- Optical crosshair lens following cursor -->
+          <div class="reveal-optical-lens" aria-hidden="true"></div>
+        </div>
+
+        <div class="frame-footer">
+          <div>OPTICAL REGISTRATION: 1:1 PLANAR SYNC</div>
+          <div>SURFACE: COTTON RAG ARCHIVAL 310GSM</div>
+          <div>EDGE DECODE: &lt; 35MS STREAMING</div>
+          <div>RUNTIME: 60 FPS WEBAR LOCK</div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Curated Exhibition Prints -->
+  <!-- Live Moving Kinetic Filmstrip Reel -->
+  <section class="filmstrip-section" id="filmstrip">
+    <div class="container">
+      <div class="filmstrip-header">
+        <div>LIVE WEBAR STREAM REEL — AUTONOMOUS EDGE TARGETS</div>
+        <div style="color:var(--copper)">● ACTIVE WEBAR STREAMS</div>
+      </div>
+    </div>
+
+    <div class="filmstrip-track">
+      <!-- 6 Video Cells Repeated for Continuous Loop -->
+      <div class="filmstrip-cell">
+        <video class="filmstrip-video" src="/assets/exhibition/himalayan-flags.mp4" autoplay loop muted playsinline></video>
+        <span class="filmstrip-tag">#01 HIMALAYAN FLAGS</span>
+      </div>
+      <div class="filmstrip-cell">
+        <video class="filmstrip-video" src="/assets/exhibition/boudhanath-stupa.mp4" autoplay loop muted playsinline></video>
+        <span class="filmstrip-tag">#02 BOUDHANATH STUPA</span>
+      </div>
+      <div class="filmstrip-cell">
+        <video class="filmstrip-video" src="/assets/exhibition/gurung-dancer.mp4" autoplay loop muted playsinline></video>
+        <span class="filmstrip-tag">#03 CULTURAL DANCE</span>
+      </div>
+      <div class="filmstrip-cell">
+        <video class="filmstrip-video" src="/assets/exhibition/annapurna-golden.mp4" autoplay loop muted playsinline></video>
+        <span class="filmstrip-tag">#04 ANNAPURNA PEAK</span>
+      </div>
+      <div class="filmstrip-cell">
+        <video class="filmstrip-video" src="/assets/exhibition/swayambhu-spire.mp4" autoplay loop muted playsinline></video>
+        <span class="filmstrip-tag">#05 SWAYAMBHU SPIRE</span>
+      </div>
+      <div class="filmstrip-cell">
+        <video class="filmstrip-video" src="/assets/exhibition/nepal-flag.mp4" autoplay loop muted playsinline></video>
+        <span class="filmstrip-tag">#06 CRIMSON FLAG</span>
+      </div>
+
+      <!-- Clone for seamless loop -->
+      <div class="filmstrip-cell">
+        <video class="filmstrip-video" src="/assets/exhibition/himalayan-flags.mp4" autoplay loop muted playsinline></video>
+        <span class="filmstrip-tag">#01 HIMALAYAN FLAGS</span>
+      </div>
+      <div class="filmstrip-cell">
+        <video class="filmstrip-video" src="/assets/exhibition/boudhanath-stupa.mp4" autoplay loop muted playsinline></video>
+        <span class="filmstrip-tag">#02 BOUDHANATH STUPA</span>
+      </div>
+      <div class="filmstrip-cell">
+        <video class="filmstrip-video" src="/assets/exhibition/gurung-dancer.mp4" autoplay loop muted playsinline></video>
+        <span class="filmstrip-tag">#03 CULTURAL DANCE</span>
+      </div>
+      <div class="filmstrip-cell">
+        <video class="filmstrip-video" src="/assets/exhibition/annapurna-golden.mp4" autoplay loop muted playsinline></video>
+        <span class="filmstrip-tag">#04 ANNAPURNA PEAK</span>
+      </div>
+      <div class="filmstrip-cell">
+        <video class="filmstrip-video" src="/assets/exhibition/swayambhu-spire.mp4" autoplay loop muted playsinline></video>
+        <span class="filmstrip-tag">#05 SWAYAMBHU SPIRE</span>
+      </div>
+      <div class="filmstrip-cell">
+        <video class="filmstrip-video" src="/assets/exhibition/nepal-flag.mp4" autoplay loop muted playsinline></video>
+        <span class="filmstrip-tag">#06 CRIMSON FLAG</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Curated Physical Mediums (6 Interactive Video Cards) -->
   <section class="section-exhibition">
     <div class="container">
       <div class="section-kicker">EXHIBITION ARTIFACTS</div>
       <h2 class="section-headline serif-display">Crafted for physical touchpoints that matter.</h2>
       <p class="section-desc">
-        Every medium possesses a unique tactile presence. Kipakosa AR turns physical surfaces into launchpads for cinematic motion without altering the print’s physical integrity.
+        Hover over any artifact below. The static print stays grounded while the optical radius reveals the motion video inside the exact physical framing.
       </p>
 
       <div class="gallery-grid">
@@ -122,29 +209,31 @@
         <article class="gallery-item">
           <div class="gallery-item-header">
             <span>EXHIBIT № 01</span>
-            <span>MEMORY ARCHIVE</span>
+            <span>LANDSCAPE PRINT</span>
           </div>
-          <h3 class="gallery-item-title">Himalayan Ceremonial Portrait</h3>
-          <div class="gallery-item-meta">Physical Silver-Halide Print → Candid Wedding Laughter</div>
+          <h3 class="gallery-item-title">Himalayan Ridge & Winds</h3>
+          <div class="gallery-item-meta">Archival Cotton Print → Mountain Ridge Video</div>
 
-          <div class="gallery-reveal-box js-reveal-container">
+          <div class="gallery-reveal-box landscape js-reveal-container">
             <img 
-              src="/assets/showcase-wedding-print.jpg" 
-              alt="Static Wedding Print" 
+              src="/assets/exhibition/himalayan-flags-poster.jpg" 
+              alt="Himalayan Ridge Print" 
               class="layer-image-a"
               loading="lazy"
             />
-            <img 
-              src="/assets/showcase-wedding-motion.jpg" 
-              alt="Living Wedding Moment" 
-              class="layer-image-b"
-              loading="lazy"
-            />
+            <video 
+              src="/assets/exhibition/himalayan-flags.mp4" 
+              class="layer-video" 
+              autoplay 
+              loop 
+              muted 
+              playsinline
+            ></video>
             <div class="reveal-optical-lens" aria-hidden="true"></div>
           </div>
 
           <p class="gallery-item-caption">
-            Wedding albums and heirloom framed portraits that reveal the raw sound and motion of the vows when viewed through any smartphone lens.
+            Panoramic fine art landscape prints where mountain wind and fluttering prayer flags awaken through any smartphone lens.
           </p>
         </article>
 
@@ -152,29 +241,159 @@
         <article class="gallery-item">
           <div class="gallery-item-header">
             <span>EXHIBIT № 02</span>
-            <span>GALLERY EXHIBITION</span>
+            <span>HERITAGE POSTCARD</span>
           </div>
-          <h3 class="gallery-item-title">The Cellist’s Architecture</h3>
-          <div class="gallery-item-meta">Screenprint Poster → Live Concert Performance</div>
+          <h3 class="gallery-item-title">Boudhanath Holy Stupa</h3>
+          <div class="gallery-item-meta">Embossed Card → Stupa Pigeons Flight</div>
 
           <div class="gallery-reveal-box js-reveal-container">
             <img 
-              src="/assets/showcase-poster-print.jpg" 
-              alt="Museum Poster Print" 
+              src="/assets/exhibition/boudhanath-stupa-poster.jpg" 
+              alt="Boudhanath Stupa Postcard" 
               class="layer-image-a"
               loading="lazy"
             />
-            <img 
-              src="/assets/showcase-poster-motion.jpg" 
-              alt="Live Concert Performance Moment" 
-              class="layer-image-b"
-              loading="lazy"
-            />
+            <video 
+              src="/assets/exhibition/boudhanath-stupa.mp4" 
+              class="layer-video" 
+              autoplay 
+              loop 
+              muted 
+              playsinline
+            ></video>
             <div class="reveal-optical-lens" aria-hidden="true"></div>
           </div>
 
           <p class="gallery-item-caption">
-            Museum and concert hall exhibition posters. Gallery visitors point standard phone cameras to witness the full acoustic performance right over the paper.
+            Heritage postcards and travel stationery that reveal the sacred sound and motion of temple squares across the Himalayas.
+          </p>
+        </article>
+
+        <!-- Exhibit 03 -->
+        <article class="gallery-item">
+          <div class="gallery-item-header">
+            <span>EXHIBIT № 03</span>
+            <span>PORTRAIT FRAME</span>
+          </div>
+          <h3 class="gallery-item-title">Cultural Dance Portrait</h3>
+          <div class="gallery-item-meta">Silver-Halide Frame → Living Dance Motion</div>
+
+          <div class="gallery-reveal-box js-reveal-container">
+            <img 
+              src="/assets/exhibition/gurung-dancer-poster.jpg" 
+              alt="Cultural Dancer Frame" 
+              class="layer-image-a"
+              loading="lazy"
+            />
+            <video 
+              src="/assets/exhibition/gurung-dancer.mp4" 
+              class="layer-video" 
+              autoplay 
+              loop 
+              muted 
+              playsinline
+            ></video>
+            <div class="reveal-optical-lens" aria-hidden="true"></div>
+          </div>
+
+          <p class="gallery-item-caption">
+            Framed cultural portraits and family heirlooms where traditional dances and authentic celebrations come alive with sound.
+          </p>
+        </article>
+
+        <!-- Exhibit 04 -->
+        <article class="gallery-item">
+          <div class="gallery-item-header">
+            <span>EXHIBIT № 04</span>
+            <span>GALLERY EDITION</span>
+          </div>
+          <h3 class="gallery-item-title">Annapurna Golden Peak</h3>
+          <div class="gallery-item-meta">Fine-Art Matted Print → Sunset Timelapse</div>
+
+          <div class="gallery-reveal-box landscape js-reveal-container">
+            <img 
+              src="/assets/exhibition/annapurna-golden-poster.jpg" 
+              alt="Annapurna Sunset Print" 
+              class="layer-image-a"
+              loading="lazy"
+            />
+            <video 
+              src="/assets/exhibition/annapurna-golden.mp4" 
+              class="layer-video" 
+              autoplay 
+              loop 
+              muted 
+              playsinline
+            ></video>
+            <div class="reveal-optical-lens" aria-hidden="true"></div>
+          </div>
+
+          <p class="gallery-item-caption">
+            Museum gallery prints showing changing natural light, moving storm clouds, and golden sunrises across iconic peaks.
+          </p>
+        </article>
+
+        <!-- Exhibit 05 -->
+        <article class="gallery-item">
+          <div class="gallery-item-header">
+            <span>EXHIBIT № 05</span>
+            <span>MUSEUM POSTER</span>
+          </div>
+          <h3 class="gallery-item-title">Swayambhunath Golden Spire</h3>
+          <div class="gallery-item-meta">Screenprint Poster → Wind Chimes & Spire</div>
+
+          <div class="gallery-reveal-box js-reveal-container">
+            <img 
+              src="/assets/exhibition/swayambhu-spire-poster.jpg" 
+              alt="Swayambhunath Spire Poster" 
+              class="layer-image-a"
+              loading="lazy"
+            />
+            <video 
+              src="/assets/exhibition/swayambhu-spire.mp4" 
+              class="layer-video" 
+              autoplay 
+              loop 
+              muted 
+              playsinline
+            ></video>
+            <div class="reveal-optical-lens" aria-hidden="true"></div>
+          </div>
+
+          <p class="gallery-item-caption">
+            Exhibition posters for historical monuments and architectural collections with real-time video playback over the artwork.
+          </p>
+        </article>
+
+        <!-- Exhibit 06 -->
+        <article class="gallery-item">
+          <div class="gallery-item-header">
+            <span>EXHIBIT № 06</span>
+            <span>VIP INVITATION</span>
+          </div>
+          <h3 class="gallery-item-title">Crimson National Flag</h3>
+          <div class="gallery-item-meta">Embossed Foil Invitation → Lakeside Motion</div>
+
+          <div class="gallery-reveal-box js-reveal-container">
+            <img 
+              src="/assets/exhibition/nepal-flag-poster.jpg" 
+              alt="Nepal Flag Invitation" 
+              class="layer-image-a"
+              loading="lazy"
+            />
+            <video 
+              src="/assets/exhibition/nepal-flag.mp4" 
+              class="layer-video" 
+              autoplay 
+              loop 
+              muted 
+              playsinline
+            ></video>
+            <div class="reveal-optical-lens" aria-hidden="true"></div>
+          </div>
+
+          <p class="gallery-item-caption">
+            Official diplomatic invitations, corporate summits, and event passes that unveil customized keynote video introductions.
           </p>
         </article>
       </div>
@@ -239,7 +458,7 @@
           </thead>
           <tbody>
             <tr>
-              <td><strong>Fine Art & Wedding Prints</strong></td>
+              <td><strong>Fine Art & Heritage Prints</strong></td>
               <td>Matte or Satin Cotton Rag (250–350 gsm)</td>
               <td><span class="specs-code">A5 to A2 (148 × 210mm+)</span></td>
               <td>99.9% (Optimal)</td>
@@ -301,6 +520,7 @@
           <h4>Navigation</h4>
           <ul class="footer-links">
             <li><a href="#exhibition" class="footer-link">Living Print Exhibition</a></li>
+            <li><a href="#filmstrip" class="footer-link">Live WebAR Reel</a></li>
             <li><a href="#pipeline" class="footer-link">Optical Pipeline</a></li>
             <li><a href="#specifications" class="footer-link">Print Specifications</a></li>
             <li><a href="/admin.html" class="footer-link">Admin Studio Portal</a></li>

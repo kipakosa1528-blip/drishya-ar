@@ -1,43 +1,23 @@
 /**
- * Kipakosa AR — Video & Image Optical Reveal Engine
- * 
- * Capabilities:
- * 1. Supports direct Video layers (<video class="layer-image-b layer-video">)
- * 2. Automatically extracts & paints the first frame as the static physical photo (Image A)
- * 3. On pointer hover / touch drag, dynamically reveals the live playing video inside the optical radius
- * 4. Zero UI slider handles or before/after slop; pure optical coordinate masking
+ * Kipakosa AR — Live Video Optical Reveal Engine
+ * Seamless pointer-driven video aperture mask across physical prints.
  */
 
 (function () {
   'use strict';
 
-  const revealContainers = document.querySelectorAll('.js-reveal-container');
-
-  revealContainers.forEach((container) => {
-    const revealedLayer = container.querySelector('.layer-image-b');
-    const staticLayer = container.querySelector('.layer-image-a');
+  // 1. Initialize Optical Reveal on all containers
+  function setupReveal(container) {
+    const revealedVideo = container.querySelector('.layer-video');
     const opticalLens = container.querySelector('.reveal-optical-lens');
-    if (!revealedLayer) return;
+    if (!revealedVideo) return;
 
-    const isVideo = revealedLayer.tagName.toLowerCase() === 'video';
+    revealedVideo.muted = true;
+    revealedVideo.playsInline = true;
+    revealedVideo.loop = true;
 
-    // If it's a video, ensure proper inline playback & auto-extract first frame if needed
-    if (isVideo) {
-      revealedLayer.muted = true;
-      revealedLayer.playsInline = true;
-      revealedLayer.loop = true;
-
-      // Ensure video plays smoothly
-      revealedLayer.addEventListener('loadeddata', () => {
-        // If staticLayer is a canvas and needs first frame
-        if (staticLayer && staticLayer.tagName.toLowerCase() === 'canvas') {
-          const ctx = staticLayer.getContext('2d');
-          staticLayer.width = revealedLayer.videoWidth || 1280;
-          staticLayer.height = revealedLayer.videoHeight || 720;
-          ctx.drawImage(revealedLayer, 0, 0, staticLayer.width, staticLayer.height);
-        }
-      });
-    }
+    // Ensure video is playing in background ready for instant mask reveal
+    revealedVideo.play().catch(() => {});
 
     let targetX = 50;
     let targetY = 50;
@@ -61,12 +41,11 @@
     }
 
     function renderLoop() {
-      // Natural smoothing lerp
       currentX += (targetX - currentX) * 0.22;
       currentY += (targetY - currentY) * 0.22;
 
-      revealedLayer.style.setProperty('--x', `${currentX.toFixed(2)}%`);
-      revealedLayer.style.setProperty('--y', `${currentY.toFixed(2)}%`);
+      revealedVideo.style.setProperty('--x', `${currentX.toFixed(2)}%`);
+      revealedVideo.style.setProperty('--y', `${currentY.toFixed(2)}%`);
 
       if (isTracking) {
         animFrame = requestAnimationFrame(renderLoop);
@@ -76,9 +55,7 @@
     function startReveal(clientX, clientY) {
       isTracking = true;
       container.classList.add('is-interacting');
-      if (isVideo) {
-        revealedLayer.play().catch(() => {});
-      }
+      revealedVideo.play().catch(() => {});
       updateCoordinates(clientX, clientY);
       currentX = targetX;
       currentY = targetY;
@@ -92,43 +69,95 @@
       cancelAnimationFrame(animFrame);
     }
 
-    // Pointer events (mouse, stylus, high-res trackpad)
-    container.addEventListener('pointerenter', (e) => {
-      startReveal(e.clientX, e.clientY);
-    });
-
+    container.addEventListener('pointerenter', (e) => startReveal(e.clientX, e.clientY));
     container.addEventListener('pointermove', (e) => {
-      if (!isTracking) {
-        startReveal(e.clientX, e.clientY);
-      }
+      if (!isTracking) startReveal(e.clientX, e.clientY);
       updateCoordinates(e.clientX, e.clientY);
     });
+    container.addEventListener('pointerleave', stopReveal);
 
-    container.addEventListener('pointerleave', () => {
-      stopReveal();
-    });
-
-    // Touch fallback (drag across physical image to reveal)
     container.addEventListener('touchstart', (e) => {
       if (e.touches.length > 0) {
-        const touch = e.touches[0];
-        startReveal(touch.clientX, touch.clientY);
+        startReveal(e.touches[0].clientX, e.touches[0].clientY);
       }
     }, { passive: true });
 
     container.addEventListener('touchmove', (e) => {
       if (e.touches.length > 0) {
-        const touch = e.touches[0];
-        updateCoordinates(touch.clientX, touch.clientY);
+        updateCoordinates(e.touches[0].clientX, e.touches[0].clientY);
       }
     }, { passive: true });
 
-    container.addEventListener('touchend', () => {
-      stopReveal();
+    container.addEventListener('touchend', stopReveal);
+  }
+
+  document.querySelectorAll('.js-reveal-container').forEach(setupReveal);
+
+  // 2. Hero Live Exhibit Switcher Tabs
+  const heroViewport = document.getElementById('hero-viewport');
+  const heroPoster = document.getElementById('hero-poster');
+  const heroVideo = document.getElementById('hero-video');
+  const heroCatalogTag = document.getElementById('hero-catalog-tag');
+  const exhibitTabs = document.querySelectorAll('.exhibit-tab');
+
+  const heroExhibits = {
+    'flags': {
+      video: '/assets/exhibition/himalayan-flags.mp4',
+      poster: '/assets/exhibition/himalayan-flags-poster.jpg',
+      catalog: 'CATALOG № 0824 — HIMALAYAN PRAYER FLAGS (16:9 ARCHIVAL PRINT)',
+      aspectClass: ''
+    },
+    'stupa': {
+      video: '/assets/exhibition/boudhanath-stupa.mp4',
+      poster: '/assets/exhibition/boudhanath-stupa-poster.jpg',
+      catalog: 'CATALOG № 0825 — BOUDHANATH HOLY STUPA (9:16 HERITAGE CARD)',
+      aspectClass: 'portrait'
+    },
+    'annapurna': {
+      video: '/assets/exhibition/annapurna-golden.mp4',
+      poster: '/assets/exhibition/annapurna-golden-poster.jpg',
+      catalog: 'CATALOG № 0826 — ANNAPURNA GOLDEN PEAK (16:9 GALLERY EDITION)',
+      aspectClass: ''
+    },
+    'dancer': {
+      video: '/assets/exhibition/gurung-dancer.mp4',
+      poster: '/assets/exhibition/gurung-dancer-poster.jpg',
+      catalog: 'CATALOG № 0827 — HIMALAYAN CULTURAL DANCE (9:16 PORTRAIT FRAME)',
+      aspectClass: 'portrait'
+    }
+  };
+
+  exhibitTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const exhibitKey = tab.dataset.exhibit;
+      const data = heroExhibits[exhibitKey];
+      if (!data) return;
+
+      exhibitTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      if (heroPoster) heroPoster.src = data.poster;
+      if (heroVideo) {
+        heroVideo.src = data.video;
+        heroVideo.play().catch(() => {});
+      }
+      if (heroCatalogTag) heroCatalogTag.textContent = data.catalog;
+      
+      if (heroViewport) {
+        heroViewport.className = `reveal-viewport js-reveal-container ${data.aspectClass}`;
+      }
     });
   });
 
-  // Mobile navigation hamburger toggle
+  // 3. Auto-play all filmstrip looping videos
+  document.querySelectorAll('.filmstrip-video').forEach(vid => {
+    vid.muted = true;
+    vid.playsInline = true;
+    vid.loop = true;
+    vid.play().catch(() => {});
+  });
+
+  // 4. Mobile Menu Toggle
   const mobileToggle = document.getElementById('mobile-toggle');
   const navMenu = document.getElementById('nav-menu');
 
