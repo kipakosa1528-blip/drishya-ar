@@ -1,183 +1,170 @@
 /**
- * Kipakosa AR — Cinematic 3D Photo Frames & Ambient WebGL Stage Engine
- * Uses GSAP, Three.js, and Intersection Observers for 3D tilt, full-frame video awakening, and ambient depth.
+ * Kipakosa AR — Cinematic Pinned Stage & Interactive 3D Living Frames Engine
+ * Synthesized from Il Capo Production, Squarespace Brand, and Horeca Social.
  */
 
 (function () {
   'use strict';
 
-  // 1. Three.js Subtle Ambient Optical Dust & Light Particles
-  function initThreeBg() {
-    const canvas = document.getElementById('webgl-dust-canvas');
-    if (!canvas || typeof THREE === 'undefined') return;
+  // 1. Pinned Background Video Scroll Playback & Scrub
+  function initPinnedBgScroll() {
+    const bgVideo = document.querySelector('.pinned-bg-video');
+    if (!bgVideo) return;
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.z = 50;
+    bgVideo.muted = true;
+    bgVideo.playsInline = true;
+    bgVideo.loop = true;
 
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Gentle continuous loop playing in the pinned background
+    bgVideo.play().catch(() => {});
 
-    // Particle geometry
-    const particleCount = 120;
-    const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(particleCount * 3);
-    const opacities = new Float32Array(particleCount);
+    let lastScrollY = window.scrollY;
+    let targetPlaybackRate = 1.0;
+    let currentPlaybackRate = 1.0;
 
-    for (let i = 0; i < particleCount * 3; i += 3) {
-      positions[i] = (Math.random() - 0.5) * 120;
-      positions[i + 1] = (Math.random() - 0.5) * 80;
-      positions[i + 2] = (Math.random() - 0.5) * 60;
+    // React smoothly to scroll speed
+    window.addEventListener('scroll', () => {
+      const currentScrollY = window.scrollY;
+      const delta = Math.abs(currentScrollY - lastScrollY);
+      lastScrollY = currentScrollY;
+
+      // Accelerate background video during scroll movement (like Horeca Social)
+      targetPlaybackRate = Math.min(2.5, 1.0 + delta * 0.05);
+
+      // Subtle parallax scale on background video
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = maxScroll > 0 ? currentScrollY / maxScroll : 0;
+      bgVideo.style.transform = `scale(${(1.02 + progress * 0.08).toFixed(3)})`;
+    }, { passive: true });
+
+    function smoothPlaybackLoop() {
+      currentPlaybackRate += (targetPlaybackRate - currentPlaybackRate) * 0.1;
+      targetPlaybackRate += (1.0 - targetPlaybackRate) * 0.05;
+      
+      if (bgVideo && !isNaN(currentPlaybackRate)) {
+        bgVideo.playbackRate = Math.max(0.5, Math.min(2.5, currentPlaybackRate));
+      }
+      requestAnimationFrame(smoothPlaybackLoop);
     }
-
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-
-    // Generate soft circular particle texture
-    const canvasTex = document.createElement('canvas');
-    canvasTex.width = 16;
-    canvasTex.height = 16;
-    const ctx = canvasTex.getContext('2d');
-    const grad = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
-    grad.addColorStop(0, 'rgba(246, 205, 139, 1)');
-    grad.addColorStop(0.5, 'rgba(229, 169, 82, 0.4)');
-    grad.addColorStop(1, 'rgba(229, 169, 82, 0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 16, 16);
-    const texture = new THREE.CanvasTexture(canvasTex);
-
-    // Gold/amber soft glowing dust material
-    const material = new THREE.PointsMaterial({
-      map: texture,
-      size: 1.2,
-      transparent: true,
-      opacity: 0.35,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false
-    });
-
-    const particles = new THREE.Points(geometry, material);
-    scene.add(particles);
-
-    let mouseX = 0;
-    let mouseY = 0;
-
-    window.addEventListener('mousemove', (e) => {
-      mouseX = (e.clientX / window.innerWidth - 0.5) * 20;
-      mouseY = (e.clientY / window.innerHeight - 0.5) * 20;
-    });
-
-    function animate() {
-      requestAnimationFrame(animate);
-      particles.rotation.y += 0.0006;
-      particles.rotation.x += 0.0003;
-
-      camera.position.x += (mouseX - camera.position.x) * 0.03;
-      camera.position.y += (-mouseY - camera.position.y) * 0.03;
-      camera.lookAt(scene.position);
-
-      renderer.render(scene, camera);
-    }
-    animate();
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+    smoothPlaybackLoop();
   }
 
-  // 2. 3D Physical Photo Frames Engine (Tilt + Full Video Playback)
+  // 2. Modern 3D Physical Photo Frames (Tilt + Strict Hover Video Playback)
   function initPhotoFrames() {
-    const frames = document.querySelectorAll('.js-3d-frame');
+    const frames = document.querySelectorAll('.photo-frame-modern');
 
     frames.forEach((frame) => {
-      const card = frame.closest('.photo-frame-3d') || frame;
-      const video = card.querySelector('.frame-live-video');
-      const glare = card.querySelector('.frame-glass-glare');
-      const statusText = card.querySelector('.js-frame-status');
+      const video = frame.querySelector('.frame-video-stream');
+      const glare = frame.querySelector('.frame-glass-sheen');
+      const badgeText = frame.querySelector('.js-badge-text');
 
       if (video) {
         video.muted = true;
         video.playsInline = true;
         video.loop = true;
+        video.pause(); // Strictly paused by default
       }
 
       // 3D Parallax Tilt on Mouse Move
-      card.addEventListener('mousemove', (e) => {
-        const rect = card.getBoundingClientRect();
+      frame.addEventListener('mousemove', (e) => {
+        const rect = frame.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
         const centerX = rect.width / 2;
         const centerY = rect.height / 2;
 
-        const rotateX = ((y - centerY) / centerY) * -12;
-        const rotateY = ((x - centerX) / centerX) * 12;
+        const rotateX = ((y - centerY) / centerY) * -10;
+        const rotateY = ((x - centerX) / centerX) * 10;
 
-        card.style.transform = `perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.02, 1.02, 1.02)`;
+        frame.style.transform = `perspective(1200px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.02, 1.02, 1.02)`;
 
         if (glare) {
           const glareX = (x / rect.width) * 100;
           const glareY = (y / rect.height) * 100;
-          glare.style.background = `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255,255,255,0.22) 0%, transparent 60%)`;
+          glare.style.background = `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255,255,255,0.2) 0%, transparent 60%)`;
         }
       });
 
-      card.addEventListener('mouseleave', () => {
-        card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+      frame.addEventListener('mouseleave', () => {
+        frame.style.transform = `perspective(1200px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
       });
 
-      // Hover Interaction -> Plays Full Living Video
-      card.addEventListener('mouseenter', () => {
-        card.classList.add('is-alive');
+      // Pointer Enter: Play Living Video
+      frame.addEventListener('mouseenter', () => {
+        frame.classList.add('is-playing');
         if (video) {
           video.play().catch(() => {});
         }
-        if (statusText) statusText.textContent = 'LIVE WEBAR MOTION STREAMING';
+        if (badgeText) badgeText.textContent = 'PLAYING IN FULL HD';
       });
 
-      card.addEventListener('mouseleave', () => {
-        // If not forced by scroll observer, gently fade back
-        if (!card.dataset.inView) {
-          card.classList.remove('is-alive');
-          if (statusText) statusText.textContent = 'HOVER / SCROLL TO AWAKEN';
+      // Pointer Leave: Pause Living Video & return to static photo
+      frame.addEventListener('mouseleave', () => {
+        frame.classList.remove('is-playing');
+        if (video) {
+          video.pause();
+        }
+        if (badgeText) badgeText.textContent = 'HOVER TO PLAY';
+      });
+
+      // Mobile Touch Tap: Toggle play
+      frame.addEventListener('click', () => {
+        const isPlaying = frame.classList.toggle('is-playing');
+        if (video) {
+          if (isPlaying) {
+            video.play().catch(() => {});
+            if (badgeText) badgeText.textContent = 'PLAYING IN FULL HD';
+          } else {
+            video.pause();
+            if (badgeText) badgeText.textContent = 'TAP TO PLAY';
+          }
+        }
+      });
+    });
+  }
+
+  // 3. GSAP Parallax Floating Layers on Scroll
+  function initParallaxFloat() {
+    if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
+
+    gsap.registerPlugin(ScrollTrigger);
+
+    // Staggered parallax float on portrait trio cards
+    const portraitCards = document.querySelectorAll('.grid-3-portrait .gallery-card-item');
+    portraitCards.forEach((card, index) => {
+      const speeds = [-25, -45, -20];
+      const yOffset = speeds[index % speeds.length];
+
+      gsap.to(card, {
+        yPercent: yOffset,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: card,
+          start: 'top bottom',
+          end: 'bottom top',
+          scrub: 1.2
         }
       });
     });
 
-    // 3. Scroll-Triggered Video Awakening (Play on Scroll into View)
-    if ('IntersectionObserver' in window) {
-      const scrollObserver = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            const card = entry.target;
-            const video = card.querySelector('.frame-live-video');
-            const statusText = card.querySelector('.js-frame-status');
-
-            if (entry.isIntersecting && entry.intersectionRatio > 0.4) {
-              card.dataset.inView = 'true';
-              card.classList.add('is-alive');
-              if (video) video.play().catch(() => {});
-              if (statusText) statusText.textContent = 'LIVE WEBAR MOTION STREAMING';
-            } else if (!entry.isIntersecting) {
-              card.dataset.inView = '';
-              card.classList.remove('is-alive');
-              if (statusText) statusText.textContent = 'HOVER / SCROLL TO AWAKEN';
-            }
-          });
-        },
-        { threshold: [0.1, 0.4, 0.8] }
-      );
-
-      frames.forEach((f) => {
-        const card = f.closest('.photo-frame-3d') || f;
-        scrollObserver.observe(card);
+    // Parallax on landscape duo
+    const landscapeCards = document.querySelectorAll('.grid-2-landscape .gallery-card-item');
+    landscapeCards.forEach((card, index) => {
+      gsap.to(card, {
+        yPercent: index === 0 ? -20 : -35,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: card,
+          start: 'top bottom',
+          end: 'bottom top',
+          scrub: 1.2
+        }
       });
-    }
+    });
   }
 
-  // 4. Mobile Menu Navigation Toggle
+  // 4. Mobile Menu Navigation
   function initNav() {
     const toggle = document.getElementById('mobile-toggle');
     const menu = document.getElementById('nav-menu');
@@ -198,8 +185,9 @@
 
   // Document Ready
   document.addEventListener('DOMContentLoaded', () => {
-    initThreeBg();
+    initPinnedBgScroll();
     initPhotoFrames();
+    initParallaxFloat();
     initNav();
   });
 })();

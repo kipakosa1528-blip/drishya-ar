@@ -3,22 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kipakosa AR — Living Physical Media & WebAR</title>
-  <meta name="description" content="Turn physical prints and heirlooms into living augmented reality experiences. Zero apps required — scan instantly with any mobile browser." />
+  <title>Kipakosa AR — Living Physical Photo Frames</title>
+  <meta name="description" content="Turn your favorite videos into physical framed photos that move when you look at them through any smartphone camera. Zero apps required." />
   
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg" />
   <link rel="stylesheet" href="/css/landing.css" />
 
-  <!-- Three.js & GSAP for cinematic depth & 3D tilt physics -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- GSAP & ScrollTrigger for smooth parallax and pinned stage sync -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
 </head>
 <body>
 
-  <!-- Full-Bleed Ambient Background Video Stage -->
-  <div class="ambient-bg-stage" aria-hidden="true">
+  <!-- Pinned Immersive Background Video Stage -->
+  <div class="pinned-bg-stage" aria-hidden="true">
     <video 
-      class="ambient-bg-video" 
+      class="pinned-bg-video" 
       src="/assets/exhibition/annapurna-golden.mp4" 
       autoplay 
       loop 
@@ -26,36 +26,33 @@
       playsinline
       preload="auto"
     ></video>
-    <div class="ambient-bg-overlay"></div>
+    <div class="pinned-bg-overlay"></div>
   </div>
-
-  <!-- Three.js Canvas for Subtle Ambient Dust Particles -->
-  <canvas id="webgl-dust-canvas" aria-hidden="true"></canvas>
 
   <!-- Header Navigation -->
   <header class="nav-wrap">
     <div class="container nav-container">
       <a href="#" class="brand-link" aria-label="Kipakosa AR Home">
         <img src="/assets/logo.svg" alt="Kipakosa AR" class="brand-logo-icon" />
-        <span>KIPAKOSA</span>
-        <span class="brand-tag">WEBAR</span>
+        <span>Kipakosa</span>
+        <span class="brand-badge">Living Frames</span>
       </a>
 
-      <button class="mobile-toggle" id="mobile-toggle" aria-label="Toggle Navigation" aria-expanded="false">
+      <button class="mobile-toggle" id="mobile-toggle" aria-label="Toggle Menu" aria-expanded="false">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path>
         </svg>
       </button>
 
       <nav class="nav-menu" id="nav-menu">
-        <a href="#exhibition" class="nav-link">Photo Frames</a>
-        <a href="#simulator" class="nav-link">WebAR Tracking</a>
-        <a href="#pipeline" class="nav-link">Optical Pipeline</a>
-        <a href="/admin.html" class="nav-link" style="color:var(--gold-primary)">Admin Studio →</a>
+        <a href="#frames" class="nav-link">Framed Collections</a>
+        <a href="#how-it-works" class="nav-link">How It Works</a>
+        <a href="#scanner" class="nav-link">Phone Scanner</a>
+        <a href="/admin.html" class="nav-link" style="color:var(--accent-ember)">Admin Studio →</a>
       </nav>
 
       <div class="nav-actions">
-        <a href="/admin.html" class="btn-luxury btn-luxury-primary">Admin Studio</a>
+        <a href="/admin.html" class="btn-modern btn-modern-ember">Create Living Frame</a>
       </div>
     </div>
   </header>
@@ -63,61 +60,59 @@
   <!-- Hero Section -->
   <section class="hero-section">
     <div class="container">
-      <div class="hero-badge-strip">
-        <span class="pulse-dot"></span>
-        <span>PLANAR WEBAR TRACKING • ZERO APPS • 60 FPS SURFACE LOCK</span>
+      <div class="hero-pill">
+        <span class="hero-pill-dot"></span>
+        <span>Point any phone camera • No apps needed • Instant living motion</span>
       </div>
 
-      <h1 class="hero-heading">
-        Physical prints imbued with <span class="gradient-gold">living cinematic motion.</span>
+      <h1 class="hero-title">
+        Photos that move when you <span class="text-highlight">scan them.</span>
       </h1>
 
-      <p class="hero-subtitle">
-        Bridging high-definition video to physical paper, canvas, and photo frames. Hover your pointer or scroll down: static prints wake up seamlessly into full living motion.
+      <p class="hero-desc">
+        Frame your favorite travel trips, festivals, and memories on your wall. Point any smartphone camera at the physical print — the moment comes alive right before your eyes.
       </p>
 
-      <!-- Centerpiece: Museum 3D Photo Frame -->
-      <div class="centerpiece-stage">
-        <div class="photo-frame-3d js-3d-frame" id="hero-frame">
-          <div class="frame-mat-board">
-            <div class="frame-top-bar">
-              <span class="frame-badge">CATALOG № 0824 — HIMALAYAN ARCHIVAL PRINT</span>
-              <span class="js-frame-status" style="color:var(--gold-primary)">HOVER / SCROLL TO AWAKEN</span>
-            </div>
+      <div class="hero-cta-row">
+        <a href="/admin.html" class="btn-modern btn-modern-ember">Make Your Living Frame →</a>
+        <a href="#frames" class="btn-modern btn-modern-ghost">Explore Collections ↓</a>
+      </div>
 
-            <div class="frame-canvas-viewport">
-              <!-- Static Print Layer -->
+      <!-- Hero Masterpiece 3D Living Frame -->
+      <div class="hero-frame-container">
+        <div class="photo-frame-modern" id="hero-living-frame">
+          <div class="frame-mat-inner">
+            <div class="frame-media-box">
+              <!-- Static High-Res Photo (Default) -->
               <img 
                 src="/assets/exhibition/himalayan-flags-poster.jpg" 
-                alt="Physical Archival Print" 
-                class="frame-static-print" 
+                alt="Himalayan Ridge Living Frame" 
+                class="frame-photo-img" 
               />
               
-              <!-- Full Living Video Layer (Seamless Awakening) -->
+              <!-- Living Video Stream (Plays on Hover) -->
               <video 
                 src="/assets/exhibition/himalayan-flags.mp4" 
-                class="frame-live-video" 
-                autoplay 
+                class="frame-video-stream" 
                 loop 
                 muted 
                 playsinline
-                preload="auto"
+                preload="metadata"
               ></video>
 
-              <!-- Realistic 3D Glass Specular Reflection -->
-              <div class="frame-glass-glare" aria-hidden="true"></div>
+              <!-- Glass Reflection -->
+              <div class="frame-glass-sheen" aria-hidden="true"></div>
 
-              <!-- Live Indicator Tag -->
-              <div class="frame-live-indicator">
-                <span class="pulse-dot"></span>
-                <span>60 FPS WEBAR LOCK</span>
+              <!-- Interactive Hover Badge -->
+              <div class="frame-hover-badge">
+                <span class="hero-pill-dot"></span>
+                <span class="js-badge-text">HOVER TO PLAY</span>
               </div>
             </div>
 
-            <div class="frame-bottom-bar">
-              <div>PHYSICAL MEDIUM: COTTON RAG ARCHIVAL 310GSM</div>
-              <div>EDGE DECODE: &lt; 35MS</div>
-              <div>SURFACE TRACKING: 6-DOF ROTATIONAL SYNC</div>
+            <div class="frame-info-bar">
+              <div><strong>Himalayan Mountain Winds</strong> • Fine-Art Living Print</div>
+              <div>SCAN VIA BROWSER CAMERA</div>
             </div>
           </div>
         </div>
@@ -125,138 +120,69 @@
     </div>
   </section>
 
-  <!-- Live 3D Exhibition Gallery: 6 Physical Photo Frames -->
-  <section class="gallery-section" id="exhibition">
+  <!-- Portrait Collection: 3-Column Uniform Vertical Frames -->
+  <section class="section-wrap" id="frames">
     <div class="container">
-      <div class="section-tag">PHYSICAL EXHIBITION MEDIUMS</div>
-      <h2 class="section-title">Crafted for prints that deserve to be remembered.</h2>
-      <p class="section-lead">
-        Each museum-grade photo frame below responds to 3D mouse parallax and scroll position. Watch the static photography dissolve into rich, full-frame motion.
+      <div class="section-label">LIVING PORTRAIT COLLECTION</div>
+      <h2 class="section-heading">Memories that stay alive on your wall.</h2>
+      <p class="section-subtext">
+        Move your mouse over any frame below to watch the physical photograph transition into full high-definition motion.
       </p>
 
-      <div class="frames-grid-3d">
+      <div class="grid-3-portrait">
         <!-- Frame 01 -->
-        <div class="gallery-frame-card">
-          <div class="photo-frame-3d js-3d-frame">
-            <div class="frame-mat-board">
-              <div class="frame-top-bar">
-                <span class="frame-badge">EXHIBIT № 01</span>
-                <span class="js-frame-status">HOVER TO AWAKEN</span>
+        <div class="gallery-card-item">
+          <div class="photo-frame-modern">
+            <div class="frame-mat-inner">
+              <div class="frame-media-box portrait">
+                <img src="/assets/exhibition/boudhanath-stupa-poster.jpg" alt="Boudhanath Stupa" class="frame-photo-img" loading="lazy" />
+                <video src="/assets/exhibition/boudhanath-stupa.mp4" class="frame-video-stream" loop muted playsinline preload="none"></video>
+                <div class="frame-glass-sheen"></div>
+                <div class="frame-hover-badge">
+                  <span class="hero-pill-dot"></span>
+                  <span class="js-badge-text">HOVER TO PLAY</span>
+                </div>
               </div>
-
-              <div class="frame-canvas-viewport landscape">
-                <img src="/assets/exhibition/himalayan-flags-poster.jpg" alt="Mountain Ridge Print" class="frame-static-print" loading="lazy" />
-                <video src="/assets/exhibition/himalayan-flags.mp4" class="frame-live-video" loop muted playsinline></video>
-                <div class="frame-glass-glare"></div>
-              </div>
-
-              <h3 class="card-title">Himalayan Ridge & Winds</h3>
-              <p class="card-desc">Fine art landscape prints where mountain wind and prayer flags flutter in real time.</p>
+              <h3 class="card-caption-title">Boudhanath Holy Stupa</h3>
+              <p class="card-caption-desc">Temple squares alive with soaring flocks of pigeons.</p>
             </div>
           </div>
         </div>
 
         <!-- Frame 02 -->
-        <div class="gallery-frame-card">
-          <div class="photo-frame-3d js-3d-frame">
-            <div class="frame-mat-board">
-              <div class="frame-top-bar">
-                <span class="frame-badge">EXHIBIT № 02</span>
-                <span class="js-frame-status">HOVER TO AWAKEN</span>
+        <div class="gallery-card-item">
+          <div class="photo-frame-modern">
+            <div class="frame-mat-inner">
+              <div class="frame-media-box portrait">
+                <img src="/assets/exhibition/gurung-dancer-poster.jpg" alt="Cultural Dance" class="frame-photo-img" loading="lazy" />
+                <video src="/assets/exhibition/gurung-dancer.mp4" class="frame-video-stream" loop muted playsinline preload="none"></video>
+                <div class="frame-glass-sheen"></div>
+                <div class="frame-hover-badge">
+                  <span class="hero-pill-dot"></span>
+                  <span class="js-badge-text">HOVER TO PLAY</span>
+                </div>
               </div>
-
-              <div class="frame-canvas-viewport">
-                <img src="/assets/exhibition/boudhanath-stupa-poster.jpg" alt="Boudhanath Stupa Postcard" class="frame-static-print" loading="lazy" />
-                <video src="/assets/exhibition/boudhanath-stupa.mp4" class="frame-live-video" loop muted playsinline></video>
-                <div class="frame-glass-glare"></div>
-              </div>
-
-              <h3 class="card-title">Boudhanath Holy Stupa</h3>
-              <p class="card-desc">Heritage postcards revealing temple squares and soaring flocks of pigeons.</p>
+              <h3 class="card-caption-title">Cultural Dance Celebration</h3>
+              <p class="card-caption-desc">Traditional dances that awaken with authentic motion.</p>
             </div>
           </div>
         </div>
 
         <!-- Frame 03 -->
-        <div class="gallery-frame-card">
-          <div class="photo-frame-3d js-3d-frame">
-            <div class="frame-mat-board">
-              <div class="frame-top-bar">
-                <span class="frame-badge">EXHIBIT № 03</span>
-                <span class="js-frame-status">HOVER TO AWAKEN</span>
+        <div class="gallery-card-item">
+          <div class="photo-frame-modern">
+            <div class="frame-mat-inner">
+              <div class="frame-media-box portrait">
+                <img src="/assets/exhibition/swayambhu-spire-poster.jpg" alt="Swayambhunath Spire" class="frame-photo-img" loading="lazy" />
+                <video src="/assets/exhibition/swayambhu-spire.mp4" class="frame-video-stream" loop muted playsinline preload="none"></video>
+                <div class="frame-glass-sheen"></div>
+                <div class="frame-hover-badge">
+                  <span class="hero-pill-dot"></span>
+                  <span class="js-badge-text">HOVER TO PLAY</span>
+                </div>
               </div>
-
-              <div class="frame-canvas-viewport">
-                <img src="/assets/exhibition/gurung-dancer-poster.jpg" alt="Cultural Dance Portrait" class="frame-static-print" loading="lazy" />
-                <video src="/assets/exhibition/gurung-dancer.mp4" class="frame-live-video" loop muted playsinline></video>
-                <div class="frame-glass-glare"></div>
-              </div>
-
-              <h3 class="card-title">Himalayan Cultural Dance</h3>
-              <p class="card-desc">Cultural heirlooms and portraits where traditional celebrations awaken with motion.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Frame 04 -->
-        <div class="gallery-frame-card">
-          <div class="photo-frame-3d js-3d-frame">
-            <div class="frame-mat-board">
-              <div class="frame-top-bar">
-                <span class="frame-badge">EXHIBIT № 04</span>
-                <span class="js-frame-status">HOVER TO AWAKEN</span>
-              </div>
-
-              <div class="frame-canvas-viewport landscape">
-                <img src="/assets/exhibition/annapurna-golden-poster.jpg" alt="Annapurna Sunset" class="frame-static-print" loading="lazy" />
-                <video src="/assets/exhibition/annapurna-golden.mp4" class="frame-live-video" loop muted playsinline></video>
-                <div class="frame-glass-glare"></div>
-              </div>
-
-              <h3 class="card-title">Annapurna Sunset Peak</h3>
-              <p class="card-desc">Matted exhibition prints showing golden hour light and drifting clouds over the peaks.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Frame 05 -->
-        <div class="gallery-frame-card">
-          <div class="photo-frame-3d js-3d-frame">
-            <div class="frame-mat-board">
-              <div class="frame-top-bar">
-                <span class="frame-badge">EXHIBIT № 05</span>
-                <span class="js-frame-status">HOVER TO AWAKEN</span>
-              </div>
-
-              <div class="frame-canvas-viewport">
-                <img src="/assets/exhibition/swayambhu-spire-poster.jpg" alt="Swayambhunath Spire" class="frame-static-print" loading="lazy" />
-                <video src="/assets/exhibition/swayambhu-spire.mp4" class="frame-live-video" loop muted playsinline></video>
-                <div class="frame-glass-glare"></div>
-              </div>
-
-              <h3 class="card-title">Swayambhunath Golden Spire</h3>
-              <p class="card-desc">Screenprint posters of sacred monuments with real-time video playback over the art.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Frame 06 -->
-        <div class="gallery-frame-card">
-          <div class="photo-frame-3d js-3d-frame">
-            <div class="frame-mat-board">
-              <div class="frame-top-bar">
-                <span class="frame-badge">EXHIBIT № 06</span>
-                <span class="js-frame-status">HOVER TO AWAKEN</span>
-              </div>
-
-              <div class="frame-canvas-viewport">
-                <img src="/assets/exhibition/nepal-flag-poster.jpg" alt="National Crimson Flag" class="frame-static-print" loading="lazy" />
-                <video src="/assets/exhibition/nepal-flag.mp4" class="frame-live-video" loop muted playsinline></video>
-                <div class="frame-glass-glare"></div>
-              </div>
-
-              <h3 class="card-title">Crimson National Flag</h3>
-              <p class="card-desc">Embossed invitations and passes with dynamic video introductions.</p>
+              <h3 class="card-caption-title">Swayambhunath Golden Spire</h3>
+              <p class="card-caption-desc">Sacred golden monuments with fluttering prayer flags.</p>
             </div>
           </div>
         </div>
@@ -264,73 +190,159 @@
     </div>
   </section>
 
-  <!-- 3D WebAR Perspective Tracking Simulator -->
-  <section class="simulator-section" id="simulator">
+  <!-- Landscape Collection: 2-Column Uniform Widescreen Frames -->
+  <section class="section-wrap" style="padding-top:0;">
     <div class="container">
-      <div class="simulator-split">
+      <div class="section-label">WIDESCREEN CINEMATIC PANORAMAS</div>
+      <h2 class="section-heading">Panoramic views with natural motion.</h2>
+      <p class="section-subtext">
+        Every living frame is crafted for standard wall mounts, desks, and gallery displays.
+      </p>
+
+      <div class="grid-2-landscape">
+        <!-- Landscape 01 -->
+        <div class="gallery-card-item">
+          <div class="photo-frame-modern">
+            <div class="frame-mat-inner">
+              <div class="frame-media-box">
+                <img src="/assets/exhibition/annapurna-golden-poster.jpg" alt="Annapurna Golden Peak" class="frame-photo-img" loading="lazy" />
+                <video src="/assets/exhibition/annapurna-golden.mp4" class="frame-video-stream" loop muted playsinline preload="none"></video>
+                <div class="frame-glass-sheen"></div>
+                <div class="frame-hover-badge">
+                  <span class="hero-pill-dot"></span>
+                  <span class="js-badge-text">HOVER TO PLAY</span>
+                </div>
+              </div>
+              <h3 class="card-caption-title">Annapurna Golden Sunset</h3>
+              <p class="card-caption-desc">Golden hour sunlight and drifting clouds across snow peaks.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Landscape 02 -->
+        <div class="gallery-card-item">
+          <div class="photo-frame-modern">
+            <div class="frame-mat-inner">
+              <div class="frame-media-box">
+                <img src="/assets/exhibition/himalayan-flags-poster.jpg" alt="Himalayan Winds" class="frame-photo-img" loading="lazy" />
+                <video src="/assets/exhibition/himalayan-flags.mp4" class="frame-video-stream" loop muted playsinline preload="none"></video>
+                <div class="frame-glass-sheen"></div>
+                <div class="frame-hover-badge">
+                  <span class="hero-pill-dot"></span>
+                  <span class="js-badge-text">HOVER TO PLAY</span>
+                </div>
+              </div>
+              <h3 class="card-caption-title">Mountain Ridge Expeditions</h3>
+              <p class="card-caption-desc">Fine art landscape prints where mountain wind comes alive.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Floating Phone WebAR Scanner Showcase -->
+  <section class="scanner-showcase" id="scanner">
+    <div class="container">
+      <div class="scanner-split-grid">
         <div>
-          <div class="section-tag">REAL-TIME WEBAR ENGINE</div>
-          <h2 class="section-title">Zero applications.<br />Scan with any camera.</h2>
-          <p class="section-lead" style="margin-bottom:28px;">
-            Visitors scan the QR code printed on the physical frame. The mobile browser instantly initiates WebXR planar tracking, anchoring the video in 3D perspective space with millimeter precision.
+          <div class="section-label">HOW THE SCAN WORKS</div>
+          <h2 class="section-heading">Zero apps to download.<br />It just works.</h2>
+          <p class="section-subtext" style="margin-bottom:32px;">
+            Anyone can point their iPhone or Android camera at the QR code on the back or corner of the frame. The browser opens automatically and anchors the video right over the photo in full 3D perspective.
           </p>
 
           <div style="display:flex;gap:16px;flex-wrap:wrap;">
-            <a href="/admin.html" class="btn-luxury btn-luxury-primary">Create Target in Studio →</a>
+            <a href="/admin.html" class="btn-modern btn-modern-ember">Try Creator Studio →</a>
           </div>
         </div>
 
         <div>
-          <div class="sim-phone-mockup">
-            <video class="sim-phone-video" src="/assets/exhibition/pokhara-clouds.mp4" autoplay loop muted playsinline></video>
-            <div class="sim-ar-reticle"></div>
-            <div class="sim-ar-tag">● TARGET LOCKED (60 FPS)</div>
+          <div class="scanner-phone-mock">
+            <video class="scanner-phone-video" src="/assets/exhibition/pokhara-clouds.mp4" autoplay loop muted playsinline></video>
+            <div class="scanner-hud-reticle"></div>
+            <div class="scanner-hud-tag">● FRAME LOCKED • PLAYING</div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Studio CTA Banner -->
-  <section class="cta-section">
+  <!-- 3-Step Simple Consumer Guide -->
+  <section class="section-wrap" id="how-it-works">
     <div class="container">
-      <div class="cta-box-luxury">
+      <div class="section-label">3 SIMPLE STEPS</div>
+      <h2 class="section-heading">How to get your living frame.</h2>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <span class="step-num">STEP 01</span>
+          <h3 class="step-title">Upload your video</h3>
+          <p class="step-desc">
+            Choose any favorite video from your phone — a vacation clip, wedding dance, baby milestone, or concert moment.
+          </p>
+        </div>
+
+        <div class="step-card">
+          <span class="step-num">STEP 02</span>
+          <h3 class="step-title">We frame your print</h3>
+          <p class="step-desc">
+            We extract the perfect first photo frame, print it on museum-grade paper, and set it inside a modern physical frame.
+          </p>
+        </div>
+
+        <div class="step-card">
+          <span class="step-num">STEP 03</span>
+          <h3 class="step-title">Point phone & play</h3>
+          <p class="step-desc">
+            Hang it on your wall. Point any phone camera at the frame and watch the video stream in full motion with zero apps.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Studio Banner CTA -->
+  <section class="section-wrap" style="padding-top:0;">
+    <div class="container">
+      <div class="cta-banner-box">
         <div>
-          <h2>Ready to bring your physical media to life?</h2>
-          <p>
-            Open the Kipakosa AR Creator Studio to generate tracking targets, attach cinematic videos, and customize scan rules.
+          <h2 class="cta-title">Ready to create your living frame?</h2>
+          <p class="cta-desc">
+            Open the Kipakosa AR Creator Studio to attach your videos to physical prints and manage your collection.
           </p>
         </div>
         <div style="display:flex;gap:16px;flex-wrap:wrap;">
-          <a href="/admin.html" class="btn-luxury btn-luxury-primary">Launch Studio Portal →</a>
-          <a href="mailto:hello@kipakosa.com" class="btn-luxury btn-luxury-outline">Contact Studio</a>
+          <a href="/admin.html" class="btn-modern btn-modern-ember">Launch Studio Portal →</a>
+          <a href="mailto:hello@kipakosa.com" class="btn-modern btn-modern-ghost">Contact Us</a>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Luxury Footer -->
-  <footer class="footer-luxury">
+  <!-- Footer -->
+  <footer class="footer-modern">
     <div class="container">
       <div class="footer-grid">
         <div class="footer-brand">
           <h3>KIPAKOSA AR</h3>
           <p>
-            The physical-to-digital WebAR ecosystem. Studio based in Kathmandu, Nepal with global high-speed edge distribution.
+            The living photo print ecosystem. Turn physical memories into living video moments through open browser standards.
           </p>
         </div>
 
         <div class="footer-col">
           <h4>Navigation</h4>
           <ul class="footer-links">
-            <li><a href="#exhibition" class="footer-link">3D Photo Frames</a></li>
-            <li><a href="#simulator" class="footer-link">WebAR Tracking</a></li>
+            <li><a href="#frames" class="footer-link">Living Frames</a></li>
+            <li><a href="#scanner" class="footer-link">Phone Scanner</a></li>
+            <li><a href="#how-it-works" class="footer-link">How It Works</a></li>
             <li><a href="/admin.html" class="footer-link">Creator Studio Portal</a></li>
           </ul>
         </div>
 
         <div class="footer-col">
-          <h4>Studio Contact</h4>
+          <h4>Contact</h4>
           <ul class="footer-links">
             <li><a href="mailto:hello@kipakosa.com" class="footer-link">hello@kipakosa.com</a></li>
             <li><span style="color:var(--text-dim)">Kathmandu, Nepal</span></li>
