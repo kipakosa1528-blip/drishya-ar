@@ -1,19 +1,43 @@
 /**
- * Kipakosa AR — Image-to-Image Optical Reveal Engine
- * High-performance pointer & touch coordinate mapping for registered print layers.
- * Zero generic UI slop; pure optical mask interaction.
+ * Kipakosa AR — Video & Image Optical Reveal Engine
+ * 
+ * Capabilities:
+ * 1. Supports direct Video layers (<video class="layer-image-b layer-video">)
+ * 2. Automatically extracts & paints the first frame as the static physical photo (Image A)
+ * 3. On pointer hover / touch drag, dynamically reveals the live playing video inside the optical radius
+ * 4. Zero UI slider handles or before/after slop; pure optical coordinate masking
  */
 
 (function () {
   'use strict';
 
-  // Initialize reveal on any element with .js-reveal-container
   const revealContainers = document.querySelectorAll('.js-reveal-container');
 
   revealContainers.forEach((container) => {
     const revealedLayer = container.querySelector('.layer-image-b');
+    const staticLayer = container.querySelector('.layer-image-a');
     const opticalLens = container.querySelector('.reveal-optical-lens');
     if (!revealedLayer) return;
+
+    const isVideo = revealedLayer.tagName.toLowerCase() === 'video';
+
+    // If it's a video, ensure proper inline playback & auto-extract first frame if needed
+    if (isVideo) {
+      revealedLayer.muted = true;
+      revealedLayer.playsInline = true;
+      revealedLayer.loop = true;
+
+      // Ensure video plays smoothly
+      revealedLayer.addEventListener('loadeddata', () => {
+        // If staticLayer is a canvas and needs first frame
+        if (staticLayer && staticLayer.tagName.toLowerCase() === 'canvas') {
+          const ctx = staticLayer.getContext('2d');
+          staticLayer.width = revealedLayer.videoWidth || 1280;
+          staticLayer.height = revealedLayer.videoHeight || 720;
+          ctx.drawImage(revealedLayer, 0, 0, staticLayer.width, staticLayer.height);
+        }
+      });
+    }
 
     let targetX = 50;
     let targetY = 50;
@@ -49,44 +73,46 @@
       }
     }
 
-    // Pointer events (mouse, stylus, high-res trackpad)
-    container.addEventListener('pointerenter', (e) => {
+    function startReveal(clientX, clientY) {
       isTracking = true;
       container.classList.add('is-interacting');
-      updateCoordinates(e.clientX, e.clientY);
+      if (isVideo) {
+        revealedLayer.play().catch(() => {});
+      }
+      updateCoordinates(clientX, clientY);
       currentX = targetX;
       currentY = targetY;
       cancelAnimationFrame(animFrame);
       animFrame = requestAnimationFrame(renderLoop);
+    }
+
+    function stopReveal() {
+      isTracking = false;
+      container.classList.remove('is-interacting');
+      cancelAnimationFrame(animFrame);
+    }
+
+    // Pointer events (mouse, stylus, high-res trackpad)
+    container.addEventListener('pointerenter', (e) => {
+      startReveal(e.clientX, e.clientY);
     });
 
     container.addEventListener('pointermove', (e) => {
       if (!isTracking) {
-        isTracking = true;
-        container.classList.add('is-interacting');
-        cancelAnimationFrame(animFrame);
-        animFrame = requestAnimationFrame(renderLoop);
+        startReveal(e.clientX, e.clientY);
       }
       updateCoordinates(e.clientX, e.clientY);
     });
 
     container.addEventListener('pointerleave', () => {
-      isTracking = false;
-      container.classList.remove('is-interacting');
-      cancelAnimationFrame(animFrame);
+      stopReveal();
     });
 
     // Touch fallback (drag across physical image to reveal)
     container.addEventListener('touchstart', (e) => {
       if (e.touches.length > 0) {
-        isTracking = true;
-        container.classList.add('is-interacting');
         const touch = e.touches[0];
-        updateCoordinates(touch.clientX, touch.clientY);
-        currentX = targetX;
-        currentY = targetY;
-        cancelAnimationFrame(animFrame);
-        animFrame = requestAnimationFrame(renderLoop);
+        startReveal(touch.clientX, touch.clientY);
       }
     }, { passive: true });
 
@@ -98,9 +124,7 @@
     }, { passive: true });
 
     container.addEventListener('touchend', () => {
-      isTracking = false;
-      container.classList.remove('is-interacting');
-      cancelAnimationFrame(animFrame);
+      stopReveal();
     });
   });
 
