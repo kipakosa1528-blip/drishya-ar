@@ -33,13 +33,27 @@
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
-    // Gold/amber dust material
+    // Generate soft circular particle texture
+    const canvasTex = document.createElement('canvas');
+    canvasTex.width = 16;
+    canvasTex.height = 16;
+    const ctx = canvasTex.getContext('2d');
+    const grad = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
+    grad.addColorStop(0, 'rgba(246, 205, 139, 1)');
+    grad.addColorStop(0.5, 'rgba(229, 169, 82, 0.4)');
+    grad.addColorStop(1, 'rgba(229, 169, 82, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 16, 16);
+    const texture = new THREE.CanvasTexture(canvasTex);
+
+    // Gold/amber soft glowing dust material
     const material = new THREE.PointsMaterial({
-      color: 0xe5a952,
-      size: 1.4,
+      map: texture,
+      size: 1.2,
       transparent: true,
-      opacity: 0.45,
-      blending: THREE.AdditiveBlending
+      opacity: 0.35,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
     });
 
     const particles = new THREE.Points(geometry, material);
