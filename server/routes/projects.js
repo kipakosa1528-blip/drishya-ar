@@ -1,0 +1,165 @@
+// Projects REST API.
+// Reads are PUBLIC (shared links / dashboards rely on them); all writes
+// require a valid Supabase Auth Bearer token.
+
+import express from 'express';
+import { PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
+import { supabase, getR2, R2_BUCKET, r2Url, prepareTarget } from '../lib/clients.js';
+import { makeRequireAuth } from '../lib/security.js';
+
+/**
+ * Normalize a DB row for API consumers.
+ * NOTE: both camelCase and snake_case keys are emitted on purpose — the
+ * admin pages and utils.js read a mix of both shapes (legacy compat).
+ * @param {Record<string, unknown>} row
+ */
+function formatProject(row) {
+  if (!row) return null;
+  const imagePath = row.image_path || '';
+  const videoPath = row.video_path || '';
+  const imageUrl = imagePath ? (imagePath.startsWith('http') ? imagePath : r2Url(imagePath)) : '';
+  const videoUrl = videoPath ? (videoPath.startsWith('http') ? videoPath : r2Url(videoPath)) : '';
+  const td = (typeof row.target_data === 'object' && row.target_data) ? row.target_data : {};
+  const viewsCount = row.views_count || td._views_count || 0;
+  const maxScans = row.max_scans || td._max_scans || null;
+  const lastScannedAt = row.last_scanned_at || td._last_scanned_at || null;
+  return {
+    id: row.id,
+    name: row.name,
+    client: row.client || '',
+    notes: row.notes || '',
+    createdAt: row.created_at,
+    created_at: row.created_at,
+    expiresAt: row.expires_at,
+    expires_at: row.expires_at,
+    maxScans,
+    max_scans: maxScans,
+    imagePath,
+    image_path: imagePath,
+    videoPath,
+    video_path: videoPath,
+    imageUrl,
+    videoUrl,
+    viewsCount,
+    views_count: viewsCount,
+    lastScannedAt,
+    last_scanned_at: lastScannedAt,
+    targetData: td,
+    target_data: td
+  };
+}
+
+/** Delete all R2 objects under a project id prefix (best-effort). */
+async function purgeProjectFiles(id) {
+  const r2 = getR2();
+  if (!r2) return;
+  try {
+    const listed = await r2.send(new ListObjectsV2Command({ Bucket: R2_BUCKET, Prefix: `${id}/` }));
+    const objects = (listed.Contents || []).map(o => ({ Key: o.Key }));
+    if (objects.length === 0) return;
+    await r2.send(new DeleteObjectsCommand({ Bucket: R2_BUCKET, Delete: { Objects: objects } }));
+  } catch (err) {
+    console.error('R2 purge failed for', id, err.message);
+  }
+}
+
+export function registerProjectsRoutes(app, { requireAuth }) {
+  // ── Reads (public) ─────────────────────────────────────────────────────────
+  app.get('/api/projects', async (req, res) => {
+    const { data, error } = await supabase
+      .from('projects').select('*').order('created_at', { ascending: false });
+    if (error) return res.status(500).json({ error: error.message });
+    res.json((data || []).map(formatProject));
+  });
+
+  app.get('/api/projects/:id', async (req, res) => {
+    const { data, error } = await supabase
+      .from('projects').select('*').eq('id', req.params.id).single();
+    if (error || !data) return res.status(404).json({ error: 'Not found' });
+    res.json(formatProject(data));
+  });
+
+  // ── Writes (admin only) ────────────────────────────────────────────────────
+  // Large body parser only for this route (base64 media fallback uploads)
+  app.post('/api/projects', express.json({ limit: '150mb' }), requireAuth, async (req, res) => {
+    try {
+      const { id, name, client, notes, expiresAt, maxScans, imagePath, videoPath, imageBase64, videoBase64 } = req.body;
+      if (!id || !name) return res.status(400).json({ error: 'Missing required fields' });
+
+      let resolvedImagePath = imagePath || `${id}/original.jpg`;
+      let resolvedVideoPath = videoPath || `${id}/video.mp4`;
+      const r2 = getR2();
+
+      // Local dev fallback if base64 sent
+      if (imageBase64 && r2) {
+        const buf = Buffer.from(imageBase64.split(',')[1] || imageBase64, 'base64');
+        await r2.send(new PutObjectCommand({
+          Bucket: R2_BUCKET, Key: resolvedImagePath, Body: buf, ContentType: 'image/jpeg'
+        }));
+      }
+
+      if (videoBase64 && r2) {
+        const buf = Buffer.from(videoBase64.split(',')[1] || videoBase64, 'base64');
+        await r2.send(new PutObjectCommand({
+          Bucket: R2_BUCKET, Key: resolvedVideoPath, Body: buf, ContentType: 'video/mp4'
+        }));
+      }
+
+      // Download image from R2 to run sharp target compilation
+      const imgUrl = r2Url(resolvedImagePath);
+      const imgFetch = await fetch(imgUrl);
+      if (!imgFetch.ok) throw new Error('Cannot fetch image from R2: ' + imgFetch.statusText);
+      const imgBuffer = Buffer.from(await imgFetch.arrayBuffer());
+
+      const targetData = await prepareTarget(imgBuffer, id);
+      if (maxScans) {
+        targetData._max_scans = Number(maxScans);
+      }
+
+      // Save metadata to Supabase DB
+      const { error: dbErr } = await supabase.from('projects').insert({
+        id, name, client, notes,
+        expires_at: expiresAt || null,
+        image_path: resolvedImagePath,
+        video_path: resolvedVideoPath,
+        target_data: targetData,
+      });
+      if (dbErr) throw new Error('DB insert failed: ' + dbErr.message);
+
+      res.status(201).json({ id, name, targetData });
+    } catch (err) {
+      console.error('Create project error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/projects/:id', requireAuth, async (req, res) => {
+    const { id } = req.params;
+    const { name, client, notes, expiresAt, maxScans } = req.body;
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (client !== undefined) updates.client = client;
+    if (notes !== undefined) updates.notes = notes;
+    if (expiresAt !== undefined) updates.expires_at = expiresAt;
+
+    if (maxScans !== undefined) {
+      const { data: existing } = await supabase.from('projects').select('target_data').eq('id', id).single();
+      const td = (typeof existing?.target_data === 'object' && existing?.target_data) ? { ...existing.target_data } : {};
+      td._max_scans = maxScans ? Number(maxScans) : null;
+      updates.target_data = td;
+    }
+
+    const { data, error } = await supabase
+      .from('projects').update(updates).eq('id', id).select().single();
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(formatProject(data));
+  });
+
+  app.delete('/api/projects/:id', requireAuth, async (req, res) => {
+    const { id } = req.params;
+    const { error } = await supabase.from('projects').delete().eq('id', id);
+    if (error) return res.status(500).json({ error: error.message });
+    await purgeProjectFiles(id);
+    res.json({ success: true });
+  });
+}
