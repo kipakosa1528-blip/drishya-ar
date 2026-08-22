@@ -21,3 +21,5 @@ hallways.json
 /cleanup_corrupt.js
 /*.png
 *.log
+
+hive/
