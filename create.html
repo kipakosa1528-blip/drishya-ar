@@ -469,12 +469,12 @@
 </div>
 
 <script type="module">
-  import { requireAuth, initNav } from './js/auth.js?v=2';
-  import { fmt, arUrl, toast, generateQR, downloadQR, copyText } from './js/utils.js?v=2';
-  import { getLocalProjects, setLocalProjects } from './js/db.js?v=2';
+  import { requireAuth, initNav, authHeaders } from './js/auth.js?v=3';
+  import { fmt, arUrl, toast, generateQR, downloadQR, copyText } from './js/utils.js?v=3';
+  import { getLocalProjects, setLocalProjects } from './js/db.js?v=3';
 
 
-  requireAuth();
+  await requireAuth();
   initNav('create');
   setExpiry(90);
 
@@ -907,7 +907,9 @@
   };
 
   async function uploadToR2(file, key) {
-    const presignResp = await fetch(`/api/presign?key=${encodeURIComponent(key)}&type=${encodeURIComponent(file.type)}`);
+    const presignResp = await fetch(`/api/presign?key=${encodeURIComponent(key)}&type=${encodeURIComponent(file.type)}`, {
+      headers: await authHeaders(),
+    });
     if (!presignResp.ok) throw new Error('Failed to get presigned upload URL for ' + key);
     const { url: presignUrl } = await presignResp.json();
 
@@ -984,7 +986,7 @@
 
       const resp = await fetch('/api/projects', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
         body: JSON.stringify(body)
       });
 
@@ -1040,3 +1042,6 @@
 </script>
 </body>
 </html>
+
+
+

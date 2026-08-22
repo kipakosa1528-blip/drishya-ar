@@ -1,27 +1,77 @@
-const VALID_PASSWORDS = ['admin', 'drishya2024', 'kipakosa'];
+// Supabase Auth session helpers for the Kipakosa AR admin app.
+// The Supabase JS UMD bundle is loaded lazily from /external/supabase-js.min.js.
 
-export function isLoggedIn() {
-  return sessionStorage.getItem('auth') === '1';
+let clientPromise = null;
+
+function loadSupabaseUmd() {
+  return new Promise((resolve, reject) => {
+    if (window.supabase?.createClient) return resolve();
+    const s = document.createElement('script');
+    s.src = '/external/supabase-js.min.js';
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('Failed to load Supabase JS'));
+    document.head.appendChild(s);
+  });
 }
 
-export function requireAuth() {
-  if (!isLoggedIn()) {
-    window.location.replace('/index.html');
+export function getSupabase() {
+  if (!clientPromise) {
+    clientPromise = (async () => {
+      await loadSupabaseUmd();
+      const cfg = await fetch('/api/config').then(r => r.json());
+      if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
+        throw new Error('Supabase Auth is not configured on the server');
+      }
+      window.__kipakosaAdminEmail = cfg.adminEmail || '';
+      return window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+    })();
+  }
+  return clientPromise;
+}
+
+export async function isLoggedIn() {
+  try {
+    const sb = await getSupabase();
+    const { data } = await sb.auth.getSession();
+    return !!data?.session;
+  } catch {
+    return false;
   }
 }
 
-export function login(pw) {
-  if (VALID_PASSWORDS.includes(pw.trim())) {
-    sessionStorage.setItem('auth', '1');
-    return true;
+export async function requireAuth() {
+  if (!(await isLoggedIn())) {
+    window.location.replace('/admin.html');
   }
-  return false;
 }
 
+export async function login(email, password) {
+  const sb = await getSupabase();
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  return data.session;
+}
 
-export function logout() {
-  sessionStorage.removeItem('auth');
-  window.location.replace('/index.html');
+export async function logout() {
+  try {
+    const sb = await getSupabase();
+    await sb.auth.signOut();
+  } catch { /* ignore */ }
+  window.location.replace('/admin.html');
+}
+
+export async function logoutToLogin() { return logout(); }
+
+// Returns headers carrying the current access token for privileged API calls.
+export async function authHeaders() {
+  try {
+    const sb = await getSupabase();
+    const { data } = await sb.auth.getSession();
+    const token = data?.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
 }
 
 export function initNav(activePage) {

@@ -2,15 +2,18 @@ import 'dotenv/config';
 import express from 'express';
 import sharp from 'sharp';
 import { createClient } from '@supabase/supabase-js';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ── Supabase database client ──────────────────────────────────────────────────
-const SUPABASE_URL    = process.env.SUPABASE_URL;
-const SUPABASE_SECRET = process.env.SUPABASE_SERVICE_KEY;
+const SUPABASE_URL     = process.env.SUPABASE_URL;
+const SUPABASE_SECRET  = process.env.SUPABASE_SERVICE_KEY;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+// Email of the single admin account used for dashboard sign-in (Supabase Auth).
+const ADMIN_EMAIL      = process.env.ADMIN_EMAIL || 'admin@kipakosa.app';
 
 if (!SUPABASE_URL || !SUPABASE_SECRET) {
   console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_KEY in environment');
@@ -20,11 +23,16 @@ if (!SUPABASE_URL || !SUPABASE_SECRET) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET);
 
 // ── Cloudflare R2 client (S3-compatible) ───────────────────────────────────────
-const R2_ACCOUNT_ID   = process.env.R2_ACCOUNT_ID   || 'f7baea90c7809632483abe5522780560';
+const R2_ACCOUNT_ID   = process.env.R2_ACCOUNT_ID;
 const R2_ACCESS_KEY   = process.env.R2_ACCESS_KEY_ID;
 const R2_SECRET_KEY   = process.env.R2_SECRET_ACCESS_KEY;
-const R2_BUCKET       = process.env.R2_BUCKET        || 'kipakosa-videos';
-const R2_PUBLIC_URL   = process.env.R2_PUBLIC_URL    || 'https://pub-f2ad2c43aa344d4bb911e991b04b1fbd.r2.dev';
+const R2_BUCKET       = process.env.R2_BUCKET;
+const R2_PUBLIC_URL   = process.env.R2_PUBLIC_URL;
+
+if (!R2_ACCOUNT_ID || !R2_BUCKET || !R2_PUBLIC_URL) {
+  console.error('Missing R2_ACCOUNT_ID, R2_BUCKET or R2_PUBLIC_URL in environment');
+  process.exit(1);
+}
 
 let r2 = null;
 if (R2_ACCESS_KEY && R2_SECRET_KEY) {
@@ -103,7 +111,60 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.use(express.json({ limit: '150mb' }));
+// ── Escaping helpers (XSS) ────────────────────────────────────────────────────
+function esc(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+// JSON safe for embedding inside a <script> block (breaks out of </script> and <!--)
+function jsonForScript(value) {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+// ── Security headers ──────────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
+  next();
+});
+
+// ── Tiny in-memory rate limiter (per IP + bucket) ─────────────────────────────
+const rateBuckets = new Map();
+function rateLimit({ windowMs = 60000, max = 30 } = {}) {
+  setInterval(() => rateBuckets.clear(), windowMs).unref();
+  return (req, res, next) => {
+    const key = `${req.ip}:${Math.floor(Date.now() / windowMs)}`;
+    const hits = (rateBuckets.get(key) || 0) + 1;
+    rateBuckets.set(key, hits);
+    if (hits > max) return res.status(429).json({ error: 'Too many requests' });
+    next();
+  };
+}
+
+// ── Supabase Auth middleware (protects admin write operations) ────────────────
+async function requireAuth(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data?.user) return res.status(401).json({ error: 'Unauthorized' });
+  req.user = data.user;
+  next();
+}
+
+app.use(express.json({ limit: '1mb' }));
 
 // Route root / to landing.html
 app.get('/', (req, res) => {
@@ -115,7 +176,23 @@ app.get('/landing', (req, res) => {
   res.sendFile(path.join(__dirname, 'landing.html'));
 });
 
-app.use(express.static(__dirname, { index: false }));
+// Static assets served ONLY from whitelisted directories — never the repo root,
+// so local files like .env / server source are not exposed over HTTP.
+const STATIC_DIRS = ['assets', 'css', 'js', 'external'];
+for (const dir of STATIC_DIRS) {
+  app.use(`/${dir}`, express.static(path.join(__dirname, dir), { index: false }));
+}
+
+// Explicit routes for each page (keeps bookmarked .html URLs working)
+const HTML_PAGES = [
+  'landing.html', 'index.html', 'admin.html', 'create.html',
+  'dashboard.html', 'projects.html', 'project.html', 'ar.html',
+];
+for (const page of HTML_PAGES) {
+  app.get(`/${page}`, (req, res) => {
+    res.sendFile(path.join(__dirname, page));
+  });
+}
 
 // Explicit logo route with correct image/svg+xml header
 app.get('/assets/logo.svg', (req, res) => {
@@ -127,10 +204,14 @@ app.get('/assets/logo.svg', (req, res) => {
 
 
 
-// ── Presign endpoint for direct client uploads to R2 ─────────────────────────
-app.get('/api/presign', async (req, res) => {
+// ── Presign endpoint for direct client uploads to R2 (admin only) ─────────────
+// Keys are locked to <uuid>/(original.jpg|luminance.jpg|video.mp4) so a signed
+// URL can never be minted for an arbitrary bucket path.
+const PRESIGN_KEY_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(original\.jpg|luminance\.jpg|video\.mp4)$/;
+app.get('/api/presign', requireAuth, rateLimit({ max: 30 }), async (req, res) => {
   const { key, type } = req.query;
   if (!key) return res.status(400).json({ error: 'Missing key' });
+  if (!PRESIGN_KEY_RE.test(key)) return res.status(400).json({ error: 'Invalid key' });
   if (!r2)  return res.status(503).json({ error: 'R2 not configured' });
   try {
     const cmd = new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, ContentType: type || 'application/octet-stream' });
@@ -145,7 +226,10 @@ app.get('/api/presign', async (req, res) => {
 app.get('/api/config', (req, res) => {
   res.json({
     r2PublicUrl: R2_PUBLIC_URL,
-    hasR2: !!r2
+    hasR2: !!r2,
+    supabaseUrl: SUPABASE_URL,
+    supabaseAnonKey: SUPABASE_ANON_KEY || null,
+    adminEmail: ADMIN_EMAIL
   });
 });
 
@@ -177,22 +261,30 @@ app.get('/ar', async (req, res) => {
       <div style="max-width:400px;margin:0 auto;background:#162032;padding:32px 24px;border-radius:16px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 10px 30px rgba(0,0,0,0.5)">
         <div style="font-size:44px;margin-bottom:12px">🔒</div>
         <h2 style="color:#ef4444;margin:0 0 10px;font-size:22px;font-weight:700">Scan Limit Reached</h2>
-        <p style="color:#94a3b8;font-size:14px;line-height:1.6">This AR experience has reached its limit of <strong>${maxScans} scans</strong>.</p>
+        <p style="color:#94a3b8;font-size:14px;line-height:1.6">This AR experience has reached its limit of <strong>${esc(maxScans)} scans</strong>.</p>
       </div></body></html>`);
   }
 
   const targetData = project.target_data;
   if (!targetData) return res.status(404).send('<h2>Target not ready. Please re-create the project.</h2>');
 
-  // Increment view/scan count asynchronously in DB
+  // Increment view/scan count atomically via RPC; falls back to the legacy
+  // read-modify-write on target_data if the increment_scan RPC is not installed.
   const lastScanned = new Date().toISOString();
-  td._views_count = currentViews + 1;
-  td._last_scanned_at = lastScanned;
-  supabase.from('projects')
-    .update({ target_data: td })
-    .eq('id', id)
-    .then()
-    .catch(() => {});
+  let counted = false;
+  try {
+    const { error: rpcErr } = await supabase.rpc('increment_scan', { p_id: id });
+    counted = !rpcErr;
+  } catch { /* fall through to legacy path */ }
+  if (!counted) {
+    td._views_count = currentViews + 1;
+    td._last_scanned_at = lastScanned;
+    supabase.from('projects')
+      .update({ target_data: td })
+      .eq('id', id)
+      .then()
+      .catch(() => {});
+  }
 
 
 
@@ -211,7 +303,7 @@ app.get('/ar', async (req, res) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>${project.name} — Kipakosa AR</title>
+  <title>${esc(project.name)} — Kipakosa AR</title>
   <script crossorigin="anonymous" src="/external/8frame-1.5.0.min.js"><\/script>
 
   <script src="/external/xr/xr.js" async crossorigin="anonymous" data-preload-chunks="slam"><\/script>
@@ -332,7 +424,7 @@ app.get('/ar', async (req, res) => {
   </div>
 
   <script>
-    var targetData = ${JSON.stringify(targetData)};
+    var targetData = ${jsonForScript(targetData)};
     var onxrloaded = function() {
       XR8.XrController.configure({ imageTargetData: [targetData] });
     };
@@ -343,7 +435,7 @@ app.get('/ar', async (req, res) => {
     renderer="colorManagement:true"
     xrweb="allowedDevices: any; disableWorldTracking: true; disableDefaultEnvironment: true">
     <a-assets>
-      <video id="ar-video" src="${videoUrl}"
+      <video id="ar-video" src="${esc(videoUrl)}"
         preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous" muted>
       </video>
     </a-assets>
@@ -361,8 +453,8 @@ app.get('/ar', async (req, res) => {
     var audioPrompt = document.getElementById('audio-prompt');
     
     video.addEventListener('loadedmetadata', function() {
-      var tW = ${tW};
-      var tH = ${tH};
+      var tW = Number(${Number(tW)}) || 640;
+      var tH = Number(${Number(tH)}) || 640;
       var tAspect = tW / tH;
       var vW = video.videoWidth;
       var vH = video.videoHeight;
@@ -480,7 +572,8 @@ app.get('/api/projects/:id', async (req, res) => {
 });
 
 
-app.post('/api/projects', async (req, res) => {
+// Large body parser only for this route (base64 media fallback uploads)
+app.post('/api/projects', express.json({ limit: '150mb' }), requireAuth, async (req, res) => {
   try {
     const { id, name, client, notes, expiresAt, maxScans, imagePath, videoPath, imageBase64, videoBase64 } = req.body;
     if (!id || !name) return res.status(400).json({ error: 'Missing required fields' });
@@ -531,7 +624,7 @@ app.post('/api/projects', async (req, res) => {
   }
 });
 
-app.put('/api/projects/:id', async (req, res) => {
+app.put('/api/projects/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   const { name, client, notes, expiresAt, maxScans } = req.body;
   const updates = {};
@@ -554,16 +647,30 @@ app.put('/api/projects/:id', async (req, res) => {
 });
 
 
-app.delete('/api/projects/:id', async (req, res) => {
+// Delete all R2 objects under a project id prefix (best-effort)
+async function purgeProjectFiles(id) {
+  if (!r2) return;
+  try {
+    const listed = await r2.send(new ListObjectsV2Command({ Bucket: R2_BUCKET, Prefix: `${id}/` }));
+    const objects = (listed.Contents || []).map(o => ({ Key: o.Key }));
+    if (objects.length === 0) return;
+    await r2.send(new DeleteObjectsCommand({ Bucket: R2_BUCKET, Delete: { Objects: objects } }));
+  } catch (err) {
+    console.error('R2 purge failed for', id, err.message);
+  }
+}
+
+app.delete('/api/projects/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   const { error } = await supabase.from('projects').delete().eq('id', id);
   if (error) return res.status(500).json({ error: error.message });
+  await purgeProjectFiles(id);
   res.json({ success: true });
 });
 
 
 app.listen(PORT, () => {
-  console.log(`Drishya AR running at http://localhost:${PORT}`);
+  console.log(`Kipakosa AR running at http://localhost:${PORT}`);
 });
 
 export default app;

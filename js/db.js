@@ -1,5 +1,7 @@
 // Fast Local Storage Caching & Synchronization Client for Kipakosa AR
 
+import { authHeaders } from './auth.js';
+
 const CACHE_KEY = 'kipakosa_projects_cache';
 const CACHE_TIME_KEY = 'kipakosa_cache_time';
 const CACHE_TTL_MS = 60000; // 60 seconds TTL for background revalidation
@@ -104,23 +106,18 @@ export async function deleteProject(id) {
     setLocalProjects(current.filter(p => p.id !== id));
   }
 
-  const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+  const res = await fetch(`/api/projects/${id}`, {
+    method: 'DELETE',
+    headers: await authHeaders(),
+  });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
-}
-
-export async function deleteFiles(id) {
-  return deleteProject(id);
-}
-
-export async function saveProject(proj) {
-  return proj;
 }
 
 export async function updateProject(id, updates) {
   const res = await fetch(`/api/projects/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body: JSON.stringify(updates)
   });
   if (!res.ok) throw new Error(await res.text());
@@ -128,9 +125,5 @@ export async function updateProject(id, updates) {
   const current = getLocalProjects() || [];
   setLocalProjects([fresh, ...current.filter(p => p.id !== id)]);
   return fresh;
-}
-
-export async function saveProjectWithFiles(data) {
-  return data;
 }
 

@@ -77,11 +77,11 @@
 </div>
 
 <script type="module">
-  import { requireAuth, initNav } from './js/auth.js?v=2';
-  import { getAllProjects, deleteProject, deleteFiles } from './js/db.js?v=2';
-  import { fmt, isExpired, statusBadge, toast } from './js/utils.js?v=2';
+  import { requireAuth, initNav } from './js/auth.js?v=3';
+  import { getAllProjects, deleteProject } from './js/db.js?v=3';
+  import { fmt, isExpired, statusBadge, toast } from './js/utils.js?v=3';
 
-  requireAuth(); 
+  await requireAuth(); 
   initNav('dashboard');
 
   function updateDashboard(list) {
@@ -144,3 +144,5 @@
 
 </body>
 </html>
+
+
