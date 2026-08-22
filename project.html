@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Project Detail — Kipakosa AR</title>
-  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/app.css?v=2" />
   <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
 </head>
 <body>
@@ -40,7 +40,7 @@
     <a href="projects.html" style="font-size:13px;color:var(--text-secondary);display:inline-flex;align-items:center;gap:4px;margin-bottom:16px">← Projects</a>
 
     <div class="page-header">
-      <div class="page-title" id="p-title">Loading…</div>
+      <div class="page-title" id="p-title"><span class="skeleton skeleton-line" style="display:inline-block;width:240px;margin:0"></span></div>
       <div class="actions" style="display:flex;gap:8px">
         <button class="btn btn-default" id="edit-btn">Edit</button>
         <button class="btn btn-danger" id="del-btn">Delete Project</button>
@@ -73,12 +73,12 @@
         <div class="panel">
           <div class="panel-title">Project Details & Analytics</div>
           <table style="width:100%;font-size:13px;border-collapse:collapse">
-            <tr><td style="color:var(--muted);padding:8px 0;width:130px">Status</td><td id="p-status"></td></tr>
+            <tr><td style="color:var(--muted);padding:8px 0;width:130px">Status</td><td id="p-status"><span class="skeleton skeleton-line" style="width:90px;margin:0"></span></td></tr>
             <tr>
               <td style="color:var(--muted);padding:8px 0">Total Scans</td>
               <td>
                 <div style="display:flex;flex-direction:column;gap:6px">
-                  <span id="p-scans" style="display:inline-flex;align-items:center;gap:5px;font-size:14px;font-weight:700;color:var(--accent)">0 scans</span>
+                  <span id="p-scans" style="display:inline-flex;align-items:center;gap:5px;font-size:14px;font-weight:700;color:var(--accent)"><span class="skeleton skeleton-line" style="width:64px;margin:0"></span></span>
                   <div id="p-scan-track" style="display:none;width:100%;max-width:240px;height:6px;background:rgba(255,255,255,0.1);border-radius:999px;overflow:hidden">
                     <div id="p-scan-fill" style="height:100%;background:var(--accent);width:0%"></div>
                   </div>
@@ -87,7 +87,7 @@
             </tr>
             <tr><td style="color:var(--muted);padding:8px 0">Expiration Method</td><td id="p-exp-method" style="font-weight:600"></td></tr>
             <tr><td style="color:var(--muted);padding:8px 0">Last Scanned</td><td id="p-last-scan" style="color:var(--text-secondary)">Never</td></tr>
-            <tr><td style="color:var(--muted);padding:8px 0">Client</td><td id="p-client"></td></tr>
+            <tr><td style="color:var(--muted);padding:8px 0">Client</td><td id="p-client"><span class="skeleton skeleton-line" style="width:110px;margin:0"></span></td></tr>
             <tr><td style="color:var(--muted);padding:8px 0">Created</td><td id="p-created"></td></tr>
             <tr id="notes-row" style="display:none"><td style="color:var(--muted);padding:8px 0">Notes</td><td id="p-notes"></td></tr>
           </table>
@@ -99,7 +99,7 @@
         <div class="panel">
           <div class="panel-title">AR Link & QR Code</div>
           <div style="text-align:center;margin-bottom:16px">
-            <div class="qr-box" id="qr-out"></div>
+            <div class="qr-box" id="qr-out"><div class="skeleton skeleton-qr"></div></div>
             <div style="display:flex;gap:6px;margin-top:12px">
               <button class="btn btn-default btn-sm" style="flex:1" id="dl-qr">Download PNG (Print 300DPI)</button>
               <button class="btn btn-default btn-sm" style="flex:1" id="dl-qr-svg">Download SVG (Vector)</button>
@@ -166,11 +166,11 @@
 </div>
 
 <script type="module">
-  import { requireAuth, initNav } from './js/auth.js?v=3';
-  import { getProject, updateProject, deleteProject } from './js/db.js?v=3';
+  import { requireAuth, initNav } from './js/auth.js?v=4';
+  import { getProject, updateProject, deleteProject } from './js/db.js?v=4';
   import { fmt, isExpired, statusBadge, arUrl, toast, generateQR, downloadQR, copyText } from './js/utils.js?v=3';
 
-  await requireAuth(); 
+  requireAuth(); 
   initNav('projects');
 
   const id = new URLSearchParams(location.search).get('id');
@@ -323,6 +323,7 @@
 
 </body>
 </html>
+
 
 
 

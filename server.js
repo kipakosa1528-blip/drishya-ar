@@ -35,14 +35,22 @@ app.use((req, res, next) => {
 // ── Pages ─────────────────────────────────────────────────────────────────────
 for (const route of ['/', '/landing']) {
   app.get(route, (req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=60');
     res.sendFile(path.join(__dirname, 'landing.html'));
   });
 }
 
 // Static assets served ONLY from whitelisted directories — never the repo root,
 // so local files like .env / server source are not exposed over HTTP.
+// Short max-age + stale-while-revalidate keeps repeat navigations off the
+// serverless function while bounding post-deploy staleness to ~5 minutes.
 for (const dir of ['assets', 'css', 'js', 'external']) {
-  app.use(`/${dir}`, express.static(path.join(__dirname, dir), { index: false }));
+  app.use(`/${dir}`, express.static(path.join(__dirname, dir), {
+    index: false,
+    setHeaders(res) {
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=86400');
+    },
+  }));
 }
 
 // Explicit routes for each page (keeps bookmarked .html URLs working)
@@ -51,6 +59,7 @@ for (const page of [
   'dashboard.html', 'projects.html', 'project.html', 'ar.html',
 ]) {
   app.get(`/${page}`, (req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=60');
     res.sendFile(path.join(__dirname, page));
   });
 }

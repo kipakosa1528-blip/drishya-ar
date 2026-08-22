@@ -3,6 +3,24 @@
 
 let clientPromise = null;
 
+const CONFIG_CACHE_KEY = 'kipakosa_config_cache';
+
+async function loadConfig() {
+  // /api/config is public and stable per deploy — cache per browsing session
+  // so page switches don't pay a network round trip.
+  try {
+    const raw = sessionStorage.getItem(CONFIG_CACHE_KEY);
+    if (raw) {
+      const cached = JSON.parse(raw);
+      if (cached?.supabaseUrl && cached?.supabaseAnonKey) return cached;
+    }
+  } catch { /* fall through to network */ }
+
+  const cfg = await fetch('/api/config').then(r => r.json());
+  try { sessionStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(cfg)); } catch { /* quota */ }
+  return cfg;
+}
+
 function loadSupabaseUmd() {
   return new Promise((resolve, reject) => {
     if (window.supabase?.createClient) return resolve();
@@ -18,7 +36,7 @@ export function getSupabase() {
   if (!clientPromise) {
     clientPromise = (async () => {
       await loadSupabaseUmd();
-      const cfg = await fetch('/api/config').then(r => r.json());
+      const cfg = await loadConfig();
       if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
         throw new Error('Supabase Auth is not configured on the server');
       }

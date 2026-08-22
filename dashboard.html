@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Dashboard — Kipakosa AR</title>
-  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/app.css?v=2" />
 </head>
 <body>
 <div class="mobile-topbar">
@@ -43,10 +43,10 @@
     </div>
 
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-lbl">Total Projects</div><div class="stat-val" id="st-total">0</div></div>
-      <div class="stat-card"><div class="stat-lbl">Total AR Scans</div><div class="stat-val" style="color:var(--accent)" id="st-scans">0</div></div>
-      <div class="stat-card"><div class="stat-lbl">Active Projects</div><div class="stat-val" style="color:var(--green)" id="st-active">0</div></div>
-      <div class="stat-card"><div class="stat-lbl">Expired Projects</div><div class="stat-val" style="color:var(--red)" id="st-expired">0</div></div>
+      <div class="stat-card"><div class="stat-lbl">Total Projects</div><div class="stat-val" id="st-total"><span class="skeleton skeleton-stat"></span></div></div>
+      <div class="stat-card"><div class="stat-lbl">Total AR Scans</div><div class="stat-val" style="color:var(--accent)" id="st-scans"><span class="skeleton skeleton-stat"></span></div></div>
+      <div class="stat-card"><div class="stat-lbl">Active Projects</div><div class="stat-val" style="color:var(--green)" id="st-active"><span class="skeleton skeleton-stat"></span></div></div>
+      <div class="stat-card"><div class="stat-lbl">Expired Projects</div><div class="stat-val" style="color:var(--red)" id="st-expired"><span class="skeleton skeleton-stat"></span></div></div>
     </div>
 
     <div class="panel">
@@ -68,7 +68,42 @@
             </tr>
           </thead>
           <tbody id="recent-body">
-            <tr><td colspan="7" class="empty">Loading…</td></tr>
+            <tr>
+              <td><div class="skeleton skeleton-thumb"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:65%"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:50%"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:38px"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:78px"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:88px"></div></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><div class="skeleton skeleton-thumb"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:55%"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:42%"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:38px"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:78px"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:88px"></div></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><div class="skeleton skeleton-thumb"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:60%"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:48%"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:38px"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:78px"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:88px"></div></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><div class="skeleton skeleton-thumb"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:52%"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:45%"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:38px"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:78px"></div></td>
+              <td><div class="skeleton skeleton-line" style="width:88px"></div></td>
+              <td></td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -77,11 +112,11 @@
 </div>
 
 <script type="module">
-  import { requireAuth, initNav } from './js/auth.js?v=3';
-  import { getAllProjects, deleteProject } from './js/db.js?v=3';
+  import { requireAuth, initNav } from './js/auth.js?v=4';
+  import { getAllProjects, deleteProject } from './js/db.js?v=4';
   import { fmt, isExpired, statusBadge, toast } from './js/utils.js?v=3';
 
-  await requireAuth(); 
+  requireAuth(); 
   initNav('dashboard');
 
   function updateDashboard(list) {
@@ -144,5 +179,6 @@
 
 </body>
 </html>
+
 
 

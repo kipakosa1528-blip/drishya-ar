@@ -55,8 +55,8 @@ export async function getAllProjects(onBackgroundUpdate = null) {
     }
   })();
 
-  // If we already have cached data, return it immediately (0ms instant load!)
-  if (cached && Array.isArray(cached) && cached.length > 0) {
+  // If we already have cached data (even an empty list), return it immediately
+  if (Array.isArray(cached)) {
     return cached;
   }
 
