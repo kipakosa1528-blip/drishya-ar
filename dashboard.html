@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Dashboard — Kipakosa AR</title>
-  <link rel="stylesheet" href="css/app.css?v=2" />
+  <link rel="stylesheet" href="css/app.css?v=3" />
+  <script src="js/admin-boot.js?v=1"></script>
 </head>
 <body>
 <div class="mobile-topbar">
@@ -43,10 +44,10 @@
     </div>
 
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-lbl">Total Projects</div><div class="stat-val" id="st-total"><span class="skeleton skeleton-stat"></span></div></div>
-      <div class="stat-card"><div class="stat-lbl">Total AR Scans</div><div class="stat-val" style="color:var(--accent)" id="st-scans"><span class="skeleton skeleton-stat"></span></div></div>
-      <div class="stat-card"><div class="stat-lbl">Active Projects</div><div class="stat-val" style="color:var(--green)" id="st-active"><span class="skeleton skeleton-stat"></span></div></div>
-      <div class="stat-card"><div class="stat-lbl">Expired Projects</div><div class="stat-val" style="color:var(--red)" id="st-expired"><span class="skeleton skeleton-stat"></span></div></div>
+      <div class="stat-card"><div class="stat-lbl">Total Projects</div><div class="stat-val" id="st-total">&nbsp;</div></div>
+      <div class="stat-card"><div class="stat-lbl">Total AR Scans</div><div class="stat-val" style="color:var(--accent)" id="st-scans">&nbsp;</div></div>
+      <div class="stat-card"><div class="stat-lbl">Active Projects</div><div class="stat-val" style="color:var(--green)" id="st-active">&nbsp;</div></div>
+      <div class="stat-card"><div class="stat-lbl">Expired Projects</div><div class="stat-val" style="color:var(--red)" id="st-expired">&nbsp;</div></div>
     </div>
 
     <div class="panel">
@@ -67,46 +68,29 @@
               <th style="text-align:right;width:140px">Actions</th>
             </tr>
           </thead>
-          <tbody id="recent-body">
-            <tr>
-              <td><div class="skeleton skeleton-thumb"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:65%"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:50%"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:38px"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:78px"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:88px"></div></td>
-              <td></td>
-            </tr>
-            <tr>
-              <td><div class="skeleton skeleton-thumb"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:55%"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:42%"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:38px"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:78px"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:88px"></div></td>
-              <td></td>
-            </tr>
-            <tr>
-              <td><div class="skeleton skeleton-thumb"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:60%"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:48%"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:38px"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:78px"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:88px"></div></td>
-              <td></td>
-            </tr>
-            <tr>
-              <td><div class="skeleton skeleton-thumb"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:52%"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:45%"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:38px"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:78px"></div></td>
-              <td><div class="skeleton skeleton-line" style="width:88px"></div></td>
-              <td></td>
-            </tr>
-          </tbody>
+<tbody id="recent-body"></tbody>
         </table>
       </div>
+
+      <script>
+        (function () {
+          var list = KBoot.readCache();
+          var body = document.getElementById('recent-body');
+          if (!list) { body.innerHTML = KBoot.skeletonRows(4); return; }
+          var expired = 0, scans = 0;
+          list.forEach(function (p) {
+            if (KBoot.isExpired(p)) expired++;
+            scans += Number(p.viewsCount || p.views_count || 0);
+          });
+          KBoot.setText('st-total', list.length);
+          KBoot.setText('st-scans', scans);
+          KBoot.setText('st-active', list.length - expired);
+          KBoot.setText('st-expired', expired);
+          var recent = list.slice().sort(KBoot.byCreatedDesc).slice(0, 5);
+          body.innerHTML = recent.length ? recent.map(KBoot.rowHTML).join('')
+            : '<tr><td colspan="7" class="empty">No projects yet. <a href="create.html" style="color:var(--accent);font-weight:600">Create one</a></td></tr>';
+        })();
+      </script>
     </div>
   </main>
 </div>
@@ -179,6 +163,9 @@
 
 </body>
 </html>
+
+
+
 
 
 

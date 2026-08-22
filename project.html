@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Project Detail — Kipakosa AR</title>
-  <link rel="stylesheet" href="css/app.css?v=2" />
+  <link rel="stylesheet" href="css/app.css?v=3" />
+  <script src="js/admin-boot.js?v=1"></script>
   <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
 </head>
 <body>
@@ -40,7 +41,7 @@
     <a href="projects.html" style="font-size:13px;color:var(--text-secondary);display:inline-flex;align-items:center;gap:4px;margin-bottom:16px">← Projects</a>
 
     <div class="page-header">
-      <div class="page-title" id="p-title"><span class="skeleton skeleton-line" style="display:inline-block;width:240px;margin:0"></span></div>
+      <div class="page-title" id="p-title"></div>
       <div class="actions" style="display:flex;gap:8px">
         <button class="btn btn-default" id="edit-btn">Edit</button>
         <button class="btn btn-danger" id="del-btn">Delete Project</button>
@@ -73,12 +74,12 @@
         <div class="panel">
           <div class="panel-title">Project Details & Analytics</div>
           <table style="width:100%;font-size:13px;border-collapse:collapse">
-            <tr><td style="color:var(--muted);padding:8px 0;width:130px">Status</td><td id="p-status"><span class="skeleton skeleton-line" style="width:90px;margin:0"></span></td></tr>
+            <tr><td style="color:var(--muted);padding:8px 0;width:130px">Status</td><td id="p-status"></td></tr>
             <tr>
               <td style="color:var(--muted);padding:8px 0">Total Scans</td>
               <td>
                 <div style="display:flex;flex-direction:column;gap:6px">
-                  <span id="p-scans" style="display:inline-flex;align-items:center;gap:5px;font-size:14px;font-weight:700;color:var(--accent)"><span class="skeleton skeleton-line" style="width:64px;margin:0"></span></span>
+                  <span id="p-scans" style="display:inline-flex;align-items:center;gap:5px;font-size:14px;font-weight:700;color:var(--accent)"></span>
                   <div id="p-scan-track" style="display:none;width:100%;max-width:240px;height:6px;background:rgba(255,255,255,0.1);border-radius:999px;overflow:hidden">
                     <div id="p-scan-fill" style="height:100%;background:var(--accent);width:0%"></div>
                   </div>
@@ -87,7 +88,7 @@
             </tr>
             <tr><td style="color:var(--muted);padding:8px 0">Expiration Method</td><td id="p-exp-method" style="font-weight:600"></td></tr>
             <tr><td style="color:var(--muted);padding:8px 0">Last Scanned</td><td id="p-last-scan" style="color:var(--text-secondary)">Never</td></tr>
-            <tr><td style="color:var(--muted);padding:8px 0">Client</td><td id="p-client"><span class="skeleton skeleton-line" style="width:110px;margin:0"></span></td></tr>
+            <tr><td style="color:var(--muted);padding:8px 0">Client</td><td id="p-client"></td></tr>
             <tr><td style="color:var(--muted);padding:8px 0">Created</td><td id="p-created"></td></tr>
             <tr id="notes-row" style="display:none"><td style="color:var(--muted);padding:8px 0">Notes</td><td id="p-notes"></td></tr>
           </table>
@@ -165,6 +166,61 @@
   </main>
 </div>
 
+<script>
+  (function () {
+    var id = new URLSearchParams(location.search).get('id');
+    if (!id) return;
+    var list = KBoot.readCache();
+    if (!list) return;
+    var p = null;
+    for (var i = 0; i < list.length; i++) { if (list[i].id === id) { p = list[i]; break; } }
+    if (!p) return;
+
+    KBoot.setText('p-title', p.name || '');
+    KBoot.setText('p-client', p.client || '-');
+
+    var statusEl = document.getElementById('p-status');
+    if (statusEl) statusEl.innerHTML = KBoot.statusBadge(p);
+
+    var scans = Number(p.viewsCount || p.views_count || 0);
+    var limit = p.maxScans || p.max_scans;
+    var scansEl = document.getElementById('p-scans');
+    var eyeSvg = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    if (scansEl) {
+      scansEl.innerHTML = limit ? eyeSvg + ' ' + scans + ' / ' + KBoot.esc(limit) + ' scans' : eyeSvg + ' ' + scans + (scans === 1 ? ' scan' : ' scans');
+    }
+    var track = document.getElementById('p-scan-track');
+    if (limit && track) {
+      track.style.display = '';
+      var fill = document.getElementById('p-scan-fill');
+      if (fill) fill.style.width = Math.min(100, Math.round((scans / Number(limit)) * 100)) + '%';
+    }
+
+    var exp = p.expiresAt || p.expires_at;
+    var mEl = document.getElementById('p-exp-method');
+    if (mEl) {
+      if (exp && limit) mEl.innerHTML = '&#8226; Both <span style="font-weight:400;color:var(--text-secondary)">(' + KBoot.fmtDate(exp) + ' or ' + KBoot.esc(limit) + ' scans)</span>';
+      else if (exp) mEl.innerHTML = '&#8226; Time-Based <span style="font-weight:400;color:var(--text-secondary)">(' + KBoot.fmtDate(exp) + ')</span>';
+      else if (limit) mEl.innerHTML = '&#8226; Scan Limit <span style="font-weight:400;color:var(--text-secondary)">(' + KBoot.esc(limit) + ' scans)</span>';
+      else mEl.innerHTML = '&#8226; Permanent <span style="font-weight:400;color:var(--text-secondary)">(Never expires)</span>';
+    }
+
+    var lastScan = p.lastScannedAt || p.last_scanned_at;
+    KBoot.setText('p-last-scan', lastScan ? KBoot.fmtDate(lastScan) : 'Never');
+    KBoot.setText('p-created', KBoot.fmtDate(p.createdAt || p.created_at));
+
+    var img = document.getElementById('preview-img');
+    if (img && p.imageUrl) img.src = p.imageUrl;
+    var vid = document.getElementById('preview-vid');
+    if (vid && p.videoUrl) vid.src = p.videoUrl;
+
+    if (p.notes) {
+      var nr = document.getElementById('notes-row');
+      if (nr) nr.style.display = '';
+      KBoot.setText('p-notes', p.notes);
+    }
+  })();
+</script>
 <script type="module">
   import { requireAuth, initNav } from './js/auth.js?v=4';
   import { getProject, updateProject, deleteProject } from './js/db.js?v=4';
@@ -323,6 +379,8 @@
 
 </body>
 </html>
+
+
 
 
 

@@ -35,6 +35,9 @@ export default [
         // CDN-loaded animation libs used by landing.js
         gsap: 'readonly',
         ScrollTrigger: 'readonly',
+        // Browser-context globals referenced inside page.evaluate()
+        KBoot: 'readonly',
+        MouseEvent: 'readonly',
       },
     },
     rules: {
