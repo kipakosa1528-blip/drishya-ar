@@ -43,7 +43,7 @@
       requestAnimationFrame(loop);
     })();
 
-    const interactiveEls = 'a, button, .photo-frame-modern, .editorial-frame, .exhibition-film-card, .hud-monolith-phone, .btn-luxury-gold, .btn-luxury-hollow';
+    const interactiveEls = 'a, button, .photo-frame-modern, .editorial-frame, .hud-monolith-phone, .btn-luxury-gold, .btn-luxury-hollow';
     document.querySelectorAll(interactiveEls).forEach(el => {
       el.addEventListener('mouseenter', () => document.body.classList.add('cursor-hovered'));
       el.addEventListener('mouseleave', () => document.body.classList.remove('cursor-hovered'));
@@ -107,7 +107,7 @@
      4. HOVER-ONLY VIDEO AWAKENING (Frames + Mobile Phone Screen)
   ───────────────────────────────────────── */
   function initHoverLivingMedia() {
-    const selectors = '.editorial-frame, .photo-frame-modern, .exhibition-film-card, .hud-monolith-phone';
+    const selectors = '.editorial-frame, .photo-frame-modern, .hud-monolith-phone';
 
     document.querySelectorAll(selectors).forEach(target => {
       const video = target.querySelector('video');
@@ -286,25 +286,6 @@
       }
     });
 
-    // ── Exhibition Reel Horizontal Glide ──
-    const reelCanvas = document.getElementById('reel-canvas');
-    const reelTrack  = document.getElementById('reel-track');
-    const reelSec    = document.getElementById('exhibition');
-
-    if (reelCanvas && reelTrack && reelSec) {
-      gsap.to(reelCanvas, {
-        scrollLeft: () => reelTrack.scrollWidth - reelCanvas.clientWidth,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: reelSec,
-          start: 'top 85%',
-          end: 'bottom 15%',
-          scrub: 1.6,
-          invalidateOnRefresh: true
-        }
-      });
-    }
-
     // ── Living Works Asymmetrical Parallax ──
     const duoMedia = document.querySelector('.duo-media-col');
     const duoQuote = document.querySelector('.duo-statement-col');
@@ -398,35 +379,6 @@
   }
 
   /* ─────────────────────────────────────────
-     7. EXHIBITION REEL MOUSE DRAG
-  ───────────────────────────────────────── */
-  function initReelDrag() {
-    const canvas = document.getElementById('reel-canvas');
-    if (!canvas) return;
-
-    let isDown = false;
-    let startX = 0;
-    let scrollLeft = 0;
-
-    canvas.addEventListener('mousedown', (e) => {
-      isDown = true;
-      startX = e.pageX - canvas.offsetLeft;
-      scrollLeft = canvas.scrollLeft;
-    });
-
-    canvas.addEventListener('mouseleave', () => { isDown = false; });
-    canvas.addEventListener('mouseup', () => { isDown = false; });
-
-    canvas.addEventListener('mousemove', (e) => {
-      if (!isDown) return;
-      e.preventDefault();
-      const x = e.pageX - canvas.offsetLeft;
-      const walk = (x - startX) * 1.6;
-      canvas.scrollLeft = scrollLeft - walk;
-    });
-  }
-
-  /* ─────────────────────────────────────────
      8. MAGNETIC BUTTONS
   ───────────────────────────────────────── */
   function initMagneticButtons() {
@@ -458,7 +410,6 @@
     initHoverLivingMedia();
     initBgVideoScroll();
     initContinuousParallax();
-    initReelDrag();
     initMagneticButtons();
 
     setTimeout(() => {

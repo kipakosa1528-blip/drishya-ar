@@ -89,7 +89,7 @@
         </h1>
 
         <p class="cover-tagline">
-          Photos that move when you scan them.
+          Give a gift that keeps coming back to life.
         </p>
 
         <div class="cover-scroll-indicator" aria-hidden="true">
@@ -118,7 +118,7 @@
             Point any phone camera at the physical print — the still image awakens into fluid, high-definition memory.
           </p>
           <div class="story-actions">
-            <a href="/admin.html" class="magnetic-btn btn-luxury-gold">
+            <a href="/admin.html" class="magnetic-btn btn-luxury-gold shader-cta">
               <span>Create Your Living Frame →</span>
             </a>
             <a href="#exhibition" class="magnetic-btn btn-luxury-hollow">
@@ -158,202 +158,82 @@
     <!-- ══════════════════════════════════════
          ACT II — FULL-BLEED EXHIBITION REEL
     ══════════════════════════════════════ -->
-    <section class="horizontal-exhibition-section" id="exhibition" aria-label="Exhibition Strip">
-      
+    <section class="moments-rail-section" id="exhibition" aria-label="Living Moments Gallery">
+
       <div class="section-intro-bleed container">
         <span class="intro-index-num">EXHIBITION REEL</span>
         <h2 class="intro-editorial-heading">Curated Living Moments.</h2>
-        <p class="intro-editorial-sub">Hover over any photograph to watch the stillness dissolve into life.</p>
+        <p class="intro-editorial-sub">Spin the gallery wall — hover or tap the front frame to watch stillness dissolve into life.</p>
       </div>
 
-      <div class="horizontal-reel-canvas" id="reel-canvas">
-        <div class="horizontal-reel-track" id="reel-track">
+      <div class="rail-stage" data-moments-rail tabindex="0" role="region"
+           aria-label="Rotating gallery of living prints. Drag, scroll sideways, or use arrow keys to rotate; the front frame plays on hover.">
+        <div class="rail-viewport">
+        <ul class="rail">        <li class="moment-card" data-video="/assets/exhibition/nepal-flag.mp4">
+          <span class="moment-frame">
+            <img class="moment-poster" src="/assets/exhibition/nepal-flag-poster.jpg" alt="Prayer Flag Devotion" loading="lazy" draggable="false" />
+          </span>
+        </li>
+        <li class="moment-card" data-video="/assets/exhibition/reel-everest-winds.mp4">
+          <span class="moment-frame">
+            <img class="moment-poster" src="/assets/exhibition/reel-everest-winds-poster.jpg" alt="Everest Winds Vista" loading="lazy" draggable="false" />
+          </span>
+        </li>
+        <li class="moment-card" data-video="/assets/exhibition/reel-traditional-dance.mp4">
+          <span class="moment-frame">
+            <img class="moment-poster" src="/assets/exhibition/reel-traditional-dance-poster.jpg" alt="Festival Dance" loading="lazy" draggable="false" />
+          </span>
+        </li>
+        <li class="moment-card" data-video="/assets/exhibition/reel-golden-peak.mp4">
+          <span class="moment-frame">
+            <img class="moment-poster" src="/assets/exhibition/reel-golden-peak-poster.jpg" alt="Golden Peak Summit" loading="lazy" draggable="false" />
+          </span>
+        </li>
+        <li class="moment-card" data-video="/assets/exhibition/reel-monk-ceremony.mp4">
+          <span class="moment-frame">
+            <img class="moment-poster" src="/assets/exhibition/reel-monk-ceremony-poster.jpg" alt="Monastery Chant" loading="lazy" draggable="false" />
+          </span>
+        </li>
+        <li class="moment-card" data-video="/assets/exhibition/reel-annapurna-trail.mp4">
+          <span class="moment-frame">
+            <img class="moment-poster" src="/assets/exhibition/reel-annapurna-trail-poster.jpg" alt="Annapurna High Trail" loading="lazy" draggable="false" />
+          </span>
+        </li>
+        <li class="moment-card" data-video="/assets/exhibition/pokhara-clouds.mp4">
+          <span class="moment-frame">
+            <img class="moment-poster" src="/assets/exhibition/pokhara-clouds-poster.jpg" alt="Pokhara Cloud Journey" loading="lazy" draggable="false" />
+          </span>
+        </li>
+        <li class="moment-card" data-video="/assets/exhibition/reel-himalayan-dawn.mp4">
+          <span class="moment-frame">
+            <img class="moment-poster" src="/assets/exhibition/reel-himalayan-dawn-poster.jpg" alt="Himalayan Dawn" loading="lazy" draggable="false" />
+          </span>
+        </li>
+        <li class="moment-card" data-video="/assets/exhibition/reel-sacred-hill.mp4">
+          <span class="moment-frame">
+            <img class="moment-poster" src="/assets/exhibition/reel-sacred-hill-poster.jpg" alt="Sacred Hill Panorama" loading="lazy" draggable="false" />
+          </span>
+        </li>
+        <li class="moment-card" data-video="/assets/exhibition/reel-mountain-pass.mp4">
+          <span class="moment-frame">
+            <img class="moment-poster" src="/assets/exhibition/reel-mountain-pass-poster.jpg" alt="High Himalayan Pass" loading="lazy" draggable="false" />
+          </span>
+        </li>
+        <li class="moment-card" data-video="/assets/exhibition/reel-bhaktapur-square.mp4">
+          <span class="moment-frame">
+            <img class="moment-poster" src="/assets/exhibition/reel-bhaktapur-square-poster.jpg" alt="Bhaktapur Heritage" loading="lazy" draggable="false" />
+          </span>
+        </li>
+        <li class="moment-card" data-video="/assets/exhibition/reel-kathmandu-valley.mp4">
+          <span class="moment-frame">
+            <img class="moment-poster" src="/assets/exhibition/reel-kathmandu-valley-poster.jpg" alt="Kathmandu Valley Lights" loading="lazy" draggable="false" />
+          </span>
+        </li>
 
-          <!-- 01: Nepal Flag -->
-          <article class="exhibition-film-card card-portrait">
-            <div class="film-frame-wrap photo-frame-modern">
-              <div class="frame-glass">
-                <img src="/assets/exhibition/nepal-flag-poster.jpg" alt="Prayer Flag Devotion" class="frame-photo-base" loading="lazy" />
-                <video src="/assets/exhibition/nepal-flag.mp4" class="frame-video-stream" loop muted playsinline preload="auto"></video>
-                <div class="frame-sheen-layer"></div>
-              </div>
-            </div>
-            <div class="film-card-caption">
-              <h3 class="film-name">Prayer Flag Devotion</h3>
-              <span class="film-spec">Mountain Ridge Winds</span>
-            </div>
-          </article>
-
-          <!-- 02: Everest Winds -->
-          <article class="exhibition-film-card card-landscape">
-            <div class="film-frame-wrap photo-frame-modern">
-              <div class="frame-glass">
-                <img src="/assets/exhibition/reel-everest-winds-poster.jpg" alt="Everest Winds Vista" class="frame-photo-base" loading="lazy" />
-                <video src="/assets/exhibition/reel-everest-winds.mp4" class="frame-video-stream" loop muted playsinline preload="auto"></video>
-                <div class="frame-sheen-layer"></div>
-              </div>
-            </div>
-            <div class="film-card-caption">
-              <h3 class="film-name">Everest Winds Vista</h3>
-              <span class="film-spec">Himalayan Horizon</span>
-            </div>
-          </article>
-
-          <!-- 03: Traditional Dance -->
-          <article class="exhibition-film-card card-portrait">
-            <div class="film-frame-wrap photo-frame-modern">
-              <div class="frame-glass">
-                <img src="/assets/exhibition/reel-traditional-dance-poster.jpg" alt="Festival Dance" class="frame-photo-base" loading="lazy" />
-                <video src="/assets/exhibition/reel-traditional-dance.mp4" class="frame-video-stream" loop muted playsinline preload="auto"></video>
-                <div class="frame-sheen-layer"></div>
-              </div>
-            </div>
-            <div class="film-card-caption">
-              <h3 class="film-name">Heritage Celebration</h3>
-              <span class="film-spec">Cultural Dance</span>
-            </div>
-          </article>
-
-          <!-- 04: Golden Peak -->
-          <article class="exhibition-film-card card-landscape">
-            <div class="film-frame-wrap photo-frame-modern">
-              <div class="frame-glass">
-                <img src="/assets/exhibition/reel-golden-peak-poster.jpg" alt="Golden Peak Summit" class="frame-photo-base" loading="lazy" />
-                <video src="/assets/exhibition/reel-golden-peak.mp4" class="frame-video-stream" loop muted playsinline preload="auto"></video>
-                <div class="frame-sheen-layer"></div>
-              </div>
-            </div>
-            <div class="film-card-caption">
-              <h3 class="film-name">Golden Peak Summit</h3>
-              <span class="film-spec">Alpenglow Light</span>
-            </div>
-          </article>
-
-          <!-- 05: Monk Ceremony -->
-          <article class="exhibition-film-card card-portrait">
-            <div class="film-frame-wrap photo-frame-modern">
-              <div class="frame-glass">
-                <img src="/assets/exhibition/reel-monk-ceremony-poster.jpg" alt="Monastery Chant" class="frame-photo-base" loading="lazy" />
-                <video src="/assets/exhibition/reel-monk-ceremony.mp4" class="frame-video-stream" loop muted playsinline preload="auto"></video>
-                <div class="frame-sheen-layer"></div>
-              </div>
-            </div>
-            <div class="film-card-caption">
-              <h3 class="film-name">Sacred Monastery</h3>
-              <span class="film-spec">Morning Chant</span>
-            </div>
-          </article>
-
-          <!-- 06: Annapurna Trail -->
-          <article class="exhibition-film-card card-landscape">
-            <div class="film-frame-wrap photo-frame-modern">
-              <div class="frame-glass">
-                <img src="/assets/exhibition/reel-annapurna-trail-poster.jpg" alt="Annapurna High Trail" class="frame-photo-base" loading="lazy" />
-                <video src="/assets/exhibition/reel-annapurna-trail.mp4" class="frame-video-stream" loop muted playsinline preload="auto"></video>
-                <div class="frame-sheen-layer"></div>
-              </div>
-            </div>
-            <div class="film-card-caption">
-              <h3 class="film-name">Annapurna High Trail</h3>
-              <span class="film-spec">Alpine Sanctuary</span>
-            </div>
-          </article>
-
-          <!-- 07: Pokhara Clouds -->
-          <article class="exhibition-film-card card-portrait">
-            <div class="film-frame-wrap photo-frame-modern">
-              <div class="frame-glass">
-                <img src="/assets/exhibition/pokhara-clouds-poster.jpg" alt="Pokhara Cloud Journey" class="frame-photo-base" loading="lazy" />
-                <video src="/assets/exhibition/pokhara-clouds.mp4" class="frame-video-stream" loop muted playsinline preload="auto"></video>
-                <div class="frame-sheen-layer"></div>
-              </div>
-            </div>
-            <div class="film-card-caption">
-              <h3 class="film-name">Pokhara Cloud Journey</h3>
-              <span class="film-spec">Valley Skies</span>
-            </div>
-          </article>
-
-          <!-- 08: Himalayan Dawn -->
-          <article class="exhibition-film-card card-landscape">
-            <div class="film-frame-wrap photo-frame-modern">
-              <div class="frame-glass">
-                <img src="/assets/exhibition/reel-himalayan-dawn-poster.jpg" alt="Himalayan Dawn" class="frame-photo-base" loading="lazy" />
-                <video src="/assets/exhibition/reel-himalayan-dawn.mp4" class="frame-video-stream" loop muted playsinline preload="auto"></video>
-                <div class="frame-sheen-layer"></div>
-              </div>
-            </div>
-            <div class="film-card-caption">
-              <h3 class="film-name">Himalayan Dawn</h3>
-              <span class="film-spec">First Light</span>
-            </div>
-          </article>
-
-          <!-- 09: Sacred Hilltop -->
-          <article class="exhibition-film-card card-portrait">
-            <div class="film-frame-wrap photo-frame-modern">
-              <div class="frame-glass">
-                <img src="/assets/exhibition/reel-sacred-hill-poster.jpg" alt="Sacred Hill Panorama" class="frame-photo-base" loading="lazy" />
-                <video src="/assets/exhibition/reel-sacred-hill.mp4" class="frame-video-stream" loop muted playsinline preload="auto"></video>
-                <div class="frame-sheen-layer"></div>
-              </div>
-            </div>
-            <div class="film-card-caption">
-              <h3 class="film-name">Sacred Hilltop</h3>
-              <span class="film-spec">Valley Overlook</span>
-            </div>
-          </article>
-
-          <!-- 10: Mountain Pass -->
-          <article class="exhibition-film-card card-landscape">
-            <div class="film-frame-wrap photo-frame-modern">
-              <div class="frame-glass">
-                <img src="/assets/exhibition/reel-mountain-pass-poster.jpg" alt="High Himalayan Pass" class="frame-photo-base" loading="lazy" />
-                <video src="/assets/exhibition/reel-mountain-pass.mp4" class="frame-video-stream" loop muted playsinline preload="auto"></video>
-                <div class="frame-sheen-layer"></div>
-              </div>
-            </div>
-            <div class="film-card-caption">
-              <h3 class="film-name">High Mountain Pass</h3>
-              <span class="film-spec">Ridge Crossing</span>
-            </div>
-          </article>
-
-          <!-- 11: Bhaktapur Square -->
-          <article class="exhibition-film-card card-portrait">
-            <div class="film-frame-wrap photo-frame-modern">
-              <div class="frame-glass">
-                <img src="/assets/exhibition/reel-bhaktapur-square-poster.jpg" alt="Bhaktapur Heritage" class="frame-photo-base" loading="lazy" />
-                <video src="/assets/exhibition/reel-bhaktapur-square.mp4" class="frame-video-stream" loop muted playsinline preload="auto"></video>
-                <div class="frame-sheen-layer"></div>
-              </div>
-            </div>
-            <div class="film-card-caption">
-              <h3 class="film-name">Bhaktapur Heritage</h3>
-              <span class="film-spec">Ancient Courtyard</span>
-            </div>
-          </article>
-
-          <!-- 12: Kathmandu Valley -->
-          <article class="exhibition-film-card card-landscape">
-            <div class="film-frame-wrap photo-frame-modern">
-              <div class="frame-glass">
-                <img src="/assets/exhibition/reel-kathmandu-valley-poster.jpg" alt="Kathmandu Valley Lights" class="frame-photo-base" loading="lazy" />
-                <video src="/assets/exhibition/reel-kathmandu-valley.mp4" class="frame-video-stream" loop muted playsinline preload="auto"></video>
-                <div class="frame-sheen-layer"></div>
-              </div>
-            </div>
-            <div class="film-card-caption">
-              <h3 class="film-name">Kathmandu Valley Twilight</h3>
-              <span class="film-spec">Evening Light</span>
-            </div>
-          </article>
-
+        </ul>
         </div>
-      </div>
-
-      <div class="reel-drag-indicator" aria-hidden="true">
-        <span>← SCROLL DOWN OR DRAG HORIZONTALLY →</span>
+        <button class="rail-arrow rail-prev" type="button" data-rail-prev aria-label="Rotate previous moment into view">&#8592;</button>
+        <button class="rail-arrow rail-next" type="button" data-rail-next aria-label="Rotate next moment into view">&#8594;</button>
       </div>
     </section>
 
@@ -462,6 +342,12 @@
               </div>
             </div>
           </div>
+
+          <div class="story-actions">
+            <a href="/admin.html" class="magnetic-btn btn-luxury-hollow shader-cta">
+              <span>Create Yours Today &#10230;</span>
+            </a>
+          </div>
         </div>
 
         <!-- Phone Mockup with Hover-Playing Edge-to-Edge Video -->
@@ -559,8 +445,16 @@
   <!-- ── Scripts ── -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+  <script src="/js/moments-rail.js"></script>
+  <script src="/js/shader-buttons.js"></script>
   <script src="/js/landing.js"></script>
 
 </body>
 </html>
+
+
+
+
+
+
 

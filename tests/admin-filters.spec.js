@@ -93,8 +93,8 @@ test.describe('filterProjects — scan usage axis', () => {
 
 test.describe('filterProjects — search + created range axes', () => {
   const items = [
-    p({ id: 'a', name: 'Wedding Frame', client: 'Sharma', notes: 'gold foil', created_at: new Date().toISOString() }),
-    p({ id: 'b', name: 'Menu Board', notes: 'VIP list inside', created_at: new Date().toISOString() }),
+    p({ id: 'a', name: 'Wedding Frame', client: 'Sharma', notes: 'gold foil', created_at: new Date().toISOString().slice(0, 10) + 'T06:00:00.000Z' }),
+    p({ id: 'b', name: 'Menu Board', notes: 'VIP list inside', created_at: new Date().toISOString().slice(0, 10) + 'T06:00:00.000Z' }),
     p({ id: 'c', name: 'Poster', created_at: iso(-90 * day) }),
   ];
 

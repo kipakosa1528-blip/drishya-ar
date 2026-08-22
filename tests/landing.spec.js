@@ -9,7 +9,7 @@ test.use({ baseURL: 'http://localhost:3000' });
 const SECTIONS = [
   '.cinematic-cover-hero',
   '.hero-story-section',
-  '.horizontal-exhibition-section',
+  '.moments-rail-section',
   '.asymmetric-gallery-section',
   '.optical-stage-section',
   '.manifesto-section',
@@ -67,6 +67,58 @@ test.describe('Kipakosa AR landing', () => {
     for (const selector of SECTIONS) {
       await expect(page.locator(selector)).toBeAttached();
     }
+    expect(consoleErrors, consoleErrors.join('\n')).toEqual([]);
+    await ctx.close();
+  });
+
+  test('living moments rail renders all cards, no footers, slogan live', async ({ page }) => {
+    await page.goto('/');
+
+    // All 12 moments present as footer-less framed cards
+    expect(await page.locator('#exhibition .moment-card').count()).toBe(12);
+    expect(await page.locator('#exhibition .film-card-caption').count()).toBe(0);
+    expect(await page.locator('#exhibition .film-name').count()).toBe(0);
+
+    // Rail initialized (front card marked) and arrows exist
+    await expect(page.locator('#exhibition .moment-card.is-front')).toHaveCount(1);
+    await expect(page.locator('[data-rail-prev]')).toBeVisible();
+    await expect(page.locator('[data-rail-next]')).toBeVisible();
+
+    // New tagline is live
+    await expect(page.locator('.cover-tagline')).toHaveText(/keeps coming back to life/);
+
+    // Old reel markup fully gone
+    expect(await page.locator('.horizontal-reel-canvas').count()).toBe(0);
+  });
+
+  test('shader CTAs render on hero + scanner sections', async ({ page }) => {
+    await page.goto('/');
+    const ctas = page.locator('.shader-cta');
+    await expect(ctas).toHaveCount(2);
+
+    // Each has a GLSL canvas or the CSS fallback class
+    const states = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.shader-cta')).map(b => ({
+        canvas: !!b.querySelector('.shader-cta-canvas'),
+        static: b.classList.contains('shader-static'),
+      }))
+    );
+    for (const s of states) {
+      expect(s.canvas || s.static).toBe(true);
+    }
+  });
+
+  test('rail falls back to static strip under reduced motion', async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    const consoleErrors = [];
+    page.on('pageerror', err => consoleErrors.push(err.message));
+
+    await page.goto('/');
+    const stage = page.locator('[data-moments-rail]');
+    await expect(stage).toHaveClass(/rail-static/, { timeout: 5000 });
+    // Cards remain visible in the snap row
+    await expect(page.locator('#exhibition .moment-card').first()).toBeVisible();
     expect(consoleErrors, consoleErrors.join('\n')).toEqual([]);
     await ctx.close();
   });

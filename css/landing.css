@@ -1259,3 +1259,191 @@ body.cursor-hovered .cursor-ring {
     gap: 28px;
   }
 }
+
+/* -----------------------------------------------------------------------------
+   LIVING MOMENTS FILMSTRIP RAIL  (replaces exhibition reel)
+   ----------------------------------------------------------------------------- */
+.moments-rail-section {
+  position: relative;
+  padding: 130px 0 150px;
+  background-color: #ece3d3;
+  overflow: hidden;
+}
+.moments-rail-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .5;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 140px 140px;
+  mix-blend-mode: multiply;
+  opacity: .06;
+}
+
+/* intro text flips to ink on the paper wall */
+.moments-rail-section .intro-index-num      { color: #8a7a5c; }
+.moments-rail-section .intro-editorial-heading { color: #171a20; }
+.moments-rail-section .intro-editorial-sub     { color: #6b6357; }
+
+.rail-stage {
+  position: relative;
+  margin-top: 64px;
+  outline: none;
+}
+.rail-stage:focus-visible { box-shadow: inset 0 0 0 2px rgba(201, 169, 110, .55); border-radius: 18px; }
+
+.rail-viewport {
+  perspective: 1400px;
+  height: clamp(380px, 52vw, 520px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+}
+.rail-viewport:active { cursor: grabbing; }
+
+.rail {
+  position: relative;
+  width: clamp(190px, 21vw, 240px);
+  height: calc(clamp(190px, 21vw, 240px) * 1.38);
+  transform-style: preserve-3d;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.moment-card {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+.moment-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #14161c;
+  border: 9px solid #1c202a;
+  border-radius: 6px;
+  box-shadow: 0 26px 48px rgba(31, 24, 10, .32);
+  overflow: hidden;
+  position: relative;
+  transition: border-color .45s ease, box-shadow .45s ease;
+}
+.moment-card.is-front .moment-frame {
+  border-color: #232733;
+  box-shadow:
+    0 34px 64px rgba(31, 24, 10, .42),
+    0 0 0 1px rgba(201, 169, 110, .55),
+    0 0 34px rgba(201, 169, 110, .22);
+}
+.moment-poster,
+.moment-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* arrows */
+.rail-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 6;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(23, 26, 32, .88);
+  color: #ece3d3;
+  border: 1px solid rgba(201, 169, 110, .5);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform .25s ease, border-color .25s ease, background .25s ease;
+}
+.rail-arrow:hover { transform: translateY(-50%) scale(1.08); border-color: #C9A96E; }
+.rail-prev { left: max(16px, calc((100% - 1280px) / 2)); }
+.rail-next { right: max(16px, calc((100% - 1280px) / 2)); }
+
+/* static fallback (reduced motion / init failure) */
+.rail-static .rail-viewport {
+  perspective: none;
+  display: block;
+  height: auto;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  padding: 26px max(20px, calc((100% - 1240px) / 2));
+  cursor: auto;
+}
+.rail-static .rail {
+  display: flex;
+  gap: 20px;
+  width: max-content;
+  height: auto;
+}
+.rail-static .moment-card {
+  position: relative;
+  inset: auto;
+  flex: 0 0 clamp(190px, 24vw, 250px);
+  aspect-ratio: 3 / 4.05;
+  height: auto;
+  scroll-snap-align: center;
+  transform: none !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+@media (max-width: 720px) {
+  .rail-arrow { display: none; }
+  .moments-rail-section { padding: 90px 0 100px; }
+}
+
+/* -- Shader CTA borders ------------------------------------------------------- */
+@property --cta-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+.shader-cta {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+}
+.shader-cta-canvas {
+  position: absolute;
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: screen;
+  opacity: .95;
+}
+.shader-cta > span { position: relative; z-index: 1; }
+.shader-cta.shader-static::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  z-index: -1;
+  background: conic-gradient(from var(--cta-angle),
+    transparent 0deg 30deg,
+    #C9A96E 80deg,
+    #f0b46a 120deg,
+    transparent 170deg 250deg,
+    #C9A96E 310deg,
+    transparent 355deg);
+  animation: cta-angle-spin 3.2s linear infinite;
+}
+@keyframes cta-angle-spin { to { --cta-angle: 360deg; } }
+@media (prefers-reduced-motion: reduce) {
+  .shader-cta.shader-static::after { animation: none; opacity: .55; }
+}
