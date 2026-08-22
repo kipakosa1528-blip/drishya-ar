@@ -18,8 +18,7 @@ export function isExpired(projOrExpiresAt, viewsCount = null, maxScans = null) {
   return false;
 }
 
-export function statusBadge(projOrExpiresAt, viewsCount = null, maxScans = null) {
-  let expDate = null;
+export function statusBadge(projOrExpiresAt, viewsCount = null, maxScans = null) {  let expDate = null;
   let views = 0;
   let limit = null;
 
@@ -43,6 +42,117 @@ export function statusBadge(projOrExpiresAt, viewsCount = null, maxScans = null)
     return `<span class="badge badge-green"><span class="badge-dot"></span>Active (${views}/${limit})</span>`;
   }
   return `<span class="badge badge-green"><span class="badge-dot"></span>Active</span>`;
+}
+
+// ── Projects filtering / sorting ─────────────────────────────────────────────
+// Pure, DOM-free helpers shared by projects.html — unit-tested in Node by
+// tests/admin-filters.spec.js.
+
+/** Expiration mode of a project, mirroring the create-wizard options. */
+export function expType(p) {
+  const hasDate = !!(p.expiresAt || p.expires_at);
+  const hasCap = !!(p.maxScans || p.max_scans);
+  if (hasDate && hasCap) return 'both';
+  if (hasDate) return 'time';
+  if (hasCap) return 'scans';
+  return 'permanent';
+}
+
+/** Whole days until dateStr (negative once past); null when unknown. */
+export function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const ms = new Date(dateStr).getTime() - Date.now();
+  if (isNaN(ms)) return null;
+  return Math.ceil(ms / 86400000);
+}
+
+/**
+ * Filter projects. Criteria (all optional):
+ *   status: 'all' | 'active' | 'expired' | 'soon'   ('soon' = unexpired, ≤7 days)
+ *   type:   'all' | 'permanent' | 'time' | 'scans' | 'both'
+ *   client: 'all' | exact client name
+ *   usage:  'all' | 'never' | 'has' | 'near'        ('near' = ≥80% of cap used)
+ *   search: free text matched against name + client + notes
+ *   from/to: 'YYYY-MM-DD' inclusive bounds on created_at
+ */
+export function filterProjects(list, c = {}) {
+  const q = String(c.search || '').trim().toLowerCase();
+  const from = c.from ? new Date(c.from + 'T00:00:00').getTime() : null;
+  const to = c.to ? new Date(c.to + 'T23:59:59.999').getTime() : null;
+
+  return (list || []).filter(p => {
+    // Status axis
+    if (c.status === 'active' && isExpired(p)) return false;
+    if (c.status === 'expired' && !isExpired(p)) return false;
+    if (c.status === 'soon') {
+      if (isExpired(p)) return false;
+      const d = daysUntil(p.expiresAt || p.expires_at);
+      if (d === null || d > 7) return false;
+    }
+    // Expiration type axis
+    if (c.type && c.type !== 'all' && expType(p) !== c.type) return false;
+    // Client axis
+    if (c.client && c.client !== 'all' && String(p.client || '') !== c.client) return false;
+    // Scan-usage axis
+    const views = Number(p.viewsCount || p.views_count || 0);
+    const cap = Number(p.maxScans || p.max_scans || 0);
+    if (c.usage === 'never' && views > 0) return false;
+    if (c.usage === 'has' && views <= 0) return false;
+    if (c.usage === 'near') {
+      // integer math avoids float drift on the 80% boundary
+      if (!cap || views * 100 < cap * 80) return false;
+    }
+    // Created range axis
+    const created = new Date(p.createdAt || p.created_at || 0).getTime();
+    if (from && created < from) return false;
+    if (to && created > to) return false;
+    // Search axis
+    if (q) {
+      const hay = `${p.name || ''} ${p.client || ''} ${p.notes || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+/**
+ * Sort a copy of the list. Modes:
+ *   newest | oldest | name_asc | scans_desc | scans_asc | expiring | recent_scan
+ * 'expiring': dated projects first, soonest first; permanent ones last.
+ * 'recent_scan': most recent lastScannedAt first; never-scanned last.
+ */
+export function sortProjects(list, mode = 'newest') {
+  const arr = (list || []).slice();
+  const createdMs = p => new Date(p.createdAt || p.created_at || 0).getTime();
+  const viewsOf = p => Number(p.viewsCount || p.views_count || 0);
+  switch (mode) {
+    case 'oldest':
+      return arr.sort((a, b) => createdMs(a) - createdMs(b));
+    case 'name_asc':
+      return arr.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    case 'scans_desc':
+      return arr.sort((a, b) => viewsOf(b) - viewsOf(a));
+    case 'scans_asc':
+      return arr.sort((a, b) => viewsOf(a) - viewsOf(b));
+    case 'expiring':
+      return arr.sort((a, b) => {
+        const da = daysUntil(a.expiresAt || a.expires_at);
+        const dbv = daysUntil(b.expiresAt || b.expires_at);
+        if (da === null && dbv === null) return 0;
+        if (da === null) return 1;
+        if (dbv === null) return -1;
+        return da - dbv;
+      });
+    case 'recent_scan': {
+      const lastScanMs = p => {
+        const ls = p.lastScannedAt || p.last_scanned_at;
+        return ls ? new Date(ls).getTime() : -1;
+      };
+      return arr.sort((a, b) => lastScanMs(b) - lastScanMs(a));
+    }
+    default: // newest
+      return arr.sort((a, b) => createdMs(b) - createdMs(a));
+  }
 }
 
 

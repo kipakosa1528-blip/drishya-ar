@@ -980,3 +980,27 @@ tr:hover td {
   }
 }
 
+
+/* -- Projects filter suite ---------------------------------------------------- */
+.filter-bar {
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
+.f-select,
+.filter-bar input[type="date"] {
+  width: auto;
+  min-width: 132px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.f-select:focus-visible,
+.filter-bar input[type="date"]:focus-visible {
+  outline: none;
+  border-color: var(--border-focus);
+}
+.filter-clear {
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+}

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Projects — Kipakosa AR</title>
-  <link rel="stylesheet" href="css/app.css?v=3" />
+  <link rel="stylesheet" href="css/app.css?v=4" />
   <script src="js/admin-boot.js?v=1"></script>
 </head>
 <body>
@@ -43,12 +43,41 @@
     </div>
 
     <div class="filter-bar">
-      <input class="form-control" type="text" id="search" placeholder="Search by name or client…" />
+      <input class="form-control" type="text" id="search" placeholder="Search name, client or notes…" />
       <div class="seg-ctrl">
         <button class="seg-btn active" data-f="all">All</button>
         <button class="seg-btn" data-f="active">Active</button>
         <button class="seg-btn" data-f="expired">Expired</button>
+        <button class="seg-btn" data-f="soon">Expiring</button>
       </div>
+      <select class="form-control f-select" id="f-type" title="Expiration type">
+        <option value="all">All types</option>
+        <option value="permanent">Permanent</option>
+        <option value="time">Time-based</option>
+        <option value="scans">Scan limit</option>
+        <option value="both">Date + scans</option>
+      </select>
+      <select class="form-control f-select" id="f-client" title="Filter by client">
+        <option value="all">All clients</option>
+      </select>
+      <select class="form-control f-select" id="f-usage" title="Scan usage">
+        <option value="all">Any usage</option>
+        <option value="never">Never scanned</option>
+        <option value="has">Has scans</option>
+        <option value="near">Near limit (80%+)</option>
+      </select>
+      <input type="date" class="form-control f-select" id="f-from" title="Created from" />
+      <input type="date" class="form-control f-select" id="f-to" title="Created to" />
+      <select class="form-control f-select" id="f-sort" title="Sort order">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="scans_desc">Most scans</option>
+        <option value="scans_asc">Fewest scans</option>
+        <option value="name_asc">Name A–Z</option>
+        <option value="expiring">Expiring soonest</option>
+        <option value="recent_scan">Recently scanned</option>
+      </select>
+      <button class="btn btn-sm btn-default filter-clear" id="f-reset" style="display:none">Clear ✕</button>
     </div>
 
     <div class="table-wrap">
@@ -85,17 +114,67 @@
 <script type="module">
   import { requireAuth, initNav } from './js/auth.js?v=4';
   import { getAllProjects, deleteProject } from './js/db.js?v=4';
-  import { fmt, isExpired, statusBadge, toast } from './js/utils.js?v=3';
+  import { fmt, statusBadge, toast, filterProjects, sortProjects } from './js/utils.js?v=4';
 
   requireAuth(); 
   initNav('projects');
 
+  const DEFAULTS = { search: '', status: 'all', type: 'all', client: 'all', usage: 'all', sort: 'newest', from: '', to: '' };
+  let state = { ...DEFAULTS };
   let all = [];
-  let filter = 'all';
-  let search = '';
+
+  // Restore filters from the URL (?q=&status=&type=&client=&usage=&from=&to=&sort=)
+  (function initState() {
+    const sp = new URLSearchParams(location.search);
+    if (sp.has('q')) state.search = sp.get('q');
+    for (const key of ['status', 'type', 'client', 'usage', 'sort', 'from', 'to']) {
+      const v = sp.get(key);
+      if (v) state[key] = v;
+    }
+    // Reflect into controls; fall back to defaults for unknown values
+    document.getElementById('search').value = state.search;
+    const segBtn = document.querySelector(`.seg-btn[data-f="${state.status}"]`);
+    if (segBtn) {
+      document.querySelectorAll('.seg-btn').forEach(x => x.classList.remove('active'));
+      segBtn.classList.add('active');
+    } else {
+      state.status = 'all';
+    }
+    for (const [id, key] of [['f-type', 'type'], ['f-usage', 'usage'], ['f-sort', 'sort']]) {
+      const el = document.getElementById(id);
+      if ([...el.options].some(o => o.value === state[key])) el.value = state[key];
+      else state[key] = DEFAULTS[key];
+    }
+    document.getElementById('f-from').value = state.from;
+    document.getElementById('f-to').value = state.to;
+  })();
+
+  function syncUrl() {
+    const sp = new URLSearchParams();
+    for (const key of Object.keys(DEFAULTS)) {
+      if (state[key] !== DEFAULTS[key]) sp.set(key === 'search' ? 'q' : key, state[key]);
+    }
+    const qs = sp.toString();
+    history.replaceState(null, '', location.pathname + (qs ? '?' + qs : ''));
+    const dirty = Object.keys(DEFAULTS).some(k => state[k] !== DEFAULTS[k]);
+    document.getElementById('f-reset').style.display = dirty ? '' : 'none';
+  }
+
+  function applyAndRender() { syncUrl(); renderTable(); }
+
+  function rebuildClientOptions() {
+    const sel = document.getElementById('f-client');
+    const clients = [...new Set(all.map(p => String(p.client || '').trim()).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b));
+    sel.innerHTML = '<option value="all">All clients</option>' +
+      clients.map(c => `<option value="${c.replace(/"/g, '&quot;')}">${c}</option>`).join('');
+    if ([...sel.options].some(o => o.value === state.client)) sel.value = state.client;
+    else state.client = 'all';
+  }
 
   function setProjectsList(list) {
-    all = (list || []).sort((a,b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at));
+    all = list || [];
+    rebuildClientOptions();
     renderTable();
   }
 
@@ -104,17 +183,29 @@
   });
   setProjectsList(initial);
 
-  document.getElementById('search').addEventListener('input', e => { search = e.target.value.toLowerCase(); renderTable(); });
+  document.getElementById('search').addEventListener('input', e => { state.search = e.target.value; applyAndRender(); });
   document.querySelectorAll('.seg-btn').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('.seg-btn').forEach(x => x.classList.remove('active'));
-    b.classList.add('active'); filter = b.dataset.f; renderTable();
+    b.classList.add('active'); state.status = b.dataset.f; applyAndRender();
   }));
+  for (const [id, key] of [['f-type', 'type'], ['f-client', 'client'], ['f-usage', 'usage'], ['f-sort', 'sort']]) {
+    document.getElementById(id).addEventListener('change', e => { state[key] = e.target.value; applyAndRender(); });
+  }
+  for (const [id, key] of [['f-from', 'from'], ['f-to', 'to']]) {
+    document.getElementById(id).addEventListener('change', e => { state[key] = e.target.value; applyAndRender(); });
+  }
+  document.getElementById('f-reset').addEventListener('click', () => {
+    state = { ...DEFAULTS };
+    document.getElementById('search').value = '';
+    document.querySelectorAll('.seg-btn').forEach(x => x.classList.toggle('active', x.dataset.f === 'all'));
+    for (const id of ['f-type', 'f-client', 'f-usage', 'f-sort']) document.getElementById(id).value = document.getElementById(id).options[0].value;
+    document.getElementById('f-from').value = '';
+    document.getElementById('f-to').value = '';
+    syncUrl(); renderTable();
+  });
 
   function renderTable() {
-    let data = all;
-    if (filter === 'active')  data = data.filter(p => !isExpired(p));
-    if (filter === 'expired') data = data.filter(p => isExpired(p));
-    if (search) data = data.filter(p => (p.name || '').toLowerCase().includes(search) || (p.client||'').toLowerCase().includes(search));
+    const data = sortProjects(filterProjects(all, state), state.sort);
 
     document.getElementById('count').textContent = `(${data.length})`;
     const body = document.getElementById('proj-body');
@@ -155,6 +246,8 @@
 
 </body>
 </html>
+
+
 
 
 
