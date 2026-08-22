@@ -7,7 +7,6 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 const SUPABASE_URL      = process.env.SUPABASE_URL;
 const SUPABASE_SECRET   = process.env.SUPABASE_SERVICE_KEY;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 // Email of the single admin account used for dashboard sign-in (Supabase Auth).
 export const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@kipakosa.app';
 
@@ -106,3 +105,4 @@ export async function prepareTarget(imageBuffer, projectId) {
     },
   };
 }
+

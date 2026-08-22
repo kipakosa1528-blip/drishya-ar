@@ -1,9 +1,15 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
+import { getAdminCreds } from './helpers.js';
 
 // This test runs the REAL MindAR compiler in a headed browser with WebGL
 // It verifies the full flow: upload real image → compile .mind → save → AR viewer loads
+//
+// Opt-in only (it hits live services and needs a visible browser):
+//   RUN_E2E_REAL=1 npm test -- e2e_real
+
+test.skip(process.env.RUN_E2E_REAL !== '1', 'Set RUN_E2E_REAL=1 to run the real-compile E2E');
 
 test.use({
   baseURL: 'http://localhost:3000',
@@ -21,9 +27,11 @@ test('Real E2E: compile real image, verify .mind file > 100KB on server', async 
   });
   page.on('pageerror', err => console.error('[PageError]', err.message));
 
-  // Login
-  await page.goto('/index.html');
-  await page.fill('#pw', 'admin');
+  // Login via the Supabase Auth admin page
+  const { email, password } = getAdminCreds();
+  await page.goto('/admin.html');
+  await page.fill('#email', email);
+  await page.fill('#pw', password);
   await page.click('#login-btn');
   await page.waitForURL('/dashboard.html');
 

@@ -155,7 +155,7 @@
       });
 
       // Tap toggle for touchscreens & mobile
-      target.addEventListener('click', (e) => {
+      target.addEventListener('click', () => {
         const isNowPlaying = !target.classList.contains('is-playing');
 
         // On mobile / touch screens, pause other playing cards
@@ -467,3 +467,4 @@
   });
 
 })();
+

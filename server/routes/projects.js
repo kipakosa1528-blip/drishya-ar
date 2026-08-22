@@ -5,7 +5,7 @@
 import express from 'express';
 import { PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import { supabase, getR2, R2_BUCKET, r2Url, prepareTarget } from '../lib/clients.js';
-import { makeRequireAuth } from '../lib/security.js';
+
 
 /**
  * Normalize a DB row for API consumers.
@@ -163,3 +163,4 @@ export function registerProjectsRoutes(app, { requireAuth }) {
     res.json({ success: true });
   });
 }
+

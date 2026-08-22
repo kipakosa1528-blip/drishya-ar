@@ -1,40 +1,36 @@
+// Public AR viewer (/ar?id=...) renders the 8th Wall experience for a
+// freshly seeded project: video element present, no expiry/limit overlays.
+
 import { test, expect } from '@playwright/test';
-import path from 'path';
-import fs from 'fs';
+import {
+  credsConfigured,
+  CREDS_SKIP_REASON,
+  createProjectViaApi,
+  deleteProjectViaApi,
+} from './helpers.js';
 
 test.use({ baseURL: 'http://localhost:3000', permissions: ['camera'] });
 
-// Seed project via API
-async function seedProject(request) {
-  const imgBase64 = 'data:image/jpeg;base64,' + fs.readFileSync(path.join(process.cwd(), 'tests', 'fixtures', 'test_target.png')).toString('base64');
-  const vidBase64 = 'data:video/mp4;base64,' + fs.readFileSync(path.join(process.cwd(), 'tests', 'fixtures', 'test_video.mp4')).toString('base64');
-  const mindBase64 = 'data:application/octet-stream;base64,' + Buffer.from([77,73,78,68,65,82]).toString('base64');
+test.describe('AR viewer', () => {
+  test.skip(!credsConfigured, CREDS_SKIP_REASON);
 
-  const id = 'artest-' + Date.now();
-  const expiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-
-  const res = await request.post('/api/projects', {
-    data: { id, name: 'AR Viewer Test', client: 'Test', expiresAt: expiry, imageBase64: imgBase64, videoBase64: vidBase64, mindBase64: mindBase64 },
-    headers: { 'Content-Type': 'application/json' }
+  test('viewer loads video for a live project', async ({ page, request }) => {
+    const seeded = await createProjectViaApi(request, { name: 'AR Viewer Test' });
+    try {
+      await page.goto(`/ar?id=${seeded.id}`);
+      // The server-rendered viewer must not show error states
+      await expect(page.locator('#ar-video')).toHaveCount(1);
+      const body = await page.locator('body').innerHTML();
+      expect(body).not.toContain('Experience Expired');
+      expect(body).not.toContain('Scan Limit Reached');
+    } finally {
+      await deleteProjectViaApi(request, seeded.id);
+    }
   });
-  expect(res.status()).toBe(201);
-  return (await res.json());
-}
 
-test('AR Viewer loads without expired overlay', async ({ page, request }) => {
-  const proj = await seedProject(request);
-  const arUrl = `http://localhost:3000/ar.html?id=${proj.id}`;
-  console.log('Generated AR Link:', arUrl);
-
-  await page.goto(arUrl);
-  await page.waitForTimeout(4000);
-
-  // expired/error overlay must NOT be visible
-  expect(await page.locator('#paused-message').isVisible()).toBe(false);
-  expect(await page.locator('#error').isVisible()).toBe(false);
-
-  // Video element must exist (even if camera not available in headless)
-  const videos = await page.locator('video').all();
-  console.log('Video elements count in AR page:', videos.length);
-  expect(videos.length).toBeGreaterThanOrEqual(1);
+  test('missing id returns 400 and unknown id returns 404', async ({ request }) => {
+    expect((await request.get('/ar')).status()).toBe(400);
+    expect((await request.get('/ar?id=does-not-exist-xyz')).status()).toBe(404);
+  });
 });
+

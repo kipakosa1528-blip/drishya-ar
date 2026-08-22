@@ -4,7 +4,6 @@ import { authHeaders } from './auth.js';
 
 const CACHE_KEY = 'kipakosa_projects_cache';
 const CACHE_TIME_KEY = 'kipakosa_cache_time';
-const CACHE_TTL_MS = 60000; // 60 seconds TTL for background revalidation
 
 // Read cached projects synchronously from localStorage (0ms instant render)
 export function getLocalProjects() {
@@ -126,4 +125,5 @@ export async function updateProject(id, updates) {
   setLocalProjects([fresh, ...current.filter(p => p.id !== id)]);
   return fresh;
 }
+
 

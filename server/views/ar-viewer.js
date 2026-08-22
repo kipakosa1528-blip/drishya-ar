@@ -34,10 +34,10 @@ export function renderArPage({ name, videoUrl, targetData, planeW, planeH, tW, t
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>${esc(name)} — Kipakosa AR</title>
-  <script crossorigin="anonymous" src="/external/8frame-1.5.0.min.js"><\/script>
+  <script crossorigin="anonymous" src="/external/8frame-1.5.0.min.js"></script>
 
-  <script src="/external/xr/xr.js" async crossorigin="anonymous" data-preload-chunks="slam"><\/script>
-  <script src="https://cdn.jsdelivr.net/npm/@8thwall/xrextras@1/dist/xrextras.js" crossorigin="anonymous"><\/script>
+  <script src="/external/xr/xr.js" async crossorigin="anonymous" data-preload-chunks="slam"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@8thwall/xrextras@1/dist/xrextras.js" crossorigin="anonymous"></script>
   <style>
     html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; touch-action:none; background:#000; }
     .a-enter-vr, .a-enter-vr-button { display:none !important; }
@@ -159,7 +159,7 @@ export function renderArPage({ name, videoUrl, targetData, planeW, planeH, tW, t
       XR8.XrController.configure({ imageTargetData: [targetData] });
     };
     window.XR8 ? onxrloaded() : window.addEventListener('xrloaded', onxrloaded);
-  <\/script>
+  </script>
 
   <a-scene xrextras-loading xrextras-runtime-error
     renderer="colorManagement:true"
@@ -243,7 +243,8 @@ export function renderArPage({ name, videoUrl, targetData, planeW, planeH, tW, t
 
     document.addEventListener('touchstart', unmuteUser, { passive: true });
     document.addEventListener('click', unmuteUser);
-  <\/script>
+  </script>
 </body>
 </html>`;
 }
+
