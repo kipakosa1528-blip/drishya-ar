@@ -115,4 +115,22 @@ test.describe('admin-boot', () => {
     const proj = await (await request.get('/project.html')).text();
     expect(proj).toContain("location.search).get('id')");
   });
+
+  test('every page ships the full favicon link set', async ({ request }) => {
+    for (const pagePath of ['/', '/landing', '/index.html', '/admin.html', '/create.html', '/dashboard.html', '/projects.html', '/project.html']) {
+      const res = await request.get(pagePath);
+      expect(res.status(), pagePath).toBe(200);
+      const html = await res.text();
+      expect(html, `${pagePath} svg icon`).toContain('/assets/logo.svg?v=1');
+      expect(html, `${pagePath} png icon`).toContain('/assets/favicon-32.png?v=1');
+      expect(html, `${pagePath} apple-touch`).toContain('/assets/apple-touch-icon.png?v=1');
+    }
+  });
+
+  test('root /favicon.ico serves the png fallback', async ({ request }) => {
+    const res = await request.get('/favicon.ico');
+    expect(res.status()).toBe(200);
+    expect(res.headers()['content-type']).toBe('image/png');
+    expect(res.headers()['cache-control']).toContain('max-age=86400');
+  });
 });

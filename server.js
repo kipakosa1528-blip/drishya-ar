@@ -72,6 +72,15 @@ app.get('/assets/logo.svg', (req, res) => {
   res.sendFile(logoPath);
 });
 
+// Root favicon fallback: browsers auto-request /favicon.ico when a page
+// declares no icon; serve the 32px PNG instead of 404ing (default globe).
+app.get('/favicon.ico', (req, res) => {
+  const iconPath = path.join(__dirname, 'assets', 'favicon-32.png');
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.sendFile(iconPath);
+});
+
 // ── API + AR viewer ───────────────────────────────────────────────────────────
 registerProjectsRoutes(app, { requireAuth });
 registerMiscRoutes(app, { requireAuth });

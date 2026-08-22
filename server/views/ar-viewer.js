@@ -1,4 +1,4 @@
-// Server-rendered 8th Wall AR viewer page.
+﻿// Server-rendered 8th Wall AR viewer page.
 // All user-derived values MUST be passed through esc()/jsonForScript() here.
 
 import { esc, jsonForScript } from '../lib/security.js';
@@ -33,7 +33,10 @@ export function renderArPage({ name, videoUrl, targetData, planeW, planeH, tW, t
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>${esc(name)} — Kipakosa AR</title>
+  <title>${esc(name)} â€” Kipakosa AR</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=1">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1">
   <script crossorigin="anonymous" src="/external/8frame-1.5.0.min.js"></script>
 
   <script src="/external/xr/xr.js" async crossorigin="anonymous" data-preload-chunks="slam"></script>
@@ -150,7 +153,7 @@ export function renderArPage({ name, videoUrl, targetData, planeW, planeH, tW, t
 
   <!-- Audio Tap Prompt -->
   <div id="audio-prompt">
-    <span>🔊</span> <span>Tap screen for sound</span>
+    <span>ðŸ”Š</span> <span>Tap screen for sound</span>
   </div>
 
   <script>
@@ -247,4 +250,6 @@ export function renderArPage({ name, videoUrl, targetData, planeW, planeH, tW, t
 </body>
 </html>`;
 }
+
+
 
