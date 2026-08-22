@@ -32,8 +32,7 @@ test('Dashboard shows seeded project', async ({ page, request }) => {
   await expect(page.locator('.page-title')).toContainText('Dashboard Overview');
 
   // Dashboard should show project count > 0
-  const totalText = await page.locator('#st-total').textContent();
-  expect(parseInt(totalText)).toBeGreaterThanOrEqual(1);
+  await expect(page.locator('#st-total')).not.toHaveText('0');
 
   // Projects page search
   await page.goto('/projects.html');

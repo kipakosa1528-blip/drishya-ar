@@ -4,7 +4,9 @@
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>New Project — Kipakosa AR</title>
   <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
   <script>
     window.imageFile = null;
     window.videoFile = null;
@@ -136,46 +138,181 @@
         </div>
       </div>
       <div style="margin-top:16px">
-        <button class="btn btn-primary" onclick="next(1)">Continue →</button>
+        <button class="btn btn-primary" id="btn-next-1" onclick="next(1)">Continue →</button>
       </div>
     </div>
 
     <!-- Step 2: Target Image -->
     <div class="step-body" id="sb-2">
-      <div class="panel" style="max-width:520px">
+      <div class="panel" style="max-width:580px">
         <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
-          Upload the printed photo or artwork customers will point their camera at.
+          Upload and frame the printed photo or artwork customers will point their camera at.
         </p>
+
+        <!-- Initial Upload Zone -->
         <div class="upload-zone" id="img-zone" onclick="document.getElementById('img-input').click()">
           <input type="file" id="img-input" accept="image/*" />
           <div class="upload-icon">🖼️</div>
           <div class="upload-label" id="img-label">Choose an image or drop it here</div>
           <div class="file-name" id="img-name"></div>
         </div>
-        <div id="img-preview-wrap" style="display:none;margin-top:14px;text-align:center">
-          <img id="img-preview" style="max-height:180px;max-width:100%;border-radius:4px;border:1px solid var(--border)" />
+
+        <!-- Interactive Cropper Studio -->
+        <div id="crop-studio-wrap" class="crop-studio" style="display:none">
+          <div class="crop-toolbar">
+            <div class="ratio-pills">
+              <span class="ratio-pill active" data-ratio="2/3" onclick="setCropRatio(2/3, this)">4:6 (2:3)</span>
+              <span class="ratio-pill" data-ratio="3/2" onclick="setCropRatio(3/2, this)">6:4 (3:2)</span>
+              <span class="ratio-pill" data-ratio="1/1.4142" onclick="setCropRatio(1/1.4142, this)">A4 / A3 / A5 (Portrait)</span>
+              <span class="ratio-pill" data-ratio="1.4142" onclick="setCropRatio(1.4142, this)">A4 / A3 / A5 (Landscape)</span>
+              <span class="ratio-pill" data-ratio="5/7" onclick="setCropRatio(5/7, this)">5:7</span>
+              <span class="ratio-pill" data-ratio="4/5" onclick="setCropRatio(4/5, this)">8:10 (4:5)</span>
+              <span class="ratio-pill" data-ratio="1" onclick="setCropRatio(1, this)">1:1</span>
+              <span class="ratio-pill" data-ratio="9/16" onclick="setCropRatio(9/16, this)">9:16 Reel</span>
+              <span class="ratio-pill" data-ratio="16/9" onclick="setCropRatio(16/9, this)">16:9 HD</span>
+              <span class="ratio-pill" data-ratio="NaN" onclick="setCropRatio(NaN, this)">Free</span>
+              <span class="ratio-pill" id="pill-match-vid" style="display:none" onclick="matchVideoRatio(this)">🎬 Match Video</span>
+            </div>
+            <div style="display:flex;gap:4px">
+              <button type="button" class="btn btn-sm btn-default" onclick="rotateCrop(-90)" title="Rotate Left">↺</button>
+              <button type="button" class="btn btn-sm btn-default" onclick="rotateCrop(90)" title="Rotate Right">↻</button>
+              <button type="button" class="btn btn-sm btn-default" onclick="resetCrop()" title="Reset">Reset</button>
+            </div>
+          </div>
+
+          <div class="crop-viewport">
+            <img id="cropper-target-img" src="" alt="Target for cropping" />
+          </div>
+
+          <div class="crop-footer">
+            <button type="button" class="btn btn-sm btn-default" onclick="document.getElementById('img-input').click()">Change Photo</button>
+            <button type="button" class="btn btn-sm btn-primary" id="btn-apply-crop" onclick="applyCrop()">✓ Confirm Crop</button>
+          </div>
+        </div>
+
+        <!-- Confirmed Cropped Preview Card -->
+        <div id="img-preview-wrap" style="display:none;margin-top:14px">
+          <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;gap:14px;align-items:center">
+            <img id="img-preview" style="max-height:100px;max-width:100px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" />
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px">
+                <span>✓ Target Framed</span>
+                <span class="badge" id="crop-meta-badge" style="font-size:11px">2:3 Portrait</span>
+              </div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px" id="crop-dims-text">1200 × 1800 px</div>
+              <button type="button" class="btn btn-sm btn-default" style="margin-top:8px;font-size:12px;padding:3px 8px" onclick="reopenCropper()">✏️ Re-frame / Crop</button>
+            </div>
+          </div>
         </div>
       </div>
       <div style="margin-top:16px;display:flex;gap:8px">
         <button class="btn btn-default" onclick="prev(2)">← Back</button>
-        <button class="btn btn-primary" id="btn-next-2" onclick="next(2)">Continue →</button>
+        <button class="btn btn-primary" id="btn-next-2" onclick="next(2)">Continue to Video →</button>
       </div>
     </div>
 
     <!-- Step 3: Video -->
     <div class="step-body" id="sb-3">
-      <div class="panel" style="max-width:520px">
+      <div class="panel" style="max-width:560px">
         <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
           Upload the video that plays overlaid on the photo in AR.
         </p>
+
+        <!-- Video Upload Zone -->
         <div class="upload-zone" id="vid-zone" onclick="document.getElementById('vid-input').click()">
           <input type="file" id="vid-input" accept="video/*" />
           <div class="upload-icon">🎬</div>
           <div class="upload-label" id="vid-label">Choose a video or drop it here</div>
           <div class="file-name" id="vid-name"></div>
         </div>
-        <div id="vid-preview-wrap" style="display:none;margin-top:14px;text-align:center">
-          <video id="vid-preview" controls style="max-height:180px;max-width:100%;border-radius:4px;border:1px solid var(--border)"></video>
+
+        <!-- Interactive Video Framing Studio -->
+        <div id="vid-studio-wrap" class="crop-studio" style="display:none;margin-top:14px">
+          <div class="crop-toolbar">
+            <div class="ratio-pills">
+              <span class="ratio-pill active" data-vratio="target" onclick="setVideoRatio('target', this)">🎯 Match Target Photo</span>
+              <span class="ratio-pill" data-vratio="1/1.4142" onclick="setVideoRatio(1/1.4142, this)">A4 / A3 (Portrait)</span>
+              <span class="ratio-pill" data-vratio="1.4142" onclick="setVideoRatio(1.4142, this)">A4 / A3 (Landscape)</span>
+              <span class="ratio-pill" data-vratio="2/3" onclick="setVideoRatio(2/3, this)">4:6 (2:3)</span>
+              <span class="ratio-pill" data-vratio="3/2" onclick="setVideoRatio(3/2, this)">6:4 (3:2)</span>
+              <span class="ratio-pill" data-vratio="5/7" onclick="setVideoRatio(5/7, this)">5:7</span>
+              <span class="ratio-pill" data-vratio="4/5" onclick="setVideoRatio(4/5, this)">8:10 (4:5)</span>
+              <span class="ratio-pill" data-vratio="1" onclick="setVideoRatio(1, this)">1:1</span>
+              <span class="ratio-pill" data-vratio="9/16" onclick="setVideoRatio(9/16, this)">9:16 Reel</span>
+              <span class="ratio-pill" data-vratio="16/9" onclick="setVideoRatio(16/9, this)">16:9 HD</span>
+              <span class="ratio-pill" data-vratio="original" onclick="setVideoRatio('original', this)">Original Video</span>
+            </div>
+            <div style="display:flex;gap:4px">
+              <button type="button" class="btn btn-sm btn-default" onclick="adjustVidZoom(0.1)" title="Zoom In">🔍+</button>
+              <button type="button" class="btn btn-sm btn-default" onclick="adjustVidZoom(-0.1)" title="Zoom Out">🔍-</button>
+              <button type="button" class="btn btn-sm btn-default" onclick="resetVidFraming()" title="Reset Framing">Reset</button>
+            </div>
+          </div>
+
+          <!-- Video Framing Viewport (Direct Drag & Wheel Zoom) -->
+          <div class="crop-viewport" style="background:#020408;padding:16px;min-height:340px;user-select:none;display:flex;align-items:center;justify-content:center;overflow:hidden">
+            <div id="vid-frame-box" style="position:relative;overflow:hidden;border:2px solid var(--accent);border-radius:8px;box-shadow:0 0 25px rgba(59,130,246,0.35);cursor:grab;touch-action:none">
+              <video id="vid-frame-player" loop playsinline muted autoplay style="position:absolute;pointer-events:none;display:block"></video>
+              
+              <!-- Rule of Thirds Alignment Grid -->
+              <div style="position:absolute;inset:0;border:1px dashed rgba(255,255,255,0.35);pointer-events:none;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr">
+                <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+                <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+                <div style="border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+                <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+                <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+                <div style="border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+                <div style="border-right:1px solid rgba(255,255,255,0.15)"></div>
+                <div style="border-right:1px solid rgba(255,255,255,0.15)"></div>
+                <div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Framing Micro-Adjustment Sliders -->
+          <div style="padding:10px 14px;background:rgba(255,255,255,0.03);border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:12px;color:var(--muted)">
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:160px">
+              <span>🔍 Zoom:</span>
+              <input type="range" id="vid-zoom-slider" min="1" max="3" step="0.02" value="1" oninput="setVidZoom(this.value)" style="flex:1;accent-color:var(--accent)" />
+              <span id="vid-zoom-text" style="min-width:32px">1.0x</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:160px">
+              <span>↔ Pan X:</span>
+              <input type="range" id="vid-panx-slider" min="-100" max="100" step="1" value="0" oninput="setVidPanX(this.value)" style="flex:1;accent-color:var(--accent)" />
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:160px">
+              <span>↕ Pan Y:</span>
+              <input type="range" id="vid-pany-slider" min="-100" max="100" step="1" value="0" oninput="setVidPanY(this.value)" style="flex:1;accent-color:var(--accent)" />
+            </div>
+          </div>
+
+          <div class="crop-footer">
+            <div style="font-size:12px;color:var(--muted)" id="vid-frame-status">Drag video to pan • Scroll to zoom</div>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="btn btn-sm btn-default" onclick="document.getElementById('vid-input').click()">Change Video</button>
+              <button type="button" class="btn btn-sm btn-primary" onclick="confirmVideoFraming()">✓ Confirm Video Framing</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Confirmed Video Preview Card -->
+        <div id="vid-preview-wrap" style="display:none;margin-top:14px">
+          <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;gap:14px;align-items:center">
+            <div id="vid-confirmed-thumb" style="width:90px;height:120px;border-radius:6px;overflow:hidden;border:1px solid var(--border);position:relative;background:#000">
+              <video id="vid-preview-player" loop playsinline muted autoplay style="width:100%;height:100%;object-fit:cover"></video>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px">
+                <span>✓ Video Framed</span>
+                <span class="badge" id="vid-meta-badge" style="font-size:11px">A4/A3 Portrait</span>
+              </div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px" id="vid-dims-text">1920 × 1080 px</div>
+              <div style="margin-top:10px;display:flex;gap:6px">
+                <button type="button" class="btn btn-sm btn-default" style="font-size:12px;padding:3px 8px" onclick="reopenVideoStudio()">✏️ Re-frame / Pan</button>
+                <button type="button" class="btn btn-sm btn-default" style="font-size:12px;padding:3px 8px" onclick="document.getElementById('vid-input').click()">🎬 Change Video</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div style="margin-top:16px;display:flex;gap:8px">
@@ -302,7 +439,10 @@
           <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
             <div>
               <div class="qr-box" id="qr-out"></div>
-              <button class="btn btn-sm btn-default" style="margin-top:8px;width:100%" id="dl-qr">Download QR</button>
+              <div style="display:flex;gap:6px;margin-top:8px">
+                <button class="btn btn-sm btn-default" id="dl-qr">PNG (300DPI)</button>
+                <button class="btn btn-sm btn-default" id="dl-qr-svg">SVG (Vector)</button>
+              </div>
             </div>
             <div style="flex:1;min-width:200px">
               <div style="font-size:12px;color:var(--muted);margin-bottom:6px">AR Link</div>
@@ -345,20 +485,383 @@
     hasR2 = cfg.hasR2;
   }
 
+  let cropper = null;
+  let rawImageFile = null;
+  let rawImageSrc = '';
+  let currentCropRatio = 2/3;
+  let targetWidth = 1200;
+  let targetHeight = 1800;
+
+  function getRatioLabel(w, h) {
+    const r = w / h;
+    if (Math.abs(r - 2/3) < 0.05) return '4:6 Portrait (2:3)';
+    if (Math.abs(r - 3/2) < 0.05) return '6:4 Landscape (3:2)';
+    if (Math.abs(r - 1/1.4142) < 0.04) return 'A4 / A3 / A2 / A1 / A5 Portrait';
+    if (Math.abs(r - 1.4142) < 0.04) return 'A4 / A3 / A2 / A1 / A5 Landscape';
+    if (Math.abs(r - 5/7) < 0.05) return '5:7 Portrait';
+    if (Math.abs(r - 7/5) < 0.05) return '7:5 Landscape';
+    if (Math.abs(r - 4/5) < 0.05) return '8:10 Portrait (4:5)';
+    if (Math.abs(r - 5/4) < 0.05) return '10:8 Landscape (5:4)';
+    if (Math.abs(r - 1) < 0.05) return '1:1 Square';
+    if (Math.abs(r - 9/16) < 0.05) return '9:16 Story / Reel';
+    if (Math.abs(r - 16/9) < 0.05) return '16:9 Landscape HD';
+    return `${w} : ${h} Custom`;
+  }
+
+  function openCropperStudio(src) {
+    document.getElementById('img-zone').style.display = 'none';
+    document.getElementById('img-preview-wrap').style.display = 'none';
+    const studio = document.getElementById('crop-studio-wrap');
+    studio.style.display = 'block';
+
+    const targetImg = document.getElementById('cropper-target-img');
+    targetImg.src = src;
+
+    if (cropper) {
+      cropper.destroy();
+      cropper = null;
+    }
+
+    targetImg.onload = () => {
+      const CropperLib = window.Cropper || Cropper;
+      if (!CropperLib) {
+        toast('Cropper library loading...', 'info');
+        return;
+      }
+      cropper = new CropperLib(targetImg, {
+        aspectRatio: currentCropRatio,
+        viewMode: 1,
+        autoCropArea: 0.95,
+        responsive: true,
+        guides: true,
+        center: true,
+        highlight: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        toggleDragModeOnDblclick: false
+      });
+    };
+  }
+
+  window.setCropRatio = function(ratio, el) {
+    currentCropRatio = ratio;
+    document.querySelectorAll('.ratio-pill').forEach(p => p.classList.remove('active'));
+    if (el) el.classList.add('active');
+    if (cropper) cropper.setAspectRatio(ratio);
+  };
+
+  window.rotateCrop = function(deg) {
+    if (cropper) cropper.rotate(deg);
+  };
+
+  window.resetCrop = function() {
+    if (cropper) cropper.reset();
+  };
+
+  window.reopenCropper = function() {
+    if (rawImageSrc) {
+      openCropperStudio(rawImageSrc);
+    } else {
+      document.getElementById('img-input').click();
+    }
+  };
+
+  window.applyCrop = function() {
+    if (!cropper) return;
+    const canvas = cropper.getCroppedCanvas({
+      maxWidth: 2400,
+      maxHeight: 2400,
+      imageSmoothingEnabled: true,
+      imageSmoothingQuality: 'high'
+    });
+
+    targetWidth = canvas.width;
+    targetHeight = canvas.height;
+
+    canvas.toBlob((blob) => {
+      if (!blob) { toast('Error cropping image', 'err'); return; }
+      const fileName = rawImageFile ? rawImageFile.name.replace(/\.[^/.]+$/, ".jpg") : "target-framed.jpg";
+      window.imageFile = new File([blob], fileName, { type: "image/jpeg" });
+
+      const croppedUrl = URL.createObjectURL(blob);
+      document.getElementById('img-preview').src = croppedUrl;
+      document.getElementById('crop-dims-text').textContent = `${targetWidth} × ${targetHeight} px`;
+      document.getElementById('crop-meta-badge').textContent = getRatioLabel(targetWidth, targetHeight);
+
+      document.getElementById('crop-studio-wrap').style.display = 'none';
+      document.getElementById('img-preview-wrap').style.display = 'block';
+      toast('Target image cropped & framed successfully!', 'success');
+    }, 'image/jpeg', 0.94);
+  };
+
+  let vidRawSrc = '';
+  let vidSelectedRatio = 'target';
+  let vidZoom = 1.0;
+  let vidPanX = 0; // -100 to 100
+  let vidPanY = 0; // -100 to 100
+  let vidIsDragging = false;
+  let vidDragStartX = 0;
+  let vidDragStartY = 0;
+  let vidStartPanX = 0;
+  let vidStartPanY = 0;
+
+  function openVideoStudio(src) {
+    vidRawSrc = src;
+    document.getElementById('vid-zone').style.display = 'none';
+    document.getElementById('vid-preview-wrap').style.display = 'none';
+    const studio = document.getElementById('vid-studio-wrap');
+    studio.style.display = 'block';
+
+    const player = document.getElementById('vid-frame-player');
+    player.src = src;
+    player.load();
+    player.play().catch(() => {});
+
+    player.onloadedmetadata = () => {
+      resetVidFraming();
+      updateVidFrameBox();
+      initVidInteractions();
+    };
+  }
+
+  window.setVideoRatio = function(ratio, el) {
+    vidSelectedRatio = ratio;
+    document.querySelectorAll('#vid-studio-wrap [data-vratio]').forEach(p => p.classList.remove('active'));
+    if (el) el.classList.add('active');
+    updateVidFrameBox();
+  };
+
+  function updateVidFrameBox() {
+    const player = document.getElementById('vid-frame-player');
+    const box = document.getElementById('vid-frame-box');
+    const status = document.getElementById('vid-frame-status');
+    if (!player || !player.videoWidth || !box) return;
+
+    let targetR;
+    if (vidSelectedRatio === 'target') {
+      targetR = targetWidth / targetHeight;
+      status.textContent = `Framed to Target Photo (${getRatioLabel(targetWidth, targetHeight)}) • Drag to pan`;
+    } else if (vidSelectedRatio === 'original') {
+      targetR = player.videoWidth / player.videoHeight;
+      status.textContent = `Original Video Aspect Ratio (${getRatioLabel(player.videoWidth, player.videoHeight)}) • Drag to pan`;
+    } else {
+      targetR = Number(vidSelectedRatio);
+      status.textContent = `Framed to Selected Aspect Ratio • Drag to pan`;
+    }
+
+    const maxH = 320;
+    const maxW = 460;
+    let boxW, boxH;
+
+    if (targetR >= 1) {
+      boxW = Math.min(maxW, Math.round(maxH * targetR));
+      boxH = Math.round(boxW / targetR);
+    } else {
+      boxH = Math.min(maxH, Math.round(maxW / targetR));
+      boxW = Math.round(boxH * targetR);
+    }
+
+    box.style.width = `${boxW}px`;
+    box.style.height = `${boxH}px`;
+
+    renderVidPlayerTransform();
+  }
+
+  function renderVidPlayerTransform() {
+    const player = document.getElementById('vid-frame-player');
+    const box = document.getElementById('vid-frame-box');
+    if (!player || !player.videoWidth || !box) return;
+
+    const boxW = box.offsetWidth || parseInt(box.style.width, 10);
+    const boxH = box.offsetHeight || parseInt(box.style.height, 10);
+    if (!boxW || !boxH) return;
+
+    const vAspect = player.videoWidth / player.videoHeight;
+    const boxAspect = boxW / boxH;
+
+    let baseW, baseH;
+    if (vAspect >= boxAspect) {
+      baseH = boxH;
+      baseW = baseH * vAspect;
+    } else {
+      baseW = boxW;
+      baseH = baseW / vAspect;
+    }
+
+    const scaledW = baseW * vidZoom;
+    const scaledH = baseH * vidZoom;
+
+    const maxShiftX = Math.max(0, (scaledW - boxW) / 2);
+    const maxShiftY = Math.max(0, (scaledH - boxH) / 2);
+
+    const shiftX = (vidPanX / 100) * maxShiftX;
+    const shiftY = (vidPanY / 100) * maxShiftY;
+
+    const left = (boxW - scaledW) / 2 + shiftX;
+    const top = (boxH - scaledH) / 2 + shiftY;
+
+    player.style.width = `${scaledW}px`;
+    player.style.height = `${scaledH}px`;
+    player.style.left = `${left}px`;
+    player.style.top = `${top}px`;
+  }
+
+  window.setVidZoom = function(val) {
+    vidZoom = Number(val);
+    const zT = document.getElementById('vid-zoom-text');
+    if (zT) zT.textContent = `${vidZoom.toFixed(1)}x`;
+    renderVidPlayerTransform();
+  };
+
+  window.adjustVidZoom = function(delta) {
+    vidZoom = Math.min(3.0, Math.max(1.0, vidZoom + delta));
+    const slider = document.getElementById('vid-zoom-slider');
+    if (slider) slider.value = vidZoom;
+    window.setVidZoom(vidZoom);
+  };
+
+  window.setVidPanX = function(val) {
+    vidPanX = Number(val);
+    renderVidPlayerTransform();
+  };
+
+  window.setVidPanY = function(val) {
+    vidPanY = Number(val);
+    renderVidPlayerTransform();
+  };
+
+  window.resetVidFraming = function() {
+    vidZoom = 1.0;
+    vidPanX = 0;
+    vidPanY = 0;
+    const zS = document.getElementById('vid-zoom-slider'); if (zS) zS.value = 1;
+    const xS = document.getElementById('vid-panx-slider'); if (xS) xS.value = 0;
+    const yS = document.getElementById('vid-pany-slider'); if (yS) yS.value = 0;
+    const zT = document.getElementById('vid-zoom-text'); if (zT) zT.textContent = '1.0x';
+    renderVidPlayerTransform();
+  };
+
+  function initVidInteractions() {
+    const box = document.getElementById('vid-frame-box');
+    if (!box || box._vidInit) return;
+    box._vidInit = true;
+
+    box.addEventListener('mousedown', (e) => {
+      vidIsDragging = true;
+      vidDragStartX = e.clientX;
+      vidDragStartY = e.clientY;
+      vidStartPanX = vidPanX;
+      vidStartPanY = vidPanY;
+      box.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!vidIsDragging) return;
+      const dx = e.clientX - vidDragStartX;
+      const dy = e.clientY - vidDragStartY;
+      vidPanX = Math.min(100, Math.max(-100, vidStartPanX + (dx * 0.8)));
+      vidPanY = Math.min(100, Math.max(-100, vidStartPanY + (dy * 0.8)));
+      const xS = document.getElementById('vid-panx-slider'); if (xS) xS.value = vidPanX;
+      const yS = document.getElementById('vid-pany-slider'); if (yS) yS.value = vidPanY;
+      renderVidPlayerTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (vidIsDragging) {
+        vidIsDragging = false;
+        if (box) box.style.cursor = 'grab';
+      }
+    });
+
+    box.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        vidIsDragging = true;
+        vidDragStartX = e.touches[0].clientX;
+        vidDragStartY = e.touches[0].clientY;
+        vidStartPanX = vidPanX;
+        vidStartPanY = vidPanY;
+      }
+    }, { passive: true });
+
+    box.addEventListener('touchmove', (e) => {
+      if (!vidIsDragging || e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - vidDragStartX;
+      const dy = e.touches[0].clientY - vidDragStartY;
+      vidPanX = Math.min(100, Math.max(-100, vidStartPanX + (dx * 0.8)));
+      vidPanY = Math.min(100, Math.max(-100, vidStartPanY + (dy * 0.8)));
+      const xS = document.getElementById('vid-panx-slider'); if (xS) xS.value = vidPanX;
+      const yS = document.getElementById('vid-pany-slider'); if (yS) yS.value = vidPanY;
+      renderVidPlayerTransform();
+    }, { passive: true });
+
+    box.addEventListener('touchend', () => { vidIsDragging = false; });
+
+    box.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.08 : -0.08;
+      adjustVidZoom(delta);
+    }, { passive: false });
+  }
+
+  window.confirmVideoFraming = function() {
+    const player = document.getElementById('vid-frame-player');
+    const preview = document.getElementById('vid-preview-player');
+    if (player && preview) {
+      preview.src = player.src;
+      preview.load();
+      preview.play().catch(() => {});
+    }
+
+    const tAspect = targetWidth / targetHeight;
+    const vAspect = player.videoWidth / player.videoHeight;
+    const diff = Math.abs(vAspect - tAspect) / tAspect;
+
+    const badge = document.getElementById('vid-meta-badge');
+    if (badge) {
+      if (vidSelectedRatio === 'target' || diff <= 0.04) {
+        badge.textContent = `✓ 1:1 Framed (${getRatioLabel(targetWidth, targetHeight)})`;
+        badge.style.background = 'rgba(16,185,129,0.2)';
+        badge.style.color = '#10b981';
+      } else {
+        badge.textContent = `Custom Framed (${getRatioLabel(player.videoWidth, player.videoHeight)})`;
+        badge.style.background = 'rgba(59,130,246,0.2)';
+        badge.style.color = '#60a5fa';
+      }
+    }
+
+    document.getElementById('vid-dims-text').textContent = `${player.videoWidth} × ${player.videoHeight} px • Zoom ${vidZoom.toFixed(1)}x`;
+
+    document.getElementById('vid-studio-wrap').style.display = 'none';
+    document.getElementById('vid-preview-wrap').style.display = 'block';
+    toast('Video framed and ready for AR!', 'success');
+  };
+
+  window.reopenVideoStudio = function() {
+    if (vidRawSrc) {
+      openVideoStudio(vidRawSrc);
+    } else {
+      document.getElementById('vid-input').click();
+    }
+  };
+
   setupFile('img-input', 'img-zone', 'img-label', 'img-name', (f) => {
     if (f.size > 25 * 1024 * 1024) {
       toast(`Image too large (${(f.size/1024/1024).toFixed(0)}MB). Max is 25MB.`, 'err');
       return;
     }
-    window.imageFile = f;
-    document.getElementById('img-preview').src = URL.createObjectURL(f);
-    document.getElementById('img-preview-wrap').style.display = '';
+    rawImageFile = f;
+    rawImageSrc = URL.createObjectURL(f);
+    openCropperStudio(rawImageSrc);
   });
 
   setupFile('vid-input', 'vid-zone', 'vid-label', 'vid-name', (f) => {
+    if (f.size > 100 * 1024 * 1024) {
+      toast(`Video too large (${(f.size/1024/1024).toFixed(0)}MB). Max is 100MB.`, 'err');
+      return;
+    }
     window.videoFile = f;
-    document.getElementById('vid-preview').src = URL.createObjectURL(f);
-    document.getElementById('vid-preview-wrap').style.display = '';
+    const vUrl = URL.createObjectURL(f);
+    openVideoStudio(vUrl);
   });
 
   function setupFile(inputId, zoneId, labelId, nameId, onFile) {
@@ -520,8 +1023,9 @@
       document.getElementById('ar-link-val').value = url;
       document.getElementById('open-ar').href = url;
       generateQR(url, document.getElementById('qr-out'), 160);
-      document.getElementById('dl-qr').onclick   = () => downloadQR(url, `qr-${id}`);
-      document.getElementById('copy-btn').onclick = () => copyText(url);
+      document.getElementById('dl-qr').onclick     = () => downloadQR(url, `qr-${id}`, 'png');
+      document.getElementById('dl-qr-svg').onclick = () => downloadQR(url, `qr-${id}`, 'svg');
+      document.getElementById('copy-btn').onclick  = () => copyText(url);
 
       toast('Project created successfully!', 'success');
 

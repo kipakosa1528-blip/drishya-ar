@@ -42,25 +42,25 @@ function r2Url(key) {
   return `${R2_PUBLIC_URL}/${key}`;
 }
 
-// Prepare 8th Wall target from image buffer and upload luminance to R2
+// Prepare 8th Wall target from cropped image buffer and upload luminance to R2
 async function prepareTarget(imageBuffer, projectId) {
   const meta = await sharp(imageBuffer).metadata();
-  const W = meta.width, H = meta.height;
-  const targetAspect = LUM_W / LUM_H; // 0.75
-  const srcAspect = W / H;
+  const W = meta.width || 640;
+  const H = meta.height || 640;
+  const aspect = W / H;
 
-  let left, top, cw, ch;
-  if (srcAspect >= targetAspect) {
-    cw = Math.round(H * targetAspect); ch = H;
-    left = Math.floor((W - cw) / 2);  top = 0;
+  // Scale luminance map preserving exact aspect ratio without cropping
+  let lumW, lumH;
+  if (W >= H) {
+    lumW = 640;
+    lumH = Math.max(1, Math.round(640 / aspect));
   } else {
-    cw = W; ch = Math.round(W / targetAspect);
-    left = 0; top = Math.floor((H - ch) / 2);
+    lumH = 640;
+    lumW = Math.max(1, Math.round(640 * aspect));
   }
 
   const lumBuffer = await sharp(imageBuffer)
-    .extract({ left, top, width: cw, height: ch })
-    .resize(LUM_W, LUM_H)
+    .resize(lumW, lumH, { fit: 'fill' })
     .grayscale()
     .jpeg({ quality: 90 })
     .toBuffer();
@@ -79,8 +79,19 @@ async function prepareTarget(imageBuffer, projectId) {
     name: 'target0',
     type: 'PLANAR',
     imagePath: r2Url(lumKey),
-    metadata: {},
-    properties: { left, top, width: cw, height: ch, originalWidth: W, originalHeight: H, isRotated: false }
+    metadata: {
+      width: W,
+      height: H
+    },
+    properties: {
+      left: 0,
+      top: 0,
+      width: W,
+      height: H,
+      originalWidth: W,
+      originalHeight: H,
+      isRotated: false
+    }
   };
 
   return targetData;
@@ -93,12 +104,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.use(express.json({ limit: '150mb' }));
-app.use(express.static(__dirname));
 
-// Route root / to index.html
+// Route root / to landing.html
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'landing.html'));
 });
+
+// Route /landing to landing.html
+app.get('/landing', (req, res) => {
+  res.sendFile(path.join(__dirname, 'landing.html'));
+});
+
+app.use(express.static(__dirname, { index: false }));
 
 // Explicit logo route with correct image/svg+xml header
 app.get('/assets/logo.svg', (req, res) => {
@@ -180,7 +197,12 @@ app.get('/ar', async (req, res) => {
 
 
   const videoUrl = project.video_path.startsWith('http') ? project.video_path : r2Url(project.video_path);
-  const planeW = 0.75, planeH = 1.3333; // JS adjusts after video loads
+  const props = (targetData && targetData.properties) || {};
+  const tW = props.width || 640;
+  const tH = props.height || 640;
+  const tAspect = tW / tH;
+  const planeW = tAspect >= 1 ? 1 : Number(tAspect.toFixed(4));
+  const planeH = tAspect >= 1 ? Number((1 / tAspect).toFixed(4)) : 1;
 
   res.setHeader('Content-Type', 'text/html');
   res.send(`<!DOCTYPE html>
@@ -197,6 +219,33 @@ app.get('/ar', async (req, res) => {
   <style>
     html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; touch-action:none; background:#000; }
     .a-enter-vr, .a-enter-vr-button { display:none !important; }
+    
+    /* Remove and suppress all 8th Wall branding & Powered-by logos */
+    .poweredby,
+    .powered-by,
+    .poweredby-8thwall,
+    .xrextras-powered-by,
+    .xrextras-loading-footer,
+    .loading-footer,
+    #poweredBy8thWall,
+    #poweredby,
+    #loading-footer,
+    img[src*="powered-by"],
+    img[src*="8thwall"],
+    [id*="poweredBy" i],
+    [class*="poweredBy" i],
+    [class*="powered-by" i],
+    .xrextras-loading-footer img,
+    .loading-footer img {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      pointer-events: none !important;
+      position: absolute !important;
+      left: -9999px !important;
+    }
     
     /* Elegant Holographic Watermark */
     #ar-watermark {
@@ -312,9 +361,39 @@ app.get('/ar', async (req, res) => {
     var audioPrompt = document.getElementById('audio-prompt');
     
     video.addEventListener('loadedmetadata', function() {
-      var a = video.videoWidth / video.videoHeight;
-      if (a >= 0.75) { plane.setAttribute('width', a);    plane.setAttribute('height', 1); }
-      else           { plane.setAttribute('width', 0.75); plane.setAttribute('height', (0.75/a).toFixed(4)); }
+      var tW = ${tW};
+      var tH = ${tH};
+      var tAspect = tW / tH;
+      var vW = video.videoWidth;
+      var vH = video.videoHeight;
+      var vAspect = (vW && vH) ? (vW / vH) : tAspect;
+
+      // Plane size matches target aspect ratio
+      if (tAspect >= 1) {
+        plane.setAttribute('width', 1);
+        plane.setAttribute('height', (1 / tAspect).toFixed(4));
+      } else {
+        plane.setAttribute('width', tAspect.toFixed(4));
+        plane.setAttribute('height', 1);
+      }
+
+      // UV texture mapping: auto-crop video to cover target plane edge-to-edge without letterboxing or stretching
+      if (vAspect > tAspect) {
+        // Video is wider than target: crop left and right edges
+        var repeatX = tAspect / vAspect;
+        var offsetX = (1 - repeatX) / 2;
+        plane.setAttribute('material', 'repeat', repeatX.toFixed(4) + ' 1');
+        plane.setAttribute('material', 'offset', offsetX.toFixed(4) + ' 0');
+      } else if (vAspect < tAspect) {
+        // Video is taller than target: crop top and bottom edges
+        var repeatY = vAspect / tAspect;
+        var offsetY = (1 - repeatY) / 2;
+        plane.setAttribute('material', 'repeat', '1 ' + repeatY.toFixed(4));
+        plane.setAttribute('material', 'offset', '0 ' + offsetY.toFixed(4));
+      } else {
+        plane.setAttribute('material', 'repeat', '1 1');
+        plane.setAttribute('material', 'offset', '0 0');
+      }
     });
     
     var sceneEl = document.querySelector('a-scene');

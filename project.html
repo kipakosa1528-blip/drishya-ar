@@ -99,8 +99,11 @@
         <div class="panel">
           <div class="panel-title">AR Link & QR Code</div>
           <div style="text-align:center;margin-bottom:16px">
-            <div class="qr-box" id="qr-out" style="display:inline-block;padding:12px;background:#ffffff;border-radius:12px"></div>
-            <button class="btn btn-default btn-sm" style="width:100%;margin-top:12px" id="dl-qr">Download Branded QR Code</button>
+            <div class="qr-box" id="qr-out"></div>
+            <div style="display:flex;gap:6px;margin-top:12px">
+              <button class="btn btn-default btn-sm" style="flex:1" id="dl-qr">Download PNG (Print 300DPI)</button>
+              <button class="btn btn-default btn-sm" style="flex:1" id="dl-qr-svg">Download SVG (Vector)</button>
+            </div>
           </div>
           <div class="form-group" style="margin-bottom:12px">
             <label>Public AR Link</label>
@@ -235,7 +238,8 @@
     document.getElementById('ar-link').value = url;
     document.getElementById('open-ar').href  = url;
     generateQR(url, document.getElementById('qr-out'), 160);
-    document.getElementById('dl-qr').onclick   = () => downloadQR(url, `qr-${id}`);
+    document.getElementById('dl-qr').onclick     = () => downloadQR(url, `qr-${id}`, 'png');
+    document.getElementById('dl-qr-svg').onclick = () => downloadQR(url, `qr-${id}`, 'svg');
     document.getElementById('copy-link').onclick = () => copyText(url);
 
     if (p.imageUrl) document.getElementById('preview-img').src = p.imageUrl;

@@ -77,67 +77,136 @@ export function toast(msg, type = 'info') {
 
 export function generateQR(text, containerEl, size = 160) {
   containerEl.innerHTML = '';
-  if (!window.QRCodeStyling) {
+  const QRClass = (typeof QRCodeStyling !== 'undefined') ? QRCodeStyling : (window.QRCodeStyling || null);
+  if (!QRClass) {
     containerEl.textContent = 'QR Code library missing';
     return null;
   }
-  const qr = new window.QRCodeStyling({
+  const qr = new QRClass({
     width: size,
     height: size,
     data: text,
-    image: '/assets/logo.svg',
+    margin: 4, // Ultra-tight compact margin
+    qrOptions: {
+      typeNumber: 0,
+      mode: "Byte",
+      errorCorrectionLevel: "H" // Level H: 30% error recovery for robust scanning
+    },
     dotsOptions: {
-      color: "#0f172a",
+      color: "#05070a",
       type: "rounded"
     },
     cornersSquareOptions: {
-      color: "#2563eb",
+      color: "#05070a",
       type: "extra-rounded"
     },
     cornersDotOptions: {
-      color: "#4f46e5",
+      color: "#05070a",
       type: "dot"
     },
-    backgroundOptions: { color: "#ffffff" },
-    imageOptions: {
-      crossOrigin: "anonymous",
-      margin: 4,
-      imageSize: 0.36,
-      hideBackgroundDots: true
-    }
+    backgroundOptions: { color: "#ffffff" }
   });
   qr.append(containerEl);
   return qr;
 }
 
-export function downloadQR(text, filename = 'ar-qr') {
-  if (!window.QRCodeStyling) return;
-  const qr = new window.QRCodeStyling({
-    width: 1000,
-    height: 1000,
+export async function downloadQR(text, filename = 'ar-qr', format = 'png') {
+  const QRClass = (typeof QRCodeStyling !== 'undefined') ? QRCodeStyling : (window.QRCodeStyling || null);
+  if (!QRClass) return;
+
+  const size = 1200;
+  const padding = 48; // Sleek, tight padding (4% border)
+  const radius = 72;  // Aesthetic luxury rounded corners
+
+  const rawQr = new QRClass({
+    width: size - (padding * 2),
+    height: size - (padding * 2),
     data: text,
-    image: '/assets/logo.svg',
+    margin: 0,
+    qrOptions: {
+      typeNumber: 0,
+      mode: "Byte",
+      errorCorrectionLevel: "H"
+    },
     dotsOptions: {
-      color: "#0f172a",
+      color: "#05070a",
       type: "rounded"
     },
     cornersSquareOptions: {
-      color: "#2563eb",
+      color: "#05070a",
       type: "extra-rounded"
     },
     cornersDotOptions: {
-      color: "#4f46e5",
+      color: "#05070a",
       type: "dot"
     },
-    backgroundOptions: { color: "#ffffff" },
-    imageOptions: {
-      crossOrigin: "anonymous",
-      margin: 8,
-      imageSize: 0.36,
-      hideBackgroundDots: true
-    }
+    backgroundOptions: { color: "transparent" }
   });
-  qr.download({ name: filename, extension: "png" });
+
+  if (format === 'svg') {
+    try {
+      const rawBlob = await rawQr.getRawData('svg');
+      const svgText = await rawBlob.text();
+      const styledSvg = svgText.replace(/<svg([^>]*)>/, `<svg$1><rect width="100%" height="100%" rx="${radius}" fill="#ffffff"/>`);
+      const blob = new Blob([styledSvg], { type: 'image/svg+xml' });
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = `${filename}.svg`;
+      link.href = blobUrl;
+      link.click();
+      URL.revokeObjectURL(blobUrl);
+      return;
+    } catch {
+      rawQr.download({ name: filename, extension: 'svg' });
+      return;
+    }
+  }
+
+  try {
+    const rawBlob = await rawQr.getRawData('png');
+    const img = new Image();
+    const blobUrl = URL.createObjectURL(rawBlob);
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // Draw rounded background card
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(0, 0, size, size, radius);
+      } else {
+        ctx.arcTo ? (function() {
+          const r = radius;
+          ctx.moveTo(r, 0);
+          ctx.lineTo(size - r, 0);
+          ctx.quadraticCurveTo(size, 0, size, r);
+          ctx.lineTo(size, size - r);
+          ctx.quadraticCurveTo(size, size, size - r, size);
+          ctx.lineTo(r, size);
+          ctx.quadraticCurveTo(0, size, 0, size - r);
+          ctx.lineTo(0, r);
+          ctx.quadraticCurveTo(0, 0, r, 0);
+        })() : ctx.rect(0, 0, size, size);
+      }
+      ctx.fill();
+
+      // Draw QR code centered with tight padding
+      ctx.drawImage(img, padding, padding, size - (padding * 2), size - (padding * 2));
+
+      // Trigger download
+      const link = document.createElement('a');
+      link.download = `${filename}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      URL.revokeObjectURL(blobUrl);
+    };
+    img.src = blobUrl;
+  } catch {
+    rawQr.download({ name: filename, extension: 'png' });
+  }
 }
 
 
