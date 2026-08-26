@@ -4,7 +4,9 @@
 
 import express from 'express';
 import { PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
-import { supabase, getR2, R2_BUCKET, r2Url, prepareTarget } from '../lib/clients.js';
+import { supabase, getR2, R2_BUCKET, r2Url, prepareTarget, createMuxAsset } from '../lib/clients.js';
+import { cacheBust } from './ar.js';
+
 
 
 /**
@@ -18,8 +20,12 @@ function formatProject(row) {
   const imagePath = row.image_path || '';
   const videoPath = row.video_path || '';
   const imageUrl = imagePath ? (imagePath.startsWith('http') ? imagePath : r2Url(imagePath)) : '';
-  const videoUrl = videoPath ? (videoPath.startsWith('http') ? videoPath : r2Url(videoPath)) : '';
   const td = (typeof row.target_data === 'object' && row.target_data) ? row.target_data : {};
+  const muxPlaybackId = td.mux_playback_id || row.mux_playback_id || null;
+  const muxAssetId = td.mux_asset_id || row.mux_asset_id || null;
+  const muxStreamUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}.m3u8` : null;
+  const muxVideoUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}/high.mp4` : null;
+  const videoUrl = muxVideoUrl || (videoPath ? (videoPath.startsWith('http') ? videoPath : r2Url(videoPath)) : '');
   const viewsCount = row.views_count || td._views_count || 0;
   const maxScans = row.max_scans || td._max_scans || null;
   const lastScannedAt = row.last_scanned_at || td._last_scanned_at || null;
@@ -40,6 +46,12 @@ function formatProject(row) {
     video_path: videoPath,
     imageUrl,
     videoUrl,
+    muxPlaybackId,
+    mux_playback_id: muxPlaybackId,
+    muxAssetId,
+    mux_asset_id: muxAssetId,
+    muxStreamUrl,
+    mux_stream_url: muxStreamUrl,
     viewsCount,
     views_count: viewsCount,
     lastScannedAt,
@@ -116,6 +128,18 @@ export function registerProjectsRoutes(app, { requireAuth }) {
         targetData._max_scans = Number(maxScans);
       }
 
+      // Ingest video into Mux for sub-200ms global edge streaming
+      try {
+        const videoPublicUrl = resolvedVideoPath.startsWith('http') ? resolvedVideoPath : r2Url(resolvedVideoPath);
+        const muxResult = await createMuxAsset(videoPublicUrl);
+        if (muxResult) {
+          targetData.mux_asset_id = muxResult.assetId;
+          targetData.mux_playback_id = muxResult.playbackId;
+        }
+      } catch (muxErr) {
+        console.warn('Mux ingestion non-fatal warning:', muxErr.message);
+      }
+
       // Save metadata to Supabase DB
       const { error: dbErr } = await supabase.from('projects').insert({
         id, name, client, notes,
@@ -152,7 +176,9 @@ export function registerProjectsRoutes(app, { requireAuth }) {
     const { data, error } = await supabase
       .from('projects').update(updates).eq('id', id).select().single();
     if (error) return res.status(500).json({ error: error.message });
+    cacheBust(id); // Invalidate AR viewer project cache so next scan gets fresh data
     res.json(formatProject(data));
+
   });
 
   app.delete('/api/projects/:id', requireAuth, async (req, res) => {

@@ -1,4 +1,4 @@
-﻿// Landing page QA for the current "Living Prints" editorial design.
+// Landing page QA for the current "Living Prints" editorial design.
 // The old reveal-card suites targeted a replaced layout; these cover the
 // live structure: sections render, routing works, reduced-motion is clean.
 
@@ -91,21 +91,12 @@ test.describe('Kipakosa AR landing', () => {
     expect(await page.locator('.horizontal-reel-canvas').count()).toBe(0);
   });
 
-  test('shader CTAs render on hero + scanner sections', async ({ page }) => {
+  test('luxury CTA buttons render on hero + scanner sections', async ({ page }) => {
     await page.goto('/');
-    const ctas = page.locator('.shader-cta');
-    await expect(ctas).toHaveCount(2);
-
-    // Each has a GLSL canvas or the CSS fallback class
-    const states = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('.shader-cta')).map(b => ({
-        canvas: !!b.querySelector('.shader-cta-canvas'),
-        static: b.classList.contains('shader-static'),
-      }))
-    );
-    for (const s of states) {
-      expect(s.canvas || s.static).toBe(true);
-    }
+    const heroCta = page.locator('text=Create Your Living Frame');
+    const stepCta = page.locator('text=Create Yours Today');
+    await expect(heroCta).toBeVisible();
+    await expect(stepCta).toBeVisible();
   });
 
   test('rail falls back to static strip under reduced motion', async ({ browser }) => {

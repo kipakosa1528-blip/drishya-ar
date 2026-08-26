@@ -150,9 +150,42 @@ export function sortProjects(list, mode = 'newest') {
       };
       return arr.sort((a, b) => lastScanMs(b) - lastScanMs(a));
     }
+    case 'cost_desc':
+      return arr.sort((a, b) => calcMuxCost(b).totalCost - calcMuxCost(a).totalCost);
     default: // newest
       return arr.sort((a, b) => createdMs(b) - createdMs(a));
   }
+}
+
+/**
+ * Computes exact estimated Mux Video API costs (Storage + Delivery).
+ * @param {object} project
+ */
+export function calcMuxCost(project) {
+  if (!project) return { totalCost: 0, formattedTotal: '$0.00', minutesDelivered: 0 };
+  const td = (typeof project.targetData === 'object' && project.targetData) ? project.targetData : (project.target_data || {});
+  const durationSec = Number(td.duration || project.duration || 30);
+  const durationMin = durationSec / 60;
+  const views = Number(project.viewsCount || project.views_count || 0);
+
+  // Mux rates: $0.005/min/month storage, $0.0013/min delivered
+  const storageCost = durationMin * 0.005;
+  const deliveryCost = durationMin * views * 0.0013;
+  const totalCost = storageCost + deliveryCost;
+  const minutesDelivered = durationMin * views;
+
+  return {
+    durationSec: Number(durationSec.toFixed(1)),
+    durationMin: Number(durationMin.toFixed(2)),
+    views,
+    storageCost,
+    deliveryCost,
+    totalCost,
+    minutesDelivered: Number(minutesDelivered.toFixed(1)),
+    formattedTotal: totalCost === 0 ? '$0.00' : (totalCost < 0.01 ? '<$0.01' : `$${totalCost.toFixed(2)}`),
+    formattedDelivery: deliveryCost === 0 ? '$0.00' : (deliveryCost < 0.01 ? '<$0.01' : `$${deliveryCost.toFixed(2)}`),
+    formattedStorage: `$${storageCost.toFixed(3)}/mo`
+  };
 }
 
 
@@ -328,3 +361,32 @@ export async function copyText(str) {
     toast('Failed to copy', 'err');
   }
 }
+
+export async function downloadMedia(urlOrBlob, filename = 'target-image.jpg') {
+  try {
+    let blob;
+    if (urlOrBlob instanceof Blob) {
+      blob = urlOrBlob;
+    } else {
+      const res = await fetch(urlOrBlob);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      blob = await res.blob();
+    }
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 3000);
+    toast('Downloaded ' + filename, 'success');
+  } catch (err) {
+    if (typeof urlOrBlob === 'string') {
+      window.open(urlOrBlob, '_blank');
+    } else {
+      toast('Failed to download file', 'err');
+    }
+  }
+}
+

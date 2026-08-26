@@ -73,6 +73,7 @@
       <select class="form-control f-select" id="f-sort" title="Sort order">
         <option value="newest">Newest first</option>
         <option value="oldest">Oldest first</option>
+        <option value="cost_desc">Highest Mux Cost / Usage</option>
         <option value="scans_desc">Most scans</option>
         <option value="scans_asc">Fewest scans</option>
         <option value="name_asc">Name A–Z</option>
@@ -82,6 +83,28 @@
       <button class="btn btn-sm btn-default filter-clear" id="f-reset" style="display:none">Clear ✕</button>
     </div>
 
+    <!-- Mux Live API Cost & Usage Summary -->
+    <div id="mux-summary-card" class="panel" style="margin-bottom:16px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:linear-gradient(135deg,rgba(56,189,248,0.08),rgba(9,13,22,0.7));border:1px solid rgba(56,189,248,0.22);border-radius:10px">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:16px">⚡</span>
+          <span style="font-weight:700;font-size:13px;color:var(--text)">Mux Video API Usage</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-secondary)">
+          Streamed: <strong id="sum-delivered-mins" style="color:var(--text)">0 mins</strong> (<span id="sum-views">0</span> scans)
+        </div>
+        <div style="font-size:12px;color:var(--text-secondary)">
+          Storage: <strong id="sum-storage-mins" style="color:var(--text)">0 mins</strong>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:12px;color:var(--text-secondary)">
+          Estimated Cost: <strong id="sum-total-cost" style="color:var(--accent);font-size:14px">$0.00</strong>
+        </div>
+        <span class="badge badge-green" style="font-size:11px"><span class="badge-dot"></span>Covered by $20/mo Free Credit</span>
+      </div>
+    </div>
+
     <div class="table-wrap">
       <table>
         <thead>
@@ -89,13 +112,13 @@
             <th style="width:70px">Image</th>
             <th>Project</th>
             <th>Client</th>
-            <th>Scans</th>
+            <th>Scans & Mux Cost</th>
             <th>Status</th>
             <th>Expires</th>
             <th style="text-align:right;width:140px">Actions</th>
           </tr>
         </thead>
-<tbody id="proj-body"></tbody>
+        <tbody id="proj-body"></tbody>
       </table>
     </div>
 
@@ -116,7 +139,7 @@
 <script type="module">
   import { requireAuth, initNav } from './js/auth.js?v=4';
   import { getAllProjects, deleteProject } from './js/db.js?v=4';
-  import { fmt, statusBadge, toast, filterProjects, sortProjects } from './js/utils.js?v=4';
+  import { fmt, statusBadge, toast, filterProjects, sortProjects, calcMuxCost } from './js/utils.js?v=4';
 
   requireAuth(); 
   initNav('projects');
@@ -125,7 +148,6 @@
   let state = { ...DEFAULTS };
   let all = [];
 
-  // Restore filters from the URL (?q=&status=&type=&client=&usage=&from=&to=&sort=)
   (function initState() {
     const sp = new URLSearchParams(location.search);
     if (sp.has('q')) state.search = sp.get('q');
@@ -133,7 +155,6 @@
       const v = sp.get(key);
       if (v) state[key] = v;
     }
-    // Reflect into controls; fall back to defaults for unknown values
     document.getElementById('search').value = state.search;
     const segBtn = document.querySelector(`.seg-btn[data-f="${state.status}"]`);
     if (segBtn) {
@@ -209,20 +230,53 @@
   function renderTable() {
     const data = sortProjects(filterProjects(all, state), state.sort);
 
+    // Update global Mux summary
+    let totalDeliveredMins = 0;
+    let totalStorageMins = 0;
+    let totalViews = 0;
+    let totalCost = 0;
+
+    all.forEach(p => {
+      const cost = calcMuxCost(p);
+      totalDeliveredMins += cost.minutesDelivered;
+      totalStorageMins += cost.durationMin;
+      totalViews += cost.views;
+      totalCost += cost.totalCost;
+    });
+
+    const sumDeliveredEl = document.getElementById('sum-delivered-mins');
+    if (sumDeliveredEl) sumDeliveredEl.textContent = `${totalDeliveredMins.toFixed(1)} mins`;
+    const sumViewsEl = document.getElementById('sum-views');
+    if (sumViewsEl) sumViewsEl.textContent = totalViews.toLocaleString();
+    const sumStorageEl = document.getElementById('sum-storage-mins');
+    if (sumStorageEl) sumStorageEl.textContent = `${totalStorageMins.toFixed(1)} mins`;
+    const sumCostEl = document.getElementById('sum-total-cost');
+    if (sumCostEl) sumCostEl.textContent = totalCost === 0 ? '$0.00' : (totalCost < 0.01 ? '<$0.01' : `$${totalCost.toFixed(2)}`);
+
     document.getElementById('count').textContent = `(${data.length})`;
     const body = document.getElementById('proj-body');
     if (!data.length) {
       body.innerHTML = `<tr><td colspan="7" class="empty">${all.length ? 'No matching projects found' : 'No projects yet. <a href="create.html" style="color:var(--accent);font-weight:600">Create one</a>'}</td></tr>`;
       return;
     }
-    body.innerHTML = data.map(p => `
+    body.innerHTML = data.map(p => {
+      const cost = calcMuxCost(p);
+      return `
       <tr>
         <td style="width:70px">
           ${p.imageUrl ? `<img class="td-thumb" src="${p.imageUrl}" />` : `<div class="td-thumb-placeholder"></div>`}
         </td>
         <td><a href="project.html?id=${p.id}" style="font-weight:600;color:var(--text)">${p.name}</a></td>
         <td style="color:var(--text-secondary)">${p.client || '—'}</td>
-        <td><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--accent)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ${p.viewsCount || p.views_count || 0}</span></td>
+        <td>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--accent)">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            ${cost.views}
+          </span>
+          <span style="font-size:11px;color:var(--muted);display:block;margin-top:2px">
+            ${cost.formattedTotal} • ${cost.minutesDelivered}m
+          </span>
+        </td>
         <td>${statusBadge(p)}</td>
         <td style="color:var(--text-secondary)">${fmt(p.expiresAt || p.expires_at)}</td>
 
@@ -232,9 +286,9 @@
             <button class="btn btn-sm btn-danger" onclick="delProj('${p.id}', '${p.name.replace(/'/g, "\\'")}')">Delete</button>
           </div>
         </td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
   }
-
 
   window.delProj = async function(id, name) {
     if (confirm(`Delete "${name}"?`)) {
@@ -245,14 +299,8 @@
     }
   };
 </script>
-
 </body>
 </html>
-
-
-
-
-
 
 
 

@@ -1,169 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8" />
-    <title>Drishya AR Viewer</title>
-    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            width: 100%;
-            height: 100%;
-            touch-action: none;
-        }
-        #ar-scene { width: 100%; height: 100%; }
-        video {
-            -webkit-user-drag: none;
-            user-select: none;
-            filter: none !important;
-            -webkit-filter: none !important;
-        }
-        #error, #paused-message {
-            position: fixed;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 30px 40px;
-            border-radius: 15px;
-            z-index: 2000;
-            display: none;
-            text-align: center;
-            max-width: 400px;
-        }
-        #paused-message h2 { margin: 0 0 15px 0; color: #ff9800; }
-        #paused-message p { margin: 0; opacity: 0.8; }
-        .mindar-ui,
-        .poweredby,
-        .powered-by,
-        .xrextras-powered-by,
-        [id*="poweredBy" i],
-        [class*="poweredBy" i],
-        [class*="powered-by" i] { display: none !important; opacity: 0 !important; visibility: hidden !important; }
-    </style>
-  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1" />
-  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=1" />
-  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1" /></head>
-<body>
-    <div id="error"></div>
-    <div id="paused-message">
-        <h2>Experience Expired</h2>
-        <p>This AR experience has expired or is unavailable.</p>
-    </div>
-
-    <a-scene id="ar-scene" style="display:none;"
-        mindar-image="imageTargetSrc: ASSET_PATH/target.mind; autoStart: true; uiScanning: false; uiLoading: false;"
-        color-space="sRGB"
-        renderer="colorManagement: true; physicallyCorrectLights: true;"
-        vr-mode-ui="enabled: false"
-        device-orientation-permission-ui="enabled: false"
-    >
-        <a-assets>
-            <video id="video" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous" draggable="false"></video>
-        </a-assets>
-
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-        <a-entity mindar-image-target="targetIndex: 0">
-            <a-plane src="#video" position="0 0 0" width="1" height="0.6" rotation="0 0 0"
-                     material="transparent: true; alphaTest: 0.5; shader: flat; side: double"></a-plane>
-        </a-entity>
-    </a-scene>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", async () => {
-            const params = new URLSearchParams(window.location.search);
-            const projectId = params.get('id');
-
-            if (!projectId) {
-                document.getElementById('error').textContent = 'Missing project ID';
-                document.getElementById('error').style.display = 'block';
-                return;
-            }
-
-            try {
-                const resp = await fetch(`/api/projects/${projectId}`);
-                if (resp.ok) {
-                    const project = await resp.json();
-                    if (project.expiresAt && new Date(project.expiresAt) < new Date()) {
-                        document.getElementById('paused-message').style.display = 'block';
-                        return;
-                    }
-                } else {
-                    document.getElementById('error').textContent = 'Project not found';
-                    document.getElementById('error').style.display = 'block';
-                    return;
-                }
-            } catch (e) { console.error('Error checking project status:', e); }
-
-            const sceneEl = document.querySelector("#ar-scene");
-            const videoEl = document.querySelector("#video");
-            const targetEl = document.querySelector("[mindar-image-target]");
-            const planeEl = targetEl.querySelector('a-plane');
-
-            sceneEl.style.display = 'block';
-            sceneEl.setAttribute('mindar-image', `imageTargetSrc: /api/projects/${projectId}/mind; autoStart: true; uiScanning: false; uiLoading: false;`);
-            videoEl.src = `/api/projects/${projectId}/video`;
-            videoEl.muted = false;
-
-            let targetVisible = false;
-
-            function playVideo() {
-                if (videoEl.paused) {
-                    videoEl.play().catch(e => console.error('Play failed:', e));
-                }
-            }
-
-            function pauseVideo() {
-                if (!videoEl.paused) {
-                    videoEl.pause();
-                }
-            }
-
-            videoEl.addEventListener('loadeddata', () => {
-                console.log('Video loaded:', videoEl.videoWidth, 'x', videoEl.videoHeight);
-                const aspect = videoEl.videoWidth / videoEl.videoHeight;
-                planeEl.setAttribute('height', 1 / aspect);
-            });
-
-            videoEl.addEventListener('error', (e) => {
-                console.error('Video error:', e);
-            });
-
-            targetEl.addEventListener("targetFound", async () => {
-                targetVisible = true;
-                console.log('targetFound fired - playing video');
-                playVideo();
-            });
-
-            targetEl.addEventListener("targetLost", () => {
-                console.log('targetLost fired - pausing video');
-                targetVisible = false;
-                setTimeout(() => {
-                    if (!targetVisible) {
-                        pauseVideo();
-                    }
-                }, 150);
-            });
-
-            targetEl.addEventListener("targetVisible", () => {
-                console.log('targetVisible fired');
-            });
-
-            targetEl.addEventListener("targetUnvisible", () => {
-                console.log('targetUnvisible fired');
-            });
-
-            sceneEl.addEventListener('error', () => {
-                document.getElementById('error').textContent = 'Failed to load AR';
-                document.getElementById('error').style.display = 'block';
-            });
-        });
-    </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kipakosa AR Viewer</title>
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      if (id) {
+        window.location.replace('/ar?id=' + encodeURIComponent(id));
+      } else {
+        window.location.replace('/landing.html');
+      }
+    })();
+  </script>
+</head>
+<body style="background:#090d16;color:#fff;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+  <p style="opacity:0.7">Redirecting to AR experience...</p>
 </body>
 </html>
-
-

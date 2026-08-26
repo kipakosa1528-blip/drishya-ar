@@ -63,12 +63,14 @@
           <div class="panel-title">Asset Previews</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
             <div>
-              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Target Image</div>
+              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Target Image (Print Ready)</div>
               <img id="preview-img" style="width:100%;max-height:220px;object-fit:contain;background:#000;border-radius:6px;border:1px solid var(--border)" />
+              <button class="btn btn-default btn-sm" id="dl-target-img" style="width:100%;margin-top:8px">Download Target Image 📥</button>
             </div>
             <div>
               <div style="font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Overlay Video</div>
               <video id="preview-vid" controls style="width:100%;max-height:220px;background:#000;border-radius:6px;border:1px solid var(--border)"></video>
+              <button class="btn btn-default btn-sm" id="dl-video-btn" style="width:100%;margin-top:8px">Download Video 📥</button>
             </div>
           </div>
         </div>
@@ -93,6 +95,40 @@
             <tr><td style="color:var(--muted);padding:8px 0">Client</td><td id="p-client"></td></tr>
             <tr><td style="color:var(--muted);padding:8px 0">Created</td><td id="p-created"></td></tr>
             <tr id="notes-row" style="display:none"><td style="color:var(--muted);padding:8px 0">Notes</td><td id="p-notes"></td></tr>
+          </table>
+        </div>
+
+        <!-- Mux API & Bandwidth Billing Card -->
+        <div class="panel" style="border:1px solid rgba(56,189,248,0.25);background:linear-gradient(135deg,rgba(56,189,248,0.06),rgba(9,13,22,0.6))">
+          <div class="panel-title" style="display:flex;align-items:center;justify-content:space-between">
+            <span>⚡ Mux API Billing & Bandwidth</span>
+            <span class="badge badge-green" style="font-size:10px"><span class="badge-dot"></span>Real-time</span>
+          </div>
+          <table style="width:100%;font-size:13px;border-collapse:collapse">
+            <tr>
+              <td style="color:var(--muted);padding:6px 0;width:150px">Video Duration</td>
+              <td id="m-duration" style="font-weight:600">—</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);padding:6px 0">Streamed Minutes</td>
+              <td id="m-delivered" style="font-weight:600">—</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);padding:6px 0">Mux Delivery Cost</td>
+              <td id="m-delivery-cost" style="font-weight:600;color:var(--text)">$0.00</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);padding:6px 0">Mux Storage Cost</td>
+              <td id="m-storage-cost" style="font-weight:600;color:var(--text)">$0.00/mo</td>
+            </tr>
+            <tr style="border-top:1px solid var(--border)">
+              <td style="color:var(--accent);padding:8px 0;font-weight:700">Total Incurred Cost</td>
+              <td id="m-total-cost" style="color:var(--accent);font-weight:800;font-size:15px">$0.00</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-secondary);padding:6px 0;font-size:12px">Suggested Client Fee</td>
+              <td id="m-suggested-charge" style="font-size:12px;color:var(--text-secondary)">—</td>
+            </tr>
           </table>
         </div>
       </div>
@@ -226,7 +262,7 @@
 <script type="module">
   import { requireAuth, initNav } from './js/auth.js?v=4';
   import { getProject, updateProject, deleteProject } from './js/db.js?v=4';
-  import { fmt, isExpired, statusBadge, arUrl, toast, generateQR, downloadQR, copyText } from './js/utils.js?v=4';
+  import { fmt, isExpired, statusBadge, arUrl, toast, generateQR, downloadQR, downloadMedia, copyText, calcMuxCost } from './js/utils.js?v=4';
 
   requireAuth(); 
   initNav('projects');
@@ -292,6 +328,24 @@
       document.getElementById('notes-row').style.display = 'none';
     }
 
+    // Mux Billing & Bandwidth Analytics
+    const cost = calcMuxCost(p);
+    const durEl = document.getElementById('m-duration');
+    if (durEl) durEl.textContent = `${cost.durationSec}s (${cost.durationMin} mins)`;
+    const delEl = document.getElementById('m-delivered');
+    if (delEl) delEl.textContent = `${cost.minutesDelivered} mins (${cost.views} scans)`;
+    const delCostEl = document.getElementById('m-delivery-cost');
+    if (delCostEl) delCostEl.textContent = cost.formattedDelivery;
+    const storCostEl = document.getElementById('m-storage-cost');
+    if (storCostEl) storCostEl.textContent = cost.formattedStorage;
+    const totCostEl = document.getElementById('m-total-cost');
+    if (totCostEl) totCostEl.textContent = cost.formattedTotal;
+    const sugChargeEl = document.getElementById('m-suggested-charge');
+    if (sugChargeEl) {
+      const recFee = cost.totalCost > 1 ? `$${(cost.totalCost * 4).toFixed(2)}` : '$5.00 – $10.00';
+      sugChargeEl.textContent = `${recFee} (Recommended hosting fee)`;
+    }
+
     const url = arUrl(id);
     document.getElementById('ar-link').value = url;
     document.getElementById('open-ar').href  = url;
@@ -300,8 +354,19 @@
     document.getElementById('dl-qr-svg').onclick = () => downloadQR(url, `qr-${id}`, 'svg');
     document.getElementById('copy-link').onclick = () => copyText(url);
 
-    if (p.imageUrl) document.getElementById('preview-img').src = p.imageUrl;
-    if (p.videoUrl) document.getElementById('preview-vid').src = p.videoUrl;
+    if (p.imageUrl) {
+      document.getElementById('preview-img').src = p.imageUrl;
+      document.getElementById('dl-target-img').onclick = () => downloadMedia(p.imageUrl, `${p.name || 'project'}-target.jpg`);
+    } else {
+      document.getElementById('dl-target-img').style.display = 'none';
+    }
+
+    if (p.videoUrl) {
+      document.getElementById('preview-vid').src = p.videoUrl;
+      document.getElementById('dl-video-btn').onclick = () => downloadMedia(p.videoUrl, `${p.name || 'project'}-video.mp4`);
+    } else {
+      document.getElementById('dl-video-btn').style.display = 'none';
+    }
 
     document.getElementById('detail-grid').style.display = '';
     document.getElementById('not-found').style.display = 'none';
