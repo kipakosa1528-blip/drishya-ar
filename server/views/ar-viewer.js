@@ -169,10 +169,6 @@ export function renderArPage({ name, videoUrl, muxPlaybackId, r2VideoUrl, target
       -webkit-tap-highlight-color: transparent;
     }
     #ar-controls button:active { background: rgba(255,255,255,0.15); }
-    #ar-controls .divider {
-      width: 1px; height: 20px;
-      background: rgba(255,255,255,0.2);
-    }
   </style>
 </head>
 <body>
@@ -188,10 +184,8 @@ export function renderArPage({ name, videoUrl, muxPlaybackId, r2VideoUrl, target
     <p class="scan-hint">Point camera at the photo</p>
   </div>
 
-  <!-- Floating audio & replay controls: shown after target is found -->
+  <!-- Floating replay control: shown after target is found -->
   <div id="ar-controls">
-    <button id="btn-mute" title="Toggle audio">🔊</button>
-    <div class="divider"></div>
     <button id="btn-replay" title="Replay from start">↩ Replay</button>
   </div>
 
@@ -214,7 +208,7 @@ export function renderArPage({ name, videoUrl, muxPlaybackId, r2VideoUrl, target
     <a-camera position="0 0 0"></a-camera>
     <xrextras-named-image-target name="target0">
       <a-plane id="ar-plane" width="${Number(planeW)}" height="${Number(planeH)}" position="0 0 0.01" visible="false"
-        material="src: #ar-video; transparent: true; alphaTest: 0.01; shader: flat; side: double; opacity: 0">
+        material="src: #ar-video; transparent: true; alphaTest: 0.01; shader: flat; side: double">
       </a-plane>
     </xrextras-named-image-target>
   </a-scene>
@@ -279,10 +273,6 @@ export function renderArPage({ name, videoUrl, muxPlaybackId, r2VideoUrl, target
 
     function revealPlane() {
       if (video.currentTime > 0 || video.readyState >= 1) {
-        // Fade-in: animate opacity 0 → 1 over 300ms instead of snapping visible
-        if (plane.getAttribute('visible') === false || plane.getAttribute('visible') === 'false') {
-          plane.setAttribute('animation__fade', 'property: components.material.material.opacity; from: 0; to: 1; dur: 300; easing: easeOutCubic');
-        }
         plane.setAttribute('visible', 'true');
         updatePlaneMapping();
       }
@@ -309,16 +299,9 @@ export function renderArPage({ name, videoUrl, muxPlaybackId, r2VideoUrl, target
     // Scan overlay + controls references
     var scanOverlay = document.getElementById('scan-overlay');
     var arControls = document.getElementById('ar-controls');
-    var btnMute = document.getElementById('btn-mute');
     var btnReplay = document.getElementById('btn-replay');
 
-    // Audio/replay pill button wiring
-    if (btnMute) {
-      btnMute.addEventListener('click', function() {
-        video.muted = !video.muted;
-        btnMute.textContent = video.muted ? '🔇' : '🔊';
-      });
-    }
+    // Replay pill button
     if (btnReplay) {
       btnReplay.addEventListener('click', function() {
         video.currentTime = 0;
