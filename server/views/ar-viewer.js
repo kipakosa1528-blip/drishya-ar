@@ -151,24 +151,6 @@ export function renderArPage({ name, videoUrl, muxPlaybackId, r2VideoUrl, target
       letter-spacing: 0.02em;
     }
 
-    /* Floating audio + replay pill */
-    #ar-controls {
-      position: fixed; bottom: 36px; left: 50%; transform: translateX(-50%);
-      z-index: 9999; display: none; align-items: center; gap: 8px;
-      background: rgba(9, 13, 22, 0.78);
-      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-      padding: 10px 18px; border-radius: 9999px;
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      box-shadow: 0 4px 24px rgba(0,0,0,0.45);
-      font-family: system-ui, -apple-system, sans-serif;
-    }
-    #ar-controls button {
-      background: none; border: none; cursor: pointer;
-      color: #f8fafc; font-size: 20px; padding: 4px 10px;
-      border-radius: 8px; transition: background 0.15s;
-      -webkit-tap-highlight-color: transparent;
-    }
-    #ar-controls button:active { background: rgba(255,255,255,0.15); }
   </style>
 </head>
 <body>
@@ -184,10 +166,6 @@ export function renderArPage({ name, videoUrl, muxPlaybackId, r2VideoUrl, target
     <p class="scan-hint">Point camera at the photo</p>
   </div>
 
-  <!-- Floating replay control: shown after target is found -->
-  <div id="ar-controls">
-    <button id="btn-replay" title="Replay from start">↩ Replay</button>
-  </div>
 
   <script>
     var targetData = ${jsonForScript(targetData)};
@@ -296,18 +274,8 @@ export function renderArPage({ name, videoUrl, muxPlaybackId, r2VideoUrl, target
       video.load();
     } catch (e) {}
 
-    // Scan overlay + controls references
+    // Scan overlay reference
     var scanOverlay = document.getElementById('scan-overlay');
-    var arControls = document.getElementById('ar-controls');
-    var btnReplay = document.getElementById('btn-replay');
-
-    // Replay pill button
-    if (btnReplay) {
-      btnReplay.addEventListener('click', function() {
-        video.currentTime = 0;
-        video.play().catch(function(){});
-      });
-    }
 
     var sceneEl = document.querySelector('a-scene');
     sceneEl.addEventListener('xrimagefound', function(ev) {
@@ -316,9 +284,8 @@ export function renderArPage({ name, videoUrl, muxPlaybackId, r2VideoUrl, target
       // Haptic double-buzz — feels like a "lock-on" confirmation
       if (navigator.vibrate) navigator.vibrate([40, 50, 40]);
 
-      // Hide scanning reticle, show audio/replay controls
+      // Hide scanning reticle
       if (scanOverlay) scanOverlay.classList.add('hidden');
-      if (arControls) arControls.style.display = 'flex';
 
       video.muted = false;
       var p = video.play();
@@ -335,9 +302,8 @@ export function renderArPage({ name, videoUrl, muxPlaybackId, r2VideoUrl, target
     sceneEl.addEventListener('xrimagelost', function(ev) {
       if (!ev || !ev.detail || ev.detail.name !== 'target0') return;
       video.pause();
-      // Bring scanning guide back; hide controls while re-searching
+      // Bring scanning guide back
       if (scanOverlay) scanOverlay.classList.remove('hidden');
-      if (arControls) arControls.style.display = 'none';
     });
 
     function primeAudio() {
