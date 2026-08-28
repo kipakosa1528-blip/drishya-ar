@@ -139,3 +139,61 @@ export async function prepareTarget(imageBuffer, projectId) {
   };
 }
 
+/**
+ * Build an 8th Wall multi-target image descriptor for a magazine page:
+ * generates a grayscale luminance map and uploads to R2 under the magazine target prefix.
+ * @param {Buffer} imageBuffer raw image bytes
+ * @param {string} magazineId magazine ID
+ * @param {number} targetIndex 0-based index
+ * @param {string} [targetName] custom 8th Wall target identifier, defaults to `target${targetIndex}`
+ */
+export async function prepareMagazineTarget(imageBuffer, magazineId, targetIndex = 0, targetName = `target${targetIndex}`) {
+  const meta = await sharp(imageBuffer).metadata();
+  const W = meta.width || 640;
+  const H = meta.height || 640;
+  const aspect = W / H;
+
+  let lumW, lumH;
+  if (W >= H) {
+    lumW = 640;
+    lumH = Math.max(1, Math.round(640 / aspect));
+  } else {
+    lumH = 640;
+    lumW = Math.max(1, Math.round(640 * aspect));
+  }
+
+  const lumBuffer = await sharp(imageBuffer)
+    .resize(lumW, lumH, { fit: 'fill' })
+    .grayscale()
+    .jpeg({ quality: 90 })
+    .toBuffer();
+
+  const lumKey = `magazines/${magazineId}/targets/${targetIndex}/luminance.jpg`;
+  if (r2) {
+    await r2.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: lumKey,
+      Body: lumBuffer,
+      ContentType: 'image/jpeg',
+    }));
+  }
+
+  return {
+    name: targetName,
+    type: 'PLANAR',
+    imagePath: r2Url(lumKey),
+    luminancePath: lumKey,
+    metadata: { width: W, height: H },
+    properties: {
+      left: 0,
+      top: 0,
+      width: W,
+      height: H,
+      originalWidth: W,
+      originalHeight: H,
+      isRotated: false,
+    },
+  };
+}
+
+

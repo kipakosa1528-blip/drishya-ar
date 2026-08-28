@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { supabase } from './server/lib/clients.js';
 import { makeRequireAuth } from './server/lib/security.js';
 import { registerProjectsRoutes } from './server/routes/projects.js';
+import { registerMagazinesRoutes } from './server/routes/magazines.js';
 import { registerMiscRoutes } from './server/routes/misc.js';
 import { registerArRoute } from './server/routes/ar.js';
 
@@ -99,6 +100,7 @@ app.get('/favicon.ico', (req, res) => {
 
 // ── API + AR viewer ───────────────────────────────────────────────────────────
 registerProjectsRoutes(app, { requireAuth });
+registerMagazinesRoutes(app, { requireAuth });
 registerMiscRoutes(app, { requireAuth });
 registerArRoute(app);
 
