@@ -58,7 +58,7 @@ for (const dir of ['assets', 'css', 'js', 'external']) {
 for (const page of [
   'landing.html', 'index.html', 'admin.html', 'create.html',
   'dashboard.html', 'projects.html', 'project.html', 'ar.html',
-  'createMagzine.html', 'magnizes.html',
+  'createMagzine.html', 'magnizes.html', 'magazine.html',
 ]) {
   app.get(`/${page}`, (req, res) => {
     res.setHeader('Cache-Control', 'public, max-age=60');
@@ -74,10 +74,17 @@ for (const route of ['/createMagzine', '/createmagzine', '/createMagazine', '/cr
   });
 }
 
-for (const route of ['/magnizes', '/magnize', '/magazines', '/magazine']) {
+for (const route of ['/magnizes', '/magazines']) {
   app.get(route, (req, res) => {
     res.setHeader('Cache-Control', 'public, max-age=60');
     res.sendFile(path.join(__dirname, 'magnizes.html'));
+  });
+}
+
+for (const route of ['/magazine', '/magzine']) {
+  app.get(route, (req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    res.sendFile(path.join(__dirname, 'magazine.html'));
   });
 }
 

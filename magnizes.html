@@ -38,7 +38,7 @@
     }
     .mag-cards {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: 20px;
     }
     .mag-card {
@@ -50,6 +50,8 @@
       flex-direction: column;
       gap: 12px;
       transition: transform 0.2s, border-color 0.2s;
+      text-decoration: none;
+      color: inherit;
     }
     .mag-card:hover {
       transform: translateY(-2px);
@@ -102,72 +104,126 @@
     <div class="internal-banner">
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
       <div>
-        <strong>Internal Magazine Studio:</strong> Multi-page magazine management is currently internal. You can manage multi-page publications and AR bindings here.
+        <strong>Internal Magazine Studio:</strong> Manage multi-target publications and sequential AR page experiences here. Click on any magazine to view its target bindings.
       </div>
     </div>
 
     <div class="stats-grid" style="margin-bottom:24px">
       <div class="stat-card">
         <div class="stat-lbl">Total Magazines</div>
-        <div class="stat-val" style="color:#38bdf8">2</div>
+        <div class="stat-val" id="stat-total" style="color:#38bdf8">0</div>
       </div>
       <div class="stat-card">
         <div class="stat-lbl">Active Issues</div>
-        <div class="stat-val" style="color:var(--green)">1</div>
+        <div class="stat-val" id="stat-active" style="color:var(--green)">0</div>
       </div>
       <div class="stat-card">
         <div class="stat-lbl">AR Bound Pages</div>
-        <div class="stat-val">14</div>
+        <div class="stat-val" id="stat-pages">0</div>
       </div>
       <div class="stat-card">
         <div class="stat-lbl">Total Scans</div>
-        <div class="stat-val" style="color:var(--accent)">1,480</div>
+        <div class="stat-val" id="stat-scans" style="color:var(--accent)">0</div>
       </div>
     </div>
 
     <div class="panel">
       <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
         <span>Publications & Editions</span>
-        <span style="font-size:12px;color:var(--muted)">2 Issues</span>
+        <span id="mag-count-label" style="font-size:12px;color:var(--muted)">0 Issues</span>
       </div>
 
-      <div class="mag-cards" style="margin-top:12px">
-        <div class="mag-card">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start">
-            <div>
-              <div style="font-weight:700;font-size:16px;color:#f8fafc">Living Moments Quarterly</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:2px">Vol. 1 — Fall 2026 Edition</div>
-            </div>
-            <span class="badge badge-green"><span class="badge-dot"></span>Published</span>
-          </div>
-          <div style="font-size:13px;color:#94a3b8;line-height:1.5">
-            8 interactive AR spreads featuring live wedding cinema, moving editorial covers, and ceremony highlights.
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;margin-top:auto">
-            <span>8 AR Pages</span>
-            <span>1,120 scans</span>
-          </div>
-        </div>
-
-        <div class="mag-card">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start">
-            <div>
-              <div style="font-weight:700;font-size:16px;color:#f8fafc">Studio Kipakosa Lookbook</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:2px">Summer 2026 Preview</div>
-            </div>
-            <span class="badge badge-gray">Draft</span>
-          </div>
-          <div style="font-size:13px;color:#94a3b8;line-height:1.5">
-            6 prototype AR target pages showcasing architectural photography and dynamic interior walk-throughs.
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;margin-top:auto">
-            <span>6 AR Pages</span>
-            <span>360 scans</span>
-          </div>
+      <div id="magazines-grid" class="mag-cards" style="margin-top:16px">
+        <div style="color:var(--muted);font-size:13px;padding:30px;grid-column:1/-1;text-align:center">
+          Loading publications...
         </div>
       </div>
     </div>
   </main>
 </div>
+
+<script type="module">
+  import { getAllMagazines } from './js/db.js';
+
+  async function loadMagazines() {
+    try {
+      const magazines = await getAllMagazines();
+      render(magazines);
+    } catch (err) {
+      console.error('Failed to load magazines:', err);
+    }
+  }
+
+  function render(list = []) {
+    const grid = document.getElementById('magazines-grid');
+    const totalEl = document.getElementById('stat-total');
+    const activeEl = document.getElementById('stat-active');
+    const pagesEl = document.getElementById('stat-pages');
+    const scansEl = document.getElementById('stat-scans');
+    const countLabel = document.getElementById('mag-count-label');
+
+    totalEl.textContent = list.length;
+    activeEl.textContent = list.filter(m => m.status === 'published').length;
+    
+    let totalPages = 0;
+    let totalScans = 0;
+    list.forEach(m => {
+      totalPages += Number(m.targetsCount || m.targets?.length || 0);
+      totalScans += Number(m.viewsCount || m.views_count || 0);
+    });
+
+    pagesEl.textContent = totalPages;
+    scansEl.textContent = totalScans.toLocaleString();
+    countLabel.textContent = `${list.length} ${list.length === 1 ? 'Issue' : 'Issues'}`;
+
+    if (list.length === 0) {
+      grid.innerHTML = `
+        <div style="grid-column:1/-1;text-align:center;padding:48px 20px;background:rgba(255,255,255,0.02);border-radius:14px;border:1px dashed rgba(255,255,255,0.1)">
+          <div style="font-size:36px;margin-bottom:12px">📖</div>
+          <div style="font-size:16px;font-weight:700;color:#f8fafc;margin-bottom:6px">No Magazines Created Yet</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:20px;max-width:400px;margin-left:auto;margin-right:auto">
+            Create your first multi-page magazine publication with bound AR video and image overlays.
+          </p>
+          <a href="createMagzine" class="btn btn-primary">+ Create First Magazine</a>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = list.map(m => {
+      const targets = Array.isArray(m.targets) ? m.targets : [];
+      const pageCount = targets.length;
+      const isPub = m.status === 'published';
+      return `
+        <a href="magazine?id=${m.id}" class="mag-card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <div style="font-weight:700;font-size:16px;color:#f8fafc">${esc(m.title || 'Untitled Magazine')}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(m.issueNumber || m.issue_number || 'Issue')}</div>
+            </div>
+            <span class="badge ${isPub ? 'badge-green' : 'badge-gray'}">
+              ${isPub ? '<span class="badge-dot"></span>Published' : 'Draft'}
+            </span>
+          </div>
+          <div style="font-size:13px;color:#94a3b8;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
+            ${esc(m.notes || (m.client ? 'Client: ' + m.client : 'Multi-target magazine publication'))}
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;margin-top:auto">
+            <span>📄 ${pageCount} AR ${pageCount === 1 ? 'Page' : 'Pages'}</span>
+            <span>⚡ ${Number(m.viewsCount || m.views_count || 0).toLocaleString()} scans</span>
+          </div>
+        </a>
+      `;
+    }).join('');
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  loadMagazines();
+</script>
 </body>
 </html>

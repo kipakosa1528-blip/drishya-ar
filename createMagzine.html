@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -177,14 +177,16 @@
     <div class="panel">
       <div class="panel-title">3. Actions & Status</div>
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <button class="btn btn-primary" type="button" onclick="alert('Magazine draft saved (Internal Beta)')">Save Magazine Draft</button>
-        <button class="btn btn-default" type="button" onclick="alert('Publishing magazine issue with multi-target compilation...')">Compile & Publish Issue</button>
+        <button class="btn btn-default" type="button" id="save-draft-btn">Save Magazine Draft</button>
+        <button class="btn btn-primary" type="button" id="publish-mag-btn">Compile & Publish Issue 🚀</button>
       </div>
     </div>
   </main>
 </div>
 
-<script>
+<script type="module">
+  import { createMagazine } from './js/db.js';
+
   document.getElementById('add-page-btn')?.addEventListener('click', () => {
     const container = document.getElementById('pages-container');
     const idx = container.children.length + 1;
@@ -198,16 +200,65 @@
       <div class="mag-grid">
         <div>
           <label class="form-label">Page Target Image</label>
-          <input class="form-control" type="file" accept="image/*" style="width:100%" />
+          <input class="form-control target-img-input" type="file" accept="image/*" style="width:100%" />
         </div>
         <div>
-          <label class="form-label">AR Video Overlay</label>
-          <input class="form-control" type="file" accept="video/*" style="width:100%" />
+          <label class="form-label">AR Overlay (Video or Image)</label>
+          <input class="form-control overlay-file-input" type="file" accept="video/*,image/*" style="width:100%" />
         </div>
       </div>
     `;
     container.appendChild(div);
   });
+
+  async function handleSave(status = 'draft') {
+    const title = document.getElementById('mag-title').value.trim();
+    if (!title) {
+      alert('Please enter a magazine title');
+      return;
+    }
+    const issue = document.getElementById('mag-issue').value.trim();
+    const client = document.getElementById('mag-client').value.trim();
+    const date = document.getElementById('mag-date').value;
+
+    const id = crypto.randomUUID();
+    const targets = [];
+    const slots = document.querySelectorAll('.page-slot');
+    slots.forEach((s, idx) => {
+      targets.push({
+        id: `target_${idx + 1}`,
+        page_number: idx + 1,
+        name: idx === 0 ? 'Cover Page' : `Page Spread ${idx + 1}`,
+        target_name: `target${idx}`,
+        overlay_type: 'video',
+        aspect_ratio: 1.414
+      });
+    });
+
+    try {
+      const btn = status === 'published' ? document.getElementById('publish-mag-btn') : document.getElementById('save-draft-btn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+      const created = await createMagazine({
+        id,
+        title,
+        issueNumber: issue,
+        client,
+        notes: date ? `Publication Date: ${date}` : '',
+        status,
+        targets
+      });
+
+      location.href = `magazine?id=${id}`;
+    } catch (err) {
+      alert('Failed to save magazine: ' + err.message);
+      const btn = status === 'published' ? document.getElementById('publish-mag-btn') : document.getElementById('save-draft-btn');
+      if (btn) { btn.disabled = false; btn.textContent = status === 'published' ? 'Compile & Publish Issue 🚀' : 'Save Magazine Draft'; }
+    }
+  }
+
+  document.getElementById('save-draft-btn')?.addEventListener('click', () => handleSave('draft'));
+  document.getElementById('publish-mag-btn')?.addEventListener('click', () => handleSave('published'));
 </script>
 </body>
 </html>
