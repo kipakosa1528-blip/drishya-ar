@@ -126,4 +126,81 @@ export async function updateProject(id, updates) {
   return fresh;
 }
 
+// ── Magazines API Client ──────────────────────────────────────────────────────
+
+const MAG_CACHE_KEY = 'kipakosa_magazines_cache';
+
+export function getLocalMagazines() {
+  try {
+    const raw = localStorage.getItem(MAG_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setLocalMagazines(list) {
+  try {
+    localStorage.setItem(MAG_CACHE_KEY, JSON.stringify(list));
+  } catch {}
+}
+
+export async function getAllMagazines(onBackgroundUpdate = null) {
+  const cached = getLocalMagazines();
+  const fetchPromise = (async () => {
+    try {
+      const res = await fetch('/api/magazines');
+      if (!res.ok) throw new Error('API error: ' + res.status);
+      const fresh = await res.json();
+      setLocalMagazines(fresh);
+      if (onBackgroundUpdate && typeof onBackgroundUpdate === 'function') {
+        onBackgroundUpdate(fresh);
+      }
+      return fresh;
+    } catch (err) {
+      console.warn('Magazines fetch failed:', err);
+      return cached || [];
+    }
+  })();
+
+  if (Array.isArray(cached)) return cached;
+  return await fetchPromise;
+}
+
+export async function getMagazine(id) {
+  const res = await fetch(`/api/magazines/${id}`);
+  if (!res.ok) return null;
+  return await res.json();
+}
+
+export async function createMagazine(data) {
+  const res = await fetch('/api/magazines', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return await res.json();
+}
+
+export async function updateMagazine(id, updates) {
+  const res = await fetch(`/api/magazines/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+    body: JSON.stringify(updates)
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return await res.json();
+}
+
+export async function deleteMagazine(id) {
+  const res = await fetch(`/api/magazines/${id}`, {
+    method: 'DELETE',
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return await res.json();
+}
+
+
 
