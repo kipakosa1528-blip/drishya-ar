@@ -57,10 +57,26 @@ for (const dir of ['assets', 'css', 'js', 'external']) {
 for (const page of [
   'landing.html', 'index.html', 'admin.html', 'create.html',
   'dashboard.html', 'projects.html', 'project.html', 'ar.html',
+  'createMagzine.html', 'magnizes.html',
 ]) {
   app.get(`/${page}`, (req, res) => {
     res.setHeader('Cache-Control', 'public, max-age=60');
     res.sendFile(path.join(__dirname, page));
+  });
+}
+
+// Internal magazine routes (direct URL access only)
+for (const route of ['/createMagzine', '/createmagzine', '/createMagazine', '/createmagazine']) {
+  app.get(route, (req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    res.sendFile(path.join(__dirname, 'createMagzine.html'));
+  });
+}
+
+for (const route of ['/magnizes', '/magnize', '/magazines', '/magazine']) {
+  app.get(route, (req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    res.sendFile(path.join(__dirname, 'magnizes.html'));
   });
 }
 
