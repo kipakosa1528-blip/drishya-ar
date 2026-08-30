@@ -196,10 +196,14 @@
 <script type="module">
   import { requireAuth, initNav } from './js/auth.js?v=4';
   import { getAllProjects, deleteProject } from './js/db.js?v=4';
-  import { fmt, statusBadge, toast, filterProjects, sortProjects, calcMuxCost } from './js/utils.js?v=4';
+  import { fmt, statusBadge, isExpired, toast, filterProjects, sortProjects, calcMuxCost } from './js/utils.js?v=4';
 
   requireAuth(); 
   initNav('projects');
+
+  let framesBarChart = null;
+  let framesDonutChart = null;
+  let currentFMetric = 'scans';
 
   const DEFAULTS = { search: '', status: 'all', type: 'all', client: 'all', usage: 'all', sort: 'newest', from: '', to: '' };
   let state = { ...DEFAULTS };
@@ -348,10 +352,6 @@
 
     renderFramesCharts(data);
   }
-
-  let framesBarChart = null;
-  let framesDonutChart = null;
-  let currentFMetric = 'scans';
 
   document.querySelectorAll('[data-fmetric]').forEach(btn => {
     btn.addEventListener('click', () => {

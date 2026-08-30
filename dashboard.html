@@ -450,38 +450,25 @@
       }
     });
 
-    // 2. Prepare Donut Chart Data
-    let donutLabels = [];
-    let donutValues = [];
-    let donutColors = [];
+    // 2. Prepare Donut Chart Data (Product Distribution)
+    document.getElementById('donut-chart-title').textContent = 'Product Distribution';
+    document.getElementById('donut-chart-subtitle').textContent = 'Frames vs Magazines';
+    const donutLabels = ['Living Frames', 'AR Magazines'];
 
-    if (isIndividual && singleItem) {
-      const cost = calcMuxCost(singleItem);
-      document.getElementById('donut-chart-title').textContent = 'Cost Split';
-      document.getElementById('donut-chart-subtitle').textContent = 'Storage vs Delivery';
-      donutLabels = ['Storage Cost', 'Delivery Cost'];
-      donutValues = [Math.max(0.0001, +cost.storageCost.toFixed(4)), Math.max(0.0001, +cost.deliveryCost.toFixed(4))];
-      donutColors = ['#C9A96E', '#38bdf8'];
-    } else {
-      document.getElementById('donut-chart-title').textContent = 'Product Distribution';
-      document.getElementById('donut-chart-subtitle').textContent = 'Frames vs Magazines';
-      donutLabels = ['Living Frames', 'AR Magazines'];
+    let framesSum = 0, magsSum = 0;
+    projects.forEach(p => {
+      if (currentMetric === 'scans') framesSum += Number(p.viewsCount || p.views_count || 0);
+      else if (currentMetric === 'cost') framesSum += calcMuxCost(p).totalCost;
+      else framesSum += calcMuxCost(p).durationMin;
+    });
+    magazines.forEach(m => {
+      if (currentMetric === 'scans') magsSum += Number(m.viewsCount || m.views_count || 0);
+      else if (currentMetric === 'cost') magsSum += calcMuxCost(m).totalCost;
+      else magsSum += calcMuxCost(m).durationMin;
+    });
 
-      let framesSum = 0, magsSum = 0;
-      projects.forEach(p => {
-        if (currentMetric === 'scans') framesSum += Number(p.viewsCount || p.views_count || 0);
-        else if (currentMetric === 'cost') framesSum += calcMuxCost(p).totalCost;
-        else framesSum += calcMuxCost(p).durationMin;
-      });
-      magazines.forEach(m => {
-        if (currentMetric === 'scans') magsSum += Number(m.viewsCount || m.views_count || 0);
-        else if (currentMetric === 'cost') magsSum += calcMuxCost(m).totalCost;
-        else magsSum += calcMuxCost(m).durationMin;
-      });
-
-      donutValues = [Math.max(0.1, framesSum), Math.max(0.1, magsSum)];
-      donutColors = ['#C9A96E', '#38bdf8'];
-    }
+    const donutValues = [Math.max(0.1, +framesSum.toFixed(2)), Math.max(0.1, +magsSum.toFixed(2))];
+    const donutColors = ['#C9A96E', '#38bdf8'];
 
     const donutCtx = document.getElementById('donutShareChart').getContext('2d');
     if (donutChart) donutChart.destroy();

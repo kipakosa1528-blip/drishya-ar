@@ -208,6 +208,10 @@
 
   initNav('magazines');
 
+  let magsBarChart = null;
+  let magsDonutChart = null;
+  let currentMMetric = 'scans';
+
   let allMagazines = [];
   let filterState = {
     search: '',
@@ -345,10 +349,6 @@
 
     renderMagsCharts(filtered);
   }
-
-  let magsBarChart = null;
-  let magsDonutChart = null;
-  let currentMMetric = 'scans';
 
   document.querySelectorAll('[data-mmetric]').forEach(btn => {
     btn.addEventListener('click', () => {
