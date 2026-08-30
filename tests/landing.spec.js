@@ -11,6 +11,7 @@ const SECTIONS = [
   '.hero-story-section',
   '.moments-rail-section',
   '.asymmetric-gallery-section',
+  '.living-magazines-section',
   '.optical-stage-section',
   '.manifesto-section',
 ];
@@ -93,8 +94,8 @@ test.describe('Kipakosa AR landing', () => {
 
   test('luxury CTA buttons render on hero + scanner sections', async ({ page }) => {
     await page.goto('/');
-    const heroCta = page.locator('text=Create Your Living Frame');
-    const stepCta = page.locator('text=Create Yours Today');
+    const heroCta = page.locator('text=Order Your Living Frame');
+    const stepCta = page.locator('text=Order Yours Today');
     await expect(heroCta).toBeVisible();
     await expect(stepCta).toBeVisible();
   });

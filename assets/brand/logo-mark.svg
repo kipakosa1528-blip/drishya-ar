@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 240" fill="none">
+  <!-- Top Left Extension Line & Upper Camera -->
+  <path d="M 20 70 L 230 70 C 255 70 270 85 270 110" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Left Body & Bottom Base -->
+  <path d="M 80 70 C 55 70 40 85 40 110 L 40 160 C 40 185 55 200 80 200 L 200 200 C 225 200 240 185 240 160" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Bottom Right Accent -->
+  <path d="M 270 160 L 270 200 L 230 200" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Center Red Lens Circle -->
+  <circle cx="150" cy="135" r="46" fill="#8e2a2b" stroke="currentColor" stroke-width="14"/>
+  <!-- Top Right Red Dot Accent -->
+  <circle cx="270" cy="80" r="10" fill="#8e2a2b"/>
+</svg>

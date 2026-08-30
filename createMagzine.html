@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Create Magazine — Kipakosa AR</title>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>New Multi-Target Magazine — Kipakosa AR</title>
   <link rel="stylesheet" href="css/app.css?v=4" />
   <script src="js/admin-boot.js?v=1"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1" />
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=1" />
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1" />
@@ -24,38 +26,159 @@
       color: #38bdf8;
       border: 1px solid rgba(56, 189, 248, 0.3);
     }
-    .internal-banner {
-      background: rgba(245, 158, 11, 0.08);
-      border: 1px solid rgba(245, 158, 11, 0.25);
-      border-radius: 12px;
-      padding: 12px 16px;
-      margin-bottom: 24px;
+    .targets-builder {
       display: flex;
-      align-items: center;
-      gap: 12px;
-      color: #fbbf24;
-      font-size: 13px;
-    }
-    .mag-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+      flex-direction: column;
       gap: 20px;
     }
-    @media (max-width: 768px) {
-      .mag-grid { grid-template-columns: 1fr; }
+    .target-builder-card {
+      background: #111827;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
-    .page-slot {
+    .target-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 12px;
+    }
+    .target-dual-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 800px) {
+      .target-dual-grid { grid-template-columns: 1fr; }
+    }
+    .media-box {
       border: 1px dashed rgba(255, 255, 255, 0.15);
-      border-radius: 12px;
+      border-radius: 10px;
       padding: 16px;
       background: rgba(255, 255, 255, 0.02);
-      transition: border-color 0.2s, background 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
-    .page-slot:hover {
-      border-color: rgba(56, 189, 248, 0.4);
-      background: rgba(56, 189, 248, 0.03);
+    .media-preview-box {
+      width: 100%;
+      height: 180px;
+      background: #000;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .media-preview-box img, .media-preview-box video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .studio-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .studio-modal-card {
+      background: #111827;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      max-width: 720px;
+      width: 100%;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
   </style>
+  <script>
+    window.currentStep = 1;
+    window.expMode = 'time';
+
+    window.setExpMode = function(mode) {
+      window.expMode = mode;
+      document.querySelectorAll('.exp-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+      const timeSec = document.getElementById('sec-time-exp');
+      const scanSec = document.getElementById('sec-scan-exp');
+      const noneSec = document.getElementById('sec-none-exp');
+      if (timeSec) timeSec.style.display = (mode === 'time' || mode === 'both') ? 'block' : 'none';
+      if (scanSec) scanSec.style.display = (mode === 'scans' || mode === 'both') ? 'block' : 'none';
+      if (noneSec) noneSec.style.display = (mode === 'none') ? 'block' : 'none';
+    };
+
+    window.setExpiry = function(days) {
+      if (!days) { document.getElementById('f-expiry').value = ''; return; }
+      const d = new Date(); d.setDate(d.getDate() + days);
+      document.getElementById('f-expiry').value = d.toISOString().split('T')[0];
+    };
+
+    window.setScanLimit = function(limit) {
+      document.getElementById('f-max-scans').value = limit || '';
+    };
+
+    window.goStep = function(n) {
+      document.querySelectorAll('.step-body').forEach(b => b.classList.remove('active'));
+      const targetSb = document.getElementById('sb-' + n);
+      if (targetSb) targetSb.classList.add('active');
+      document.querySelectorAll('.step-item').forEach((el, i) => {
+        el.classList.toggle('active', i + 1 === n);
+        el.classList.toggle('done', i + 1 < n);
+      });
+      window.currentStep = n;
+    };
+
+    window.nextStep = function(from) {
+      if (from === 1) {
+        const name = document.getElementById('f-name').value.trim();
+        if (!name) { alert('Please enter a magazine project name'); return; }
+      }
+      if (from === 2) {
+        if (!window.targets || window.targets.length === 0) {
+          alert('Please add at least one target');
+          return;
+        }
+        for (let i = 0; i < window.targets.length; i++) {
+          if (!window.targets[i].targetImageBase64) {
+            alert('Target #' + (i + 1) + ' (' + window.targets[i].name + ') is missing its target photo');
+            return;
+          }
+          if (!window.targets[i].overlayBase64 && !window.targets[i].overlayFile) {
+            alert('Target #' + (i + 1) + ' (' + window.targets[i].name + ') is missing its ' + window.targets[i].overlayType + ' overlay');
+            return;
+          }
+        }
+      }
+      if (from === 3) {
+        const mode = window.expMode || 'time';
+        if (mode === 'time' || mode === 'both') {
+          const d = document.getElementById('f-expiry').value;
+          if (!d) { alert('Please choose an expiry date'); return; }
+        }
+        if (mode === 'scans' || mode === 'both') {
+          const s = document.getElementById('f-max-scans').value;
+          if (!s || Number(s) <= 0) { alert('Please enter a valid scan limit'); return; }
+        }
+        if (window.fillReview) window.fillReview();
+      }
+      goStep(from + 1);
+    };
+
+    window.prevStep = function(from) {
+      goStep(from - 1);
+    };
+  </script>
 </head>
 <body>
 <div class="mobile-topbar">
@@ -75,12 +198,20 @@
       Dashboard
     </a>
     <a class="nav-link" data-page="projects" href="projects.html">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
-      Projects
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      Living Frames
+    </a>
+    <a class="nav-link" data-page="magazines" href="magnizes.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Magazines
     </a>
     <a class="nav-link" data-page="create" href="create.html">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-      New Project
+      + New Frame
+    </a>
+    <a class="nav-link active" data-page="create-magazine" href="createMagzine.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      + New Magazine
     </a>
     <div class="sidebar-footer">
       <button class="btn btn-sm btn-default" id="logout-btn" style="width:100%">Logout</button>
@@ -90,175 +221,1153 @@
   <main class="main">
     <div class="page-header" style="align-items:flex-start;flex-direction:column;gap:6px">
       <div style="display:flex;align-items:center;gap:10px">
-        <span class="mag-badge">Internal Route</span>
-        <span style="font-size:12px;color:var(--muted)">Direct URL Access Only</span>
+        <span class="badge badge-blue">Multi-Target AR</span>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
-        <div class="page-title" style="margin:0">Create Magazine Issue</div>
-        <a href="magnizes" class="btn btn-default">← Back to Magazines</a>
-      </div>
+      <div class="page-title" style="margin:0">New Multi-Target Magazine</div>
     </div>
 
-    <div class="internal-banner">
-      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-      <div>
-        <strong>Internal Magazine Studio:</strong> This module is under active development. It binds multi-page magazine publications with sequential AR image targets and video overlays.
-      </div>
+    <!-- Step indicator -->
+    <div class="steps">
+      <div class="step-item active" id="si-1">1. Info</div>
+      <div class="step-item" id="si-2">2. Targets & Overlays</div>
+      <div class="step-item" id="si-3">3. Expiry & Limits</div>
+      <div class="step-item" id="si-4">4. Compile & QR</div>
     </div>
 
-    <div class="panel" style="margin-bottom:20px">
-      <div class="panel-title">1. Publication Details</div>
-      <div class="mag-grid">
+    <!-- Step 1: Info -->
+    
+    <!-- Draft Banner -->
+    <div id="draft-banner" class="panel" style="display:none;background:rgba(56,189,248,0.1);border-color:rgba(56,189,248,0.3);margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
         <div>
-          <label class="form-label" for="mag-title">Magazine Title</label>
-          <input class="form-control" type="text" id="mag-title" placeholder="e.g. Kipakosa Living Moments" style="width:100%" />
+          <div style="font-weight:700;color:#38bdf8;font-size:14px">💾 Unsaved Magazine Draft Found</div>
+          <div style="font-size:12px;color:#94a3b8" id="draft-banner-desc">You have an existing draft with configured targets.</div>
         </div>
-        <div>
-          <label class="form-label" for="mag-issue">Issue / Volume Number</label>
-          <input class="form-control" type="text" id="mag-issue" placeholder="e.g. Vol. 1 — Fall 2026 Edition" style="width:100%" />
-        </div>
-        <div>
-          <label class="form-label" for="mag-client">Client / Publisher</label>
-          <input class="form-control" type="text" id="mag-client" placeholder="e.g. Studio Kipakosa" style="width:100%" />
-        </div>
-        <div>
-          <label class="form-label" for="mag-date">Publication Date</label>
-          <input class="form-control" type="date" id="mag-date" style="width:100%" />
+        <div style="display:flex;gap:8px">
+          <button type="button" class="btn btn-sm btn-primary" onclick="restoreDraft()">Restore Draft</button>
+          <button type="button" class="btn btn-sm btn-default" onclick="discardDraft()">Discard</button>
         </div>
       </div>
     </div>
-
-    <div class="panel" style="margin-bottom:20px">
-      <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
-        <span>2. Magazine Pages & AR Bindings</span>
-        <button class="btn btn-sm btn-default" type="button" id="add-page-btn">+ Add Page Target</button>
+    <div class="step-body active" id="sb-1">
+      <div class="panel" style="max-width:560px">
+        <div class="form-group">
+          <label>Magazine Project Name *</label>
+          <input class="form-control" type="text" id="f-name" placeholder="e.g. Maya & Arjun Wedding Magazine" />
+        </div>
+        <div class="form-group">
+          <label>Client Name</label>
+          <input class="form-control" type="text" id="f-client" placeholder="e.g. Arjun Maharjan" />
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea class="form-control" id="f-notes" rows="2" placeholder="Internal notes or customer requests…"></textarea>
+        </div>
       </div>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
-        Bind printed magazine pages to interactive AR video experiences. Each page target triggers its corresponding story overlay.
-      </p>
-
-      <div id="pages-container" style="display:flex;flex-direction:column;gap:12px">
-        <div class="page-slot">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <span style="font-weight:600;font-size:13px;color:#f8fafc">Cover Page (Page 1)</span>
-            <span class="badge badge-blue">Target Ready</span>
-          </div>
-          <div class="mag-grid">
-            <div>
-              <label class="form-label">Cover Target Image</label>
-              <input class="form-control" type="file" accept="image/*" style="width:100%" />
-            </div>
-            <div>
-              <label class="form-label">Cover AR Video Overlay</label>
-              <input class="form-control" type="file" accept="video/*" style="width:100%" />
-            </div>
-          </div>
-        </div>
-
-        <div class="page-slot">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <span style="font-weight:600;font-size:13px;color:#f8fafc">Feature Article (Page 4-5 Spread)</span>
-            <span class="badge badge-gray">Draft</span>
-          </div>
-          <div class="mag-grid">
-            <div>
-              <label class="form-label">Spread Target Image</label>
-              <input class="form-control" type="file" accept="image/*" style="width:100%" />
-            </div>
-            <div>
-              <label class="form-label">Feature AR Video Overlay</label>
-              <input class="form-control" type="file" accept="video/*" style="width:100%" />
-            </div>
-          </div>
-        </div>
+      <div style="margin-top:16px">
+        <button class="btn btn-primary" id="btn-next-1" onclick="nextStep(1)">Continue to Targets →</button>
       </div>
     </div>
 
-    <div class="panel">
-      <div class="panel-title">3. Actions & Status</div>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <button class="btn btn-default" type="button" id="save-draft-btn">Save Magazine Draft</button>
-        <button class="btn btn-primary" type="button" id="publish-mag-btn">Compile & Publish Issue 🚀</button>
+    <!-- Step 2: Targets & Overlays -->
+    <div class="step-body" id="sb-2">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;max-width:860px">
+        <p style="font-size:13px;color:var(--muted);margin:0">
+          Add one or more image targets. Each target has its own crop and bound video or image overlay with aspect matching.
+        </p>
+        <button type="button" class="btn btn-sm btn-primary" id="add-target-btn">+ Add Another Target</button>
+      </div>
+
+      <div id="targets-list" class="targets-builder" style="max-width:860px"></div>
+
+      <div style="margin-top:20px;display:flex;gap:8px">
+        <button class="btn btn-default" onclick="prevStep(2)">← Back</button>
+        <button class="btn btn-primary" id="btn-next-2" onclick="nextStep(2)">Continue to Expiry →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Expiry & Limits -->
+    <div class="step-body" id="sb-3">
+      <div style="display:flex;flex-direction:column;gap:16px;max-width:560px">
+        
+        <!-- Mode Switcher Panel -->
+        <div class="panel">
+          <div class="panel-title" style="margin-bottom:8px">Choose Expiration Method</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
+            Select how you want this multi-target AR experience to expire.
+          </p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));gap:8px">
+            <button type="button" class="btn btn-default exp-mode-btn active" data-mode="time" onclick="setExpMode('time')">
+              ⏰ Time Only
+            </button>
+            <button type="button" class="btn btn-default exp-mode-btn" data-mode="scans" onclick="setExpMode('scans')">
+              🔒 Scans Only
+            </button>
+            <button type="button" class="btn btn-default exp-mode-btn" data-mode="both" onclick="setExpMode('both')">
+              ⚡ Both (Or)
+            </button>
+            <button type="button" class="btn btn-default exp-mode-btn" data-mode="none" onclick="setExpMode('none')">
+              ∞ Never Expire
+            </button>
+          </div>
+        </div>
+
+        <!-- 1. Time Expiry Section -->
+        <div class="panel" id="sec-time-exp">
+          <div class="panel-title" style="display:flex;align-items:center;gap:6px">
+            <span>⏰</span> <span>Time-Based Expiration</span>
+          </div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
+            The AR viewer will show "Expired" after this date passes.
+          </p>
+          <div class="form-group">
+            <label>Expiry Date *</label>
+            <input class="form-control" type="date" id="f-expiry" style="max-width:220px" />
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-sm btn-default" onclick="setExpiry(30)">+30 days</button>
+            <button type="button" class="btn btn-sm btn-default" onclick="setExpiry(90)">+90 days</button>
+            <button type="button" class="btn btn-sm btn-default" onclick="setExpiry(180)">+6 months</button>
+            <button type="button" class="btn btn-sm btn-default" onclick="setExpiry(365)">+1 year</button>
+          </div>
+        </div>
+
+        <!-- 2. Scan Limit Expiry Section -->
+        <div class="panel" id="sec-scan-exp" style="display:none">
+          <div class="panel-title" style="display:flex;align-items:center;gap:6px">
+            <span>🔒</span> <span>Scan Limit Expiration</span>
+          </div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
+            The AR viewer will lock after reaching this total number of customer scans.
+          </p>
+          <div class="form-group">
+            <label>Max Scan Limit *</label>
+            <input class="form-control" type="number" id="f-max-scans" placeholder="e.g. 500 scans" min="1" style="max-width:260px" />
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-sm btn-default" onclick="setScanLimit(100)">100 scans</button>
+            <button type="button" class="btn btn-sm btn-default" onclick="setScanLimit(250)">250 scans</button>
+            <button type="button" class="btn btn-sm btn-default" onclick="setScanLimit(500)">500 scans</button>
+            <button type="button" class="btn btn-sm btn-default" onclick="setScanLimit(1000)">1,000 scans</button>
+          </div>
+        </div>
+
+        <!-- 3. Never Expire Section -->
+        <div class="panel" id="sec-none-exp" style="display:none;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2)">
+          <div class="panel-title" style="color:var(--green);display:flex;align-items:center;gap:6px">
+            <span>✓</span> <span>Permanent Experience</span>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary);margin:0">
+            This magazine has no expiration date and unlimited scans.
+          </p>
+        </div>
+
+      </div>
+
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <button class="btn btn-default" onclick="prevStep(3)">← Back</button>
+        <button class="btn btn-primary" id="btn-next-3" onclick="nextStep(3)">Continue to Review →</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Compile & QR -->
+    <div class="step-body" id="sb-4">
+      <!-- Review Block -->
+      <div id="review-block" class="panel" style="max-width:600px;margin-bottom:16px">
+        <div class="panel-title">Review Multi-Target Magazine</div>
+        <table style="width:100%;font-size:14px;border-collapse:collapse">
+          <tr><td style="color:var(--muted);padding:8px 0;width:130px;font-weight:600">Name</td><td id="r-name" style="font-weight:700"></td></tr>
+          <tr><td style="color:var(--muted);padding:8px 0;font-weight:600">Client</td><td id="r-client"></td></tr>
+          <tr><td style="color:var(--muted);padding:8px 0;font-weight:600">Targets Count</td><td id="r-targets" style="color:var(--accent);font-weight:700"></td></tr>
+          <tr><td style="color:var(--muted);padding:8px 0;font-weight:600">Expiration</td><td id="r-exp"></td></tr>
+          <tr><td style="color:var(--muted);padding:8px 0;font-weight:600">Scan Limit</td><td id="r-scans"></td></tr>
+        </table>
+        <div style="margin-top:16px">
+          <button class="btn btn-primary" id="compile-btn" onclick="startCompile()">Compile & Publish Magazine 🚀</button>
+        </div>
+      </div>
+
+      <!-- Compile progress -->
+      <div id="compile-block" style="display:none;max-width:560px">
+        <div class="panel" style="margin-bottom:16px">
+          <div class="panel-title">Compiling Multi-Target AR Magazine</div>
+          <div class="compile-log" id="compile-log" style="background:#000;padding:12px;border-radius:8px;font-family:monospace;font-size:12px;color:#38bdf8;min-height:80px;max-height:160px;overflow-y:auto;margin-bottom:12px"></div>
+          <div class="progress-track" style="margin-bottom:6px;height:8px;background:rgba(255,255,255,0.1);border-radius:999px;overflow:hidden">
+            <div class="progress-fill" id="compile-bar" style="height:100%;background:var(--accent);width:0%;transition:width 0.3s"></div>
+          </div>
+          <div style="font-size:12px;color:var(--muted)" id="compile-pct">0%</div>
+        
+          <div id="compile-error-card" style="display:none;margin-top:14px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);padding:14px;border-radius:10px">
+            <div style="color:#ef4444;font-weight:700;font-size:14px;margin-bottom:6px">⚠️ Compilation Encountered An Issue</div>
+            <div id="compile-error-text" style="color:#fca5a5;font-size:12px;margin-bottom:12px;line-height:1.5"></div>
+            <div style="display:flex;gap:8px">
+              <button type="button" class="btn btn-primary" id="retry-compile-btn" onclick="startCompile()">🔁 Retry Compilation</button>
+              <button type="button" class="btn btn-default" onclick="backToWizard()">← Back to Edit Targets</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Success Block -->
+      <div id="success-block" style="display:none;max-width:560px">
+        <div class="panel" style="margin-bottom:16px">
+          <div class="panel-title" style="color:var(--green)">✓ Magazine Published Successfully</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Scan this QR code to view all bound multi-target AR overlays.</p>
+          <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+            <div>
+              <div id="qr-out" style="padding:12px;background:#fff;border-radius:12px;display:inline-block"></div>
+              <div style="display:flex;gap:6px;margin-top:10px">
+                <button class="btn btn-sm btn-default" id="dl-qr">Download QR (PNG)</button>
+                <a class="btn btn-sm btn-primary" id="view-mag-link" href="#">View Magazine Detail →</a>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </main>
 </div>
 
+<!-- Modal Cropper Studio (For Target Photos & Image Overlays) -->
+<div id="cropper-modal" class="studio-modal" style="display:none">
+  <div class="studio-modal-card">
+    <div style="padding:16px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center">
+      <div style="font-weight:700;font-size:15px;color:#f8fafc" id="crop-modal-title">Frame Photo</div>
+      <button type="button" class="btn btn-sm btn-default" onclick="closeCropperModal()">✕</button>
+    </div>
+    <div class="crop-toolbar" style="padding:10px 16px;background:rgba(255,255,255,0.03);display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+      <div class="ratio-pills" style="display:flex;flex-wrap:wrap;gap:4px" id="cropper-pills">
+        <span class="ratio-pill" id="pill-crop-match-target" data-ratio="target" style="display:none" onclick="setModalCropRatio('target', this)">🎯 Match Target Photo</span>
+        <span class="ratio-pill active" data-ratio="2/3" onclick="setModalCropRatio(2/3, this)">4:6 (2:3)</span>
+        <span class="ratio-pill" data-ratio="3/2" onclick="setModalCropRatio(3/2, this)">6:4 (3:2)</span>
+        <span class="ratio-pill" data-ratio="1/1.4142" onclick="setModalCropRatio(1/1.4142, this)">A4 / A3 (Portrait)</span>
+        <span class="ratio-pill" data-ratio="1.4142" onclick="setModalCropRatio(1.4142, this)">A4 / A3 (Landscape)</span>
+        <span class="ratio-pill" data-ratio="5/7" onclick="setModalCropRatio(5/7, this)">5:7</span>
+        <span class="ratio-pill" data-ratio="4/5" onclick="setModalCropRatio(4/5, this)">8:10 (4:5)</span>
+        <span class="ratio-pill" data-ratio="1" onclick="setModalCropRatio(1, this)">1:1</span>
+        <span class="ratio-pill" data-ratio="9/16" onclick="setModalCropRatio(9/16, this)">9:16 Reel</span>
+        <span class="ratio-pill" data-ratio="16/9" onclick="setModalCropRatio(16/9, this)">16:9 HD</span>
+        <span class="ratio-pill" data-ratio="NaN" onclick="setModalCropRatio(NaN, this)">Free</span>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:4px">
+        <button type="button" class="btn btn-sm btn-default" onclick="rotateModalCrop(-90)">↺</button>
+        <button type="button" class="btn btn-sm btn-default" onclick="rotateModalCrop(90)">↻</button>
+      </div>
+    </div>
+    <div style="flex:1;min-height:350px;background:#020408;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:16px">
+      <img id="modal-crop-img" style="max-width:100%;max-height:50vh" />
+    </div>
+    <div style="padding:14px 16px;border-top:1px solid rgba(255,255,255,0.1);display:flex;justify-content:flex-end;gap:8px">
+      <button type="button" class="btn btn-default" onclick="closeCropperModal()">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="confirmModalCrop()">✓ Confirm Crop</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Interactive Video Framing Studio -->
+<div id="video-studio-modal" class="studio-modal" style="display:none">
+  <div class="studio-modal-card" style="max-width:760px">
+    <div style="padding:16px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center">
+      <div style="font-weight:700;font-size:15px;color:#f8fafc" id="vid-modal-title">Frame Video Overlay</div>
+      <button type="button" class="btn btn-sm btn-default" onclick="closeVideoStudioModal()">✕</button>
+    </div>
+    
+    <div class="crop-toolbar" style="padding:10px 16px;background:rgba(255,255,255,0.03);display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+      <div class="ratio-pills" id="vid-modal-pills" style="display:flex;flex-wrap:wrap;gap:4px">
+        <span class="ratio-pill active" data-vratio="target" onclick="setModalVideoRatio('target', this)">🎯 Match Target Photo</span>
+        <span class="ratio-pill" data-vratio="1/1.4142" onclick="setModalVideoRatio(1/1.4142, this)">A4 / A3 (Portrait)</span>
+        <span class="ratio-pill" data-vratio="1.4142" onclick="setModalVideoRatio(1.4142, this)">A4 / A3 (Landscape)</span>
+        <span class="ratio-pill" data-vratio="2/3" onclick="setModalVideoRatio(2/3, this)">4:6 (2:3)</span>
+        <span class="ratio-pill" data-vratio="3/2" onclick="setModalVideoRatio(3/2, this)">6:4 (3:2)</span>
+        <span class="ratio-pill" data-vratio="5/7" onclick="setModalVideoRatio(5/7, this)">5:7</span>
+        <span class="ratio-pill" data-vratio="4/5" onclick="setModalVideoRatio(4/5, this)">8:10 (4:5)</span>
+        <span class="ratio-pill" data-vratio="1" onclick="setModalVideoRatio(1, this)">1:1</span>
+        <span class="ratio-pill" data-vratio="9/16" onclick="setModalVideoRatio(9/16, this)">9:16 Reel</span>
+        <span class="ratio-pill" data-vratio="16/9" onclick="setModalVideoRatio(16/9, this)">16:9 HD</span>
+        <span class="ratio-pill" data-vratio="original" onclick="setModalVideoRatio('original', this)">Original Video</span>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:4px">
+        <button type="button" class="btn btn-sm btn-default" onclick="adjustModalVidZoom(0.1)" title="Zoom In">🔍+</button>
+        <button type="button" class="btn btn-sm btn-default" onclick="adjustModalVidZoom(-0.1)" title="Zoom Out">🔍-</button>
+        <button type="button" class="btn btn-sm btn-default" onclick="resetModalVidFraming()">Reset</button>
+      </div>
+    </div>
+
+    <!-- Viewport -->
+    <div style="background:#020408;padding:16px;min-height:300px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative">
+      <div id="m-vid-frame-box" style="position:relative;overflow:hidden;border:2px solid var(--accent);border-radius:8px;box-shadow:0 0 25px rgba(59,130,246,0.35);cursor:grab;touch-action:none">
+        <video id="m-vid-frame-player" loop playsinline muted autoplay style="position:absolute;pointer-events:none;display:block"></video>
+        
+        <!-- Rule of thirds -->
+        <div style="position:absolute;inset:0;border:1px dashed rgba(255,255,255,0.35);pointer-events:none;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr">
+          <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+          <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+          <div style="border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+          <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+          <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+          <div style="border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+          <div style="border-right:1px solid rgba(255,255,255,0.15)"></div>
+          <div style="border-right:1px solid rgba(255,255,255,0.15)"></div>
+          <div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sliders -->
+    <div style="padding:10px 16px;background:rgba(255,255,255,0.03);border-top:1px solid rgba(255,255,255,0.1);display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:12px;color:var(--muted)">
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:140px">
+        <span>🔍 Zoom:</span>
+        <input type="range" id="m-vid-zoom-slider" min="1" max="3" step="0.02" value="1" oninput="setModalVidZoom(this.value)" style="flex:1;accent-color:var(--accent)" />
+        <span id="m-vid-zoom-text" style="min-width:28px">1.0x</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:140px">
+        <span>↔ Pan X:</span>
+        <input type="range" id="m-vid-panx-slider" min="-100" max="100" step="1" value="0" oninput="setModalVidPanX(this.value)" style="flex:1;accent-color:var(--accent)" />
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:140px">
+        <span>↕ Pan Y:</span>
+        <input type="range" id="m-vid-pany-slider" min="-100" max="100" step="1" value="0" oninput="setModalVidPanY(this.value)" style="flex:1;accent-color:var(--accent)" />
+      </div>
+    </div>
+
+    <div style="padding:14px 16px;border-top:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:12px;color:var(--muted)" id="m-vid-frame-status">Drag video to pan • Scroll to zoom</div>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="btn btn-default" onclick="closeVideoStudioModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="confirmModalVideoFraming()">✓ Confirm Video Framing</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script type="module">
   import { createMagazine } from './js/db.js';
+  import { authHeaders } from './js/auth.js';
+  import { saveMagazineDraft, loadMagazineDraft, clearMagazineDraft } from './js/magazine-draft.js';
 
-  document.getElementById('add-page-btn')?.addEventListener('click', () => {
-    const container = document.getElementById('pages-container');
-    const idx = container.children.length + 1;
-    const div = document.createElement('div');
-    div.className = 'page-slot';
-    div.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-weight:600;font-size:13px;color:#f8fafc">Page Target #${idx}</span>
-        <span class="badge badge-gray">Draft</span>
-      </div>
-      <div class="mag-grid">
-        <div>
-          <label class="form-label">Page Target Image</label>
-          <input class="form-control target-img-input" type="file" accept="image/*" style="width:100%" />
-        </div>
-        <div>
-          <label class="form-label">AR Overlay (Video or Image)</label>
-          <input class="form-control overlay-file-input" type="file" accept="video/*,image/*" style="width:100%" />
-        </div>
-      </div>
-    `;
-    container.appendChild(div);
-  });
+  window.targets = [];
+  let activeCroppingTargetIndex = null;
+  let activeCroppingType = 'target'; // 'target' or 'overlay'
+  let activeCropperInstance = null;
 
-  async function handleSave(status = 'draft') {
-    const title = document.getElementById('mag-title').value.trim();
-    if (!title) {
-      alert('Please enter a magazine title');
-      return;
+  // Video studio state
+  let activeVideoTargetIndex = null;
+  let vidSelectedRatio = 'target';
+  let vidZoom = 1.0;
+  let vidPanX = 0;
+  let vidPanY = 0;
+  let vidIsDragging = false;
+  let vidDragStartX = 0;
+  let vidDragStartY = 0;
+  let vidStartPanX = 0;
+  let vidStartPanY = 0;
+
+  window.fillReview = function() {
+    document.getElementById('r-name').textContent = document.getElementById('f-name').value.trim();
+    document.getElementById('r-client').textContent = document.getElementById('f-client').value.trim() || '—';
+    document.getElementById('r-targets').textContent = window.targets.length + ' targets configured';
+
+    const mode = window.expMode || 'time';
+    if (mode === 'none') {
+      document.getElementById('r-exp').textContent = 'Never expires (Permanent)';
+      document.getElementById('r-scans').textContent = 'Unlimited scans';
+    } else {
+      const d = document.getElementById('f-expiry').value;
+      const s = document.getElementById('f-max-scans').value;
+      document.getElementById('r-exp').textContent = (mode === 'time' || mode === 'both') ? (d || '—') : 'No date limit';
+      document.getElementById('r-scans').textContent = (mode === 'scans' || mode === 'both') ? (s + ' scans') : 'Unlimited scans';
     }
-    const issue = document.getElementById('mag-issue').value.trim();
-    const client = document.getElementById('mag-client').value.trim();
-    const date = document.getElementById('mag-date').value;
+  };
 
-    const id = crypto.randomUUID();
-    const targets = [];
-    const slots = document.querySelectorAll('.page-slot');
-    slots.forEach((s, idx) => {
-      targets.push({
-        id: `target_${idx + 1}`,
-        page_number: idx + 1,
-        name: idx === 0 ? 'Cover Page' : `Page Spread ${idx + 1}`,
-        target_name: `target${idx}`,
-        overlay_type: 'video',
-        aspect_ratio: 1.414
-      });
+  function addTarget() {
+    triggerAutoSave();
+    const idx = window.targets.length;
+    window.targets.push({
+      id: 'target_' + (idx + 1),
+      name: 'Target ' + (idx + 1),
+      targetName: 'target' + idx,
+      targetImageFile: null,
+      targetImageRaw: null,
+      targetImageBase64: null,
+      targetWidth: 1200,
+      targetHeight: 1800,
+      targetRatio: 2/3,
+      cropRatio: 2/3,
+      overlayType: 'video',
+      overlayFile: null,
+      overlayRaw: null,
+      overlayBase64: null,
+      overlayFraming: {
+        ratio: 'target',
+        zoom: 1.0,
+        panX: 0,
+        panY: 0,
+        aspectRatio: 2/3,
+        planeW: 1,
+        planeH: 1.5
+      }
+    });
+    renderTargets();
+  }
+
+  function renderTargets() {
+    const container = document.getElementById('targets-list');
+    container.innerHTML = '';
+
+    window.targets.forEach((t, i) => {
+      const card = document.createElement('div');
+      card.className = 'target-builder-card';
+      card.innerHTML = '<div class="target-header">' +
+          '<div style="display:flex;align-items:center;gap:10px">' +
+            '<span style="font-weight:700;font-size:15px;color:#f8fafc">Target #' + (i + 1) + '</span>' +
+            '<input class="form-control" type="text" value="' + esc(t.name) + '" style="max-width:200px;font-size:13px;padding:4px 8px" onchange="updateTargetName(' + i + ', this.value)" />' +
+          '</div>' +
+          (window.targets.length > 1 ? '<button type="button" class="btn btn-sm btn-danger" onclick="removeTarget(' + i + ')">Remove</button>' : '') +
+        '</div>' +
+        '<div class="target-dual-grid">' +
+          '<!-- Left: Target Image & Cropper -->' +
+          '<div class="media-box">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center">' +
+              '<span style="font-weight:600;font-size:13px;color:#f8fafc">1. Target Photo (Print Ready)</span>' +
+              (t.targetImageBase64 ? '<span class="badge badge-green">✓ Framed</span>' : '<span class="badge badge-gray">Required</span>') +
+            '</div>' +
+            '<div class="media-preview-box" id="target-preview-box-' + i + '">' +
+              (t.targetImageBase64 ? '<img src="' + t.targetImageBase64 + '" />' : '<span style="color:var(--muted);font-size:12px">No image uploaded</span>') +
+            '</div>' +
+            '<div style="display:flex;gap:6px">' +
+              '<input type="file" id="t-file-' + i + '" accept="image/*" style="display:none" onchange="handleTargetImageUpload(' + i + ', this.files[0])" />' +
+              '<button type="button" class="btn btn-sm btn-default" style="flex:1" onclick="document.getElementById(\'t-file-' + i + '\').click()">' +
+                (t.targetImageBase64 ? 'Change Photo' : 'Upload Target Image') +
+              '</button>' +
+              (t.targetImageBase64 ? '<button type="button" class="btn btn-sm btn-default" onclick="reopenCropModal(' + i + ', \'target\')">Crop / Frame</button>' : '') +
+            '</div>' +
+          '</div>' +
+          '<!-- Right: Visual Overlay (Video or Image) -->' +
+          '<div class="media-box">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center">' +
+              '<span style="font-weight:600;font-size:13px;color:#f8fafc">2. AR Visual Overlay</span>' +
+              '<div class="seg-ctrl" style="font-size:11px">' +
+                '<button type="button" class="seg-btn ' + (t.overlayType === 'video' ? 'active' : '') + '" onclick="setTargetOverlayType(' + i + ', \'video\')">Video</button>' +
+                '<button type="button" class="seg-btn ' + (t.overlayType === 'image' ? 'active' : '') + '" onclick="setTargetOverlayType(' + i + ', \'image\')">Image</button>' +
+              '</div>' +
+            '</div>' +
+            '<div class="media-preview-box" id="overlay-preview-box-' + i + '">' +
+              (t.overlayBase64 
+                ? (t.overlayType === 'video' 
+                    ? '<video src="' + t.overlayBase64 + '" loop playsinline muted autoplay style="width:100%;height:100%;object-fit:contain"></video>' 
+                    : '<img src="' + t.overlayBase64 + '" />')
+                : (t.overlayFile 
+                    ? '<span style="color:var(--green);font-size:12px">✓ Video selected (' + (t.overlayFile.size/1024/1024).toFixed(1) + ' MB)</span>'
+                    : '<span style="color:var(--muted);font-size:12px">No ' + t.overlayType + ' uploaded</span>')) +
+            '</div>' +
+            '<div style="display:flex;gap:6px">' +
+              '<input type="file" id="o-file-' + i + '" accept="' + (t.overlayType === 'video' ? 'video/*' : 'image/*') + '" style="display:none" onchange="handleOverlayUpload(' + i + ', this.files[0])" />' +
+              '<button type="button" class="btn btn-sm btn-default" style="flex:1" onclick="document.getElementById(\'o-file-' + i + '\').click()">' +
+                (t.overlayBase64 || t.overlayFile ? ('Change ' + t.overlayType) : ('Upload ' + (t.overlayType === 'video' ? 'Video Overlay' : 'Image Overlay'))) +
+              '</button>' +
+              (t.overlayRaw ? (t.overlayType === 'video' 
+                ? '<button type="button" class="btn btn-sm btn-default" onclick="reopenVideoStudioModal(' + i + ')">Frame Video</button>' 
+                : '<button type="button" class="btn btn-sm btn-default" onclick="reopenCropModal(' + i + ', \'overlay\')">Crop Image</button>') : '') +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      container.appendChild(card);
+    });
+  }
+
+  window.updateTargetName = function(i, val) {
+    if (window.targets[i]) window.targets[i].name = val.trim() || ('Target ' + (i + 1));
+  };
+
+  window.removeTarget = function(i) {
+    triggerAutoSave();
+    if (window.targets.length <= 1) return;
+    window.targets.splice(i, 1);
+    renderTargets();
+  };
+
+  window.setTargetOverlayType = function(i, type) {
+    if (!window.targets[i]) return;
+    window.targets[i].overlayType = type;
+    window.targets[i].overlayFile = null;
+    window.targets[i].overlayRaw = null;
+    window.targets[i].overlayBase64 = null;
+    renderTargets();
+  };
+
+  window.handleTargetImageUpload = function(i, file) {
+    if (!file) return;
+    window.targets[i].targetImageFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      window.targets[i].targetImageRaw = e.target.result;
+      openCropModal(i, 'target', e.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.handleOverlayUpload = function(i, file) {
+    if (!file) return;
+    window.targets[i].overlayFile = file;
+    const objectUrl = URL.createObjectURL(file);
+    window.targets[i].overlayRaw = objectUrl;
+
+    if (window.targets[i].overlayType === 'video') {
+      openVideoStudioModal(i, objectUrl);
+    } else {
+      const reader = new FileReader();
+      reader.onload = e => {
+        window.targets[i].overlayRaw = e.target.result;
+        openCropModal(i, 'overlay', e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Image Cropper Modal
+  function openCropModal(index, type, imageSrc) {
+    activeCroppingTargetIndex = index;
+    activeCroppingType = type;
+    const modal = document.getElementById('cropper-modal');
+    const modalTitle = document.getElementById('crop-modal-title');
+    const modalImg = document.getElementById('modal-crop-img');
+    const matchTargetPill = document.getElementById('pill-crop-match-target');
+
+    modalTitle.textContent = type === 'target' 
+      ? 'Frame Target #' + (index + 1) + ' Photo' 
+      : 'Crop Image Overlay for Target #' + (index + 1);
+
+    if (type === 'overlay') {
+      if (matchTargetPill) {
+        matchTargetPill.style.display = 'inline-block';
+        document.querySelectorAll('#cropper-pills .ratio-pill').forEach(p => p.classList.remove('active'));
+        matchTargetPill.classList.add('active');
+      }
+    } else {
+      if (matchTargetPill) {
+        matchTargetPill.style.display = 'none';
+        document.querySelectorAll('#cropper-pills .ratio-pill').forEach(p => {
+          p.classList.toggle('active', p.dataset.ratio === '2/3');
+        });
+      }
+    }
+
+    modal.style.display = 'flex';
+    modalImg.src = imageSrc;
+
+    const initialRatio = type === 'overlay' 
+      ? (window.targets[index].targetRatio || (window.targets[index].targetWidth / window.targets[index].targetHeight) || 2/3)
+      : (window.targets[index].cropRatio || 2/3);
+
+    if (activeCropperInstance) activeCropperInstance.destroy();
+    activeCropperInstance = new Cropper(modalImg, {
+      aspectRatio: initialRatio,
+      viewMode: 1,
+      autoCropArea: 0.95,
+      background: false
+    });
+  }
+
+  window.reopenCropModal = function(i, type) {
+    const src = type === 'target' ? window.targets[i].targetImageRaw : window.targets[i].overlayRaw;
+    if (src) openCropModal(i, type, src);
+  };
+
+  window.closeCropperModal = function() {
+    const modal = document.getElementById('cropper-modal');
+    modal.style.display = 'none';
+    if (activeCropperInstance) {
+      activeCropperInstance.destroy();
+      activeCropperInstance = null;
+    }
+    activeCroppingTargetIndex = null;
+  };
+
+  window.setModalCropRatio = function(ratio, el) {
+    document.querySelectorAll('#cropper-pills .ratio-pill').forEach(p => p.classList.remove('active'));
+    if (el) el.classList.add('active');
+    if (activeCropperInstance && activeCroppingTargetIndex !== null) {
+      let finalRatio = ratio;
+      if (ratio === 'target') {
+        const t = window.targets[activeCroppingTargetIndex];
+        finalRatio = t.targetRatio || (t.targetWidth / t.targetHeight) || (2/3);
+      }
+      activeCropperInstance.setAspectRatio(finalRatio);
+      if (activeCroppingType === 'target') {
+        window.targets[activeCroppingTargetIndex].cropRatio = finalRatio;
+      }
+    }
+  };
+
+  window.rotateModalCrop = function(deg) {
+    if (activeCropperInstance) activeCropperInstance.rotate(deg);
+  };
+
+  window.confirmModalCrop = function() {
+    triggerAutoSave();
+    if (!activeCropperInstance || activeCroppingTargetIndex === null) return;
+    const canvas = activeCropperInstance.getCroppedCanvas({ maxWidth: 2048, maxHeight: 2048, imageSmoothingQuality: 'high' });
+    const base64 = canvas.toDataURL('image/jpeg', 0.92);
+    
+    if (activeCroppingType === 'target') {
+      window.targets[activeCroppingTargetIndex].targetImageBase64 = base64;
+      window.targets[activeCroppingTargetIndex].targetWidth = canvas.width;
+      window.targets[activeCroppingTargetIndex].targetHeight = canvas.height;
+      window.targets[activeCroppingTargetIndex].targetRatio = canvas.width / canvas.height;
+    } else {
+      window.targets[activeCroppingTargetIndex].overlayBase64 = base64;
+      const aspect = canvas.width / canvas.height;
+      window.targets[activeCroppingTargetIndex].overlayFraming = {
+        ratio: 'cropped',
+        aspectRatio: aspect,
+        planeW: 1,
+        planeH: +(1 / aspect).toFixed(4)
+      };
+    }
+
+    closeCropperModal();
+    renderTargets();
+  };
+
+  // Video Framing Studio Modal
+  function openVideoStudioModal(index, videoSrc) {
+    activeVideoTargetIndex = index;
+    const modal = document.getElementById('video-studio-modal');
+    const player = document.getElementById('m-vid-frame-player');
+    modal.style.display = 'flex';
+    player.src = videoSrc;
+    player.load();
+    player.play().catch(() => {});
+
+    vidZoom = 1.0;
+    vidPanX = 0;
+    vidPanY = 0;
+    vidSelectedRatio = 'target';
+
+    document.querySelectorAll('#vid-modal-pills .ratio-pill').forEach(p => {
+      p.classList.toggle('active', p.dataset.vratio === 'target');
     });
 
-    try {
-      const btn = status === 'published' ? document.getElementById('publish-mag-btn') : document.getElementById('save-draft-btn');
-      if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+    player.onloadedmetadata = () => {
+      resetModalVidFraming();
+      updateModalVidFrameBox();
+      initModalVidInteractions();
+    };
+  }
 
-      const created = await createMagazine({
-        id,
-        title,
-        issueNumber: issue,
+  window.reopenVideoStudioModal = function(i) {
+    if (window.targets[i] && window.targets[i].overlayRaw) {
+      openVideoStudioModal(i, window.targets[i].overlayRaw);
+    }
+  };
+
+  window.closeVideoStudioModal = function() {
+    const modal = document.getElementById('video-studio-modal');
+    modal.style.display = 'none';
+    const player = document.getElementById('m-vid-frame-player');
+    if (player) player.pause();
+    activeVideoTargetIndex = null;
+  };
+
+  window.setModalVideoRatio = function(ratio, el) {
+    vidSelectedRatio = ratio;
+    document.querySelectorAll('#vid-modal-pills [data-vratio]').forEach(p => p.classList.remove('active'));
+    if (el) el.classList.add('active');
+    updateModalVidFrameBox();
+  };
+
+  function updateModalVidFrameBox() {
+    const player = document.getElementById('m-vid-frame-player');
+    const box = document.getElementById('m-vid-frame-box');
+    const status = document.getElementById('m-vid-frame-status');
+    if (!player || !player.videoWidth || !box || activeVideoTargetIndex === null) return;
+
+    const t = window.targets[activeVideoTargetIndex];
+    let targetR;
+    if (vidSelectedRatio === 'target') {
+      targetR = t.targetRatio || (t.targetWidth / t.targetHeight) || (2/3);
+      status.textContent = 'Framed to Match Target Photo • Drag to pan';
+    } else if (vidSelectedRatio === 'original') {
+      targetR = player.videoWidth / player.videoHeight;
+      status.textContent = 'Original Video Aspect Ratio • Drag to pan';
+    } else {
+      targetR = Number(vidSelectedRatio);
+      status.textContent = 'Framed to Selected Aspect Ratio • Drag to pan';
+    }
+
+    const maxH = 280;
+    const maxW = 420;
+    let boxW, boxH;
+
+    if (targetR >= 1) {
+      boxW = Math.min(maxW, Math.round(maxH * targetR));
+      boxH = Math.round(boxW / targetR);
+    } else {
+      boxH = Math.min(maxH, Math.round(maxW / targetR));
+      boxW = Math.round(boxH * targetR);
+    }
+
+    box.style.width = boxW + 'px';
+    box.style.height = boxH + 'px';
+
+    renderModalVidPlayerTransform();
+  }
+
+  function renderModalVidPlayerTransform() {
+    const player = document.getElementById('m-vid-frame-player');
+    const box = document.getElementById('m-vid-frame-box');
+    if (!player || !player.videoWidth || !box) return;
+
+    const boxW = box.offsetWidth || parseInt(box.style.width, 10);
+    const boxH = box.offsetHeight || parseInt(box.style.height, 10);
+    if (!boxW || !boxH) return;
+
+    const vAspect = player.videoWidth / player.videoHeight;
+    const boxAspect = boxW / boxH;
+
+    let baseW, baseH;
+    if (vAspect >= boxAspect) {
+      baseH = boxH;
+      baseW = baseH * vAspect;
+    } else {
+      baseW = boxW;
+      baseH = baseW / vAspect;
+    }
+
+    const scaledW = baseW * vidZoom;
+    const scaledH = baseH * vidZoom;
+
+    const maxShiftX = Math.max(0, (scaledW - boxW) / 2);
+    const maxShiftY = Math.max(0, (scaledH - boxH) / 2);
+
+    const shiftX = (vidPanX / 100) * maxShiftX;
+    const shiftY = (vidPanY / 100) * maxShiftY;
+
+    const left = (boxW - scaledW) / 2 + shiftX;
+    const top = (boxH - scaledH) / 2 + shiftY;
+
+    player.style.width = scaledW + 'px';
+    player.style.height = scaledH + 'px';
+    player.style.left = left + 'px';
+    player.style.top = top + 'px';
+  }
+
+  window.setModalVidZoom = function(val) {
+    vidZoom = Number(val);
+    const zT = document.getElementById('m-vid-zoom-text');
+    if (zT) zT.textContent = vidZoom.toFixed(1) + 'x';
+    renderModalVidPlayerTransform();
+  };
+
+  window.adjustModalVidZoom = function(delta) {
+    vidZoom = Math.min(3.0, Math.max(1.0, vidZoom + delta));
+    const slider = document.getElementById('m-vid-zoom-slider');
+    if (slider) slider.value = vidZoom;
+    window.setModalVidZoom(vidZoom);
+  };
+
+  window.setModalVidPanX = function(val) {
+    vidPanX = Number(val);
+    renderModalVidPlayerTransform();
+  };
+
+  window.setModalVidPanY = function(val) {
+    vidPanY = Number(val);
+    renderModalVidPlayerTransform();
+  };
+
+  window.resetModalVidFraming = function() {
+    vidZoom = 1.0;
+    vidPanX = 0;
+    vidPanY = 0;
+    const zS = document.getElementById('m-vid-zoom-slider'); if (zS) zS.value = 1;
+    const xS = document.getElementById('m-vid-panx-slider'); if (xS) xS.value = 0;
+    const yS = document.getElementById('m-vid-pany-slider'); if (yS) yS.value = 0;
+    const zT = document.getElementById('m-vid-zoom-text'); if (zT) zT.textContent = '1.0x';
+    renderModalVidPlayerTransform();
+  };
+
+  function initModalVidInteractions() {
+    const box = document.getElementById('m-vid-frame-box');
+    if (!box || box._vidInit) return;
+    box._vidInit = true;
+
+    box.addEventListener('pointerdown', (e) => {
+      vidIsDragging = true;
+      box.setPointerCapture(e.pointerId);
+      vidDragStartX = e.clientX;
+      vidDragStartY = e.clientY;
+      vidStartPanX = vidPanX;
+      vidStartPanY = vidPanY;
+      box.style.cursor = 'grabbing';
+    });
+
+    box.addEventListener('pointermove', (e) => {
+      if (!vidIsDragging) return;
+      const dx = e.clientX - vidDragStartX;
+      const dy = e.clientY - vidDragStartY;
+      const sensitivity = 0.8 / vidZoom;
+      vidPanX = Math.min(100, Math.max(-100, vidStartPanX + dx * sensitivity));
+      vidPanY = Math.min(100, Math.max(-100, vidStartPanY + dy * sensitivity));
+      
+      const xS = document.getElementById('m-vid-panx-slider'); if (xS) xS.value = vidPanX;
+      const yS = document.getElementById('m-vid-pany-slider'); if (yS) yS.value = vidPanY;
+      renderModalVidPlayerTransform();
+    });
+
+    const stopDrag = (e) => {
+      if (vidIsDragging) {
+        vidIsDragging = false;
+        try { box.releasePointerCapture(e.pointerId); } catch (_) {}
+        box.style.cursor = 'grab';
+      }
+    };
+    box.addEventListener('pointerup', stopDrag);
+    box.addEventListener('pointercancel', stopDrag);
+
+    box.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.08 : -0.08;
+      window.adjustModalVidZoom(delta);
+    }, { passive: false });
+  }
+
+  window.confirmModalVideoFraming = function() {
+    triggerAutoSave();
+    if (activeVideoTargetIndex === null) return;
+    const t = window.targets[activeVideoTargetIndex];
+    const player = document.getElementById('m-vid-frame-player');
+
+    let finalRatio;
+    if (vidSelectedRatio === 'target') {
+      finalRatio = t.targetRatio || (t.targetWidth / t.targetHeight) || (2/3);
+    } else if (vidSelectedRatio === 'original') {
+      finalRatio = player.videoWidth / player.videoHeight;
+    } else {
+      finalRatio = Number(vidSelectedRatio);
+    }
+
+    t.overlayBase64 = t.overlayRaw;
+    t.overlayFraming = {
+      ratio: vidSelectedRatio,
+      zoom: vidZoom,
+      panX: vidPanX,
+      panY: vidPanY,
+      aspectRatio: finalRatio,
+      planeW: 1,
+      planeH: +(1 / finalRatio).toFixed(4)
+    };
+
+    closeVideoStudioModal();
+    renderTargets();
+  };
+
+  // ── Auto-save & Draft Storage ──────────────────────────────────────────
+  let autoSaveTimeout = null;
+  function triggerAutoSave() {
+    clearTimeout(autoSaveTimeout);
+    autoSaveTimeout = setTimeout(async () => {
+      const name = document.getElementById('f-name')?.value || '';
+      const client = document.getElementById('f-client')?.value || '';
+      const notes = document.getElementById('f-notes')?.value || '';
+      const expMode = window.expMode || 'time';
+      const expiresAt = document.getElementById('f-expiry')?.value || '';
+      const maxScans = document.getElementById('f-max-scans')?.value || '';
+
+      const draftTargets = window.targets.map(t => ({
+        id: t.id,
+        name: t.name,
+        targetImageBase64: t.targetImageBase64,
+        targetRatio: t.targetRatio,
+        targetWidth: t.targetWidth,
+        targetHeight: t.targetHeight,
+        cropRatio: t.cropRatio,
+        overlayType: t.overlayType,
+        overlayRaw: t.overlayRaw,
+        overlayBase64: t.overlayBase64,
+        overlayFraming: t.overlayFraming,
+        _uploadedImgKey: t._uploadedImgKey,
+        _uploadedOverlayKey: t._uploadedOverlayKey
+      }));
+
+      await saveMagazineDraft({
+        name,
         client,
-        notes: date ? `Publication Date: ${date}` : '',
-        status,
-        targets
+        notes,
+        expMode,
+        expiresAt,
+        maxScans,
+        currentStep: window.currentStep || 1,
+        activeCompileMagId: window.activeCompileMagId,
+        targets: draftTargets
       });
+    }, 500);
+  }
 
-      location.href = `magazine?id=${id}`;
-    } catch (err) {
-      alert('Failed to save magazine: ' + err.message);
-      const btn = status === 'published' ? document.getElementById('publish-mag-btn') : document.getElementById('save-draft-btn');
-      if (btn) { btn.disabled = false; btn.textContent = status === 'published' ? 'Compile & Publish Issue 🚀' : 'Save Magazine Draft'; }
+  // Hook auto-save on input changes
+  ['f-name', 'f-client', 'f-notes', 'f-expiry', 'f-max-scans'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', triggerAutoSave);
+  });
+
+  // Check for existing draft on page load
+  async function checkForDraft() {
+    try {
+      const draft = await loadMagazineDraft();
+      if (draft && Array.isArray(draft.targets) && draft.targets.length > 0) {
+        const hasData = draft.name || draft.targets.some(t => t.targetImageBase64 || t.overlayBase64);
+        if (hasData) {
+          const banner = document.getElementById('draft-banner');
+          const desc = document.getElementById('draft-banner-desc');
+          if (banner && desc) {
+            desc.textContent = 'Found saved draft for "' + (draft.name || 'Untitled') + '" with ' + draft.targets.length + ' configured target(s).';
+            banner.style.display = 'block';
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Draft check error:', e);
     }
   }
 
-  document.getElementById('save-draft-btn')?.addEventListener('click', () => handleSave('draft'));
-  document.getElementById('publish-mag-btn')?.addEventListener('click', () => handleSave('published'));
+  window.restoreDraft = async function() {
+    try {
+      const draft = await loadMagazineDraft();
+      if (!draft) return;
+
+      if (draft.name) document.getElementById('f-name').value = draft.name;
+      if (draft.client) document.getElementById('f-client').value = draft.client;
+      if (draft.notes) document.getElementById('f-notes').value = draft.notes;
+      if (draft.expMode) window.setExpMode(draft.expMode);
+      if (draft.expiresAt) document.getElementById('f-expiry').value = draft.expiresAt;
+      if (draft.maxScans) document.getElementById('f-max-scans').value = draft.maxScans;
+      if (draft.activeCompileMagId) window.activeCompileMagId = draft.activeCompileMagId;
+
+      if (Array.isArray(draft.targets) && draft.targets.length > 0) {
+        window.targets = draft.targets.map(t => ({
+          ...t,
+          targetImageRaw: t.targetImageBase64,
+          overlayFile: t.overlayType === 'video' ? null : null
+        }));
+        renderTargets();
+      }
+
+      document.getElementById('draft-banner').style.display = 'none';
+      if (draft.currentStep && draft.currentStep > 1) {
+        window.goStep(draft.currentStep);
+      }
+    } catch (err) {
+      alert('Failed to restore draft: ' + err.message);
+    }
+  };
+
+  window.discardDraft = async function() {
+    if (!confirm('Are you sure you want to discard this saved draft?')) return;
+    await clearMagazineDraft();
+    document.getElementById('draft-banner').style.display = 'none';
+  };
+
+  window.backToWizard = function() {
+    document.getElementById('compile-block').style.display = 'none';
+    document.getElementById('review-block').style.display = 'block';
+    window.goStep(2);
+  };
+
+  // Robust upload with 3 retries and exponential backoff
+  async function uploadToR2(blobOrFile, key, contentType, retries = 3) {
+    const type = contentType || (blobOrFile && blobOrFile.type) || 'application/octet-stream';
+    let lastErr = null;
+
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const presignResp = await fetch('/api/presign?key=' + encodeURIComponent(key) + '&type=' + encodeURIComponent(type), {
+          headers: await authHeaders(),
+        });
+        if (!presignResp.ok) {
+          const errData = await presignResp.json().catch(() => ({}));
+          throw new Error(errData.error || ('Presign HTTP ' + presignResp.status));
+        }
+        const { url: presignUrl } = await presignResp.json();
+
+        const putResp = await fetch(presignUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': type },
+          body: blobOrFile,
+        });
+        if (!putResp.ok) throw new Error('Direct R2 PUT failed (' + putResp.status + ')');
+        return; // Success!
+      } catch (err) {
+        lastErr = err;
+        console.warn('Upload attempt ' + attempt + ' failed for ' + key + ':', err);
+        if (attempt < retries) {
+          await new Promise(r => setTimeout(r, attempt * 1200));
+        }
+      }
+    }
+    throw new Error('Failed to upload ' + key + ': ' + (lastErr ? lastErr.message : 'Unknown network error'));
+  }
+
+  window.activeCompileMagId = null;
+
+  window.startCompile = async function() {
+    const name = document.getElementById('f-name').value.trim();
+    const client = document.getElementById('f-client').value.trim();
+    const notes = document.getElementById('f-notes').value.trim();
+    const mode = window.expMode || 'time';
+    const expiresAt = (mode === 'time' || mode === 'both') ? document.getElementById('f-expiry').value : null;
+    const maxScans = (mode === 'scans' || mode === 'both') ? Number(document.getElementById('f-max-scans').value) : null;
+
+    document.getElementById('review-block').style.display = 'none';
+    const compileBlock = document.getElementById('compile-block');
+    const errCard = document.getElementById('compile-error-card');
+    if (errCard) errCard.style.display = 'none';
+
+    const log = document.getElementById('compile-log');
+    const bar = document.getElementById('compile-bar');
+    const pct = document.getElementById('compile-pct');
+    compileBlock.style.display = 'block';
+
+    function addLog(msg, progress) {
+      const line = document.createElement('div');
+      line.textContent = '> ' + msg;
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+      bar.style.width = progress + '%';
+      pct.textContent = progress + '%';
+    }
+
+    if (!window.activeCompileMagId) {
+      window.activeCompileMagId = crypto.randomUUID();
+    }
+    const magId = window.activeCompileMagId;
+
+    try {
+      addLog('Starting multi-target compilation for "' + name + '"...', 5);
+      await triggerAutoSave();
+      await new Promise(r => setTimeout(r, 200));
+
+      const payloadTargets = [];
+
+      for (let i = 0; i < window.targets.length; i++) {
+        const t = window.targets[i];
+        const stepBasePct = 10 + Math.round((i / window.targets.length) * 65);
+        
+        // 1. Upload Target Photo directly to Cloudflare R2 (skip if already done)
+        const imgKey = 'magazines/' + magId + '/targets/' + i + '/original.jpg';
+        if (!t._uploadedImgKey) {
+          addLog('Uploading Target #' + (i + 1) + ' photo to R2...', stepBasePct);
+          const imgBlob = await fetch(t.targetImageBase64).then(r => r.blob());
+          await uploadToR2(imgBlob, imgKey, 'image/jpeg');
+          t._uploadedImgKey = imgKey;
+          triggerAutoSave();
+        } else {
+          addLog('✓ Target #' + (i + 1) + ' photo already uploaded, skipping.', stepBasePct);
+        }
+
+        // 2. Upload Overlay (Video or Image) directly to Cloudflare R2
+        let overlayKey;
+        if (t.overlayType === 'video') {
+          overlayKey = 'magazines/' + magId + '/targets/' + i + '/overlay.mp4';
+          if (!t._uploadedOverlayKey) {
+            addLog('Uploading Target #' + (i + 1) + ' video directly to R2...', stepBasePct + 8);
+            const vidBody = t.overlayFile || (t.overlayBase64 ? await fetch(t.overlayBase64).then(r => r.blob()) : null);
+            if (!vidBody) throw new Error('Video source missing for Target #' + (i + 1));
+            await uploadToR2(vidBody, overlayKey, 'video/mp4');
+            t._uploadedOverlayKey = overlayKey;
+            triggerAutoSave();
+          } else {
+            addLog('✓ Target #' + (i + 1) + ' video already uploaded, skipping.', stepBasePct + 8);
+          }
+        } else {
+          overlayKey = 'magazines/' + magId + '/targets/' + i + '/overlay.jpg';
+          if (!t._uploadedOverlayKey) {
+            addLog('Uploading Target #' + (i + 1) + ' image overlay to R2...', stepBasePct + 8);
+            const overlayBlob = await fetch(t.overlayBase64).then(r => r.blob());
+            await uploadToR2(overlayBlob, overlayKey, 'image/jpeg');
+            t._uploadedOverlayKey = overlayKey;
+            triggerAutoSave();
+          } else {
+            addLog('✓ Target #' + (i + 1) + ' image overlay already uploaded, skipping.', stepBasePct + 8);
+          }
+        }
+
+        payloadTargets.push({
+          id: 'target_' + (i + 1),
+          page_number: i + 1,
+          name: t.name,
+          target_name: 'target' + i,
+          overlay_type: t.overlayType,
+          image_path: imgKey,
+          overlay_path: overlayKey,
+          overlayFraming: t.overlayFraming
+        });
+      }
+
+      addLog('Registering magazine and generating streaming endpoints...', 85);
+
+      const created = await createMagazine({
+        id: magId,
+        title: name,
+        client,
+        notes,
+        expiresAt,
+        maxScans,
+        status: 'published',
+        targets: payloadTargets
+      });
+
+      addLog('Generating multi-target 8th Wall descriptors & QR code...', 95);
+      await new Promise(r => setTimeout(r, 400));
+
+      addLog('✓ Complete! Multi-target magazine is published.', 100);
+
+      // Clear draft on successful compilation
+      await clearMagazineDraft();
+      window.activeCompileMagId = null;
+
+      compileBlock.style.display = 'none';
+      const successBlock = document.getElementById('success-block');
+      successBlock.style.display = 'block';
+
+      const qrEl = document.getElementById('qr-out');
+      qrEl.innerHTML = '';
+      const magUrl = location.origin + '/magAr?id=' + magId;
+      const qr = new QRCodeStyling({
+        width: 200,
+        height: 200,
+        data: magUrl,
+        dotsOptions: { color: "#090d16", type: "rounded" },
+        cornersSquareOptions: { color: "#090d16", type: "extra-rounded" },
+        backgroundOptions: { color: "#ffffff" }
+      });
+      qr.append(qrEl);
+
+      document.getElementById('dl-qr')?.addEventListener('click', () => {
+        qr.download({ name: 'magazine-' + magId + '-qr', extension: 'png' });
+      });
+
+      const viewLink = document.getElementById('view-mag-link');
+      viewLink.href = 'magazine?id=' + magId;
+
+    } catch (err) {
+      addLog('❌ Error: ' + err.message, 100);
+      const errCard = document.getElementById('compile-error-card');
+      const errText = document.getElementById('compile-error-text');
+      if (errCard && errText) {
+        errText.textContent = err.message;
+        errCard.style.display = 'block';
+      }
+    }
+  };
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  document.getElementById('add-target-btn')?.addEventListener('click', addTarget);
+  addTarget();
+  checkForDraft();
 </script>
 </body>
 </html>

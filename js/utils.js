@@ -108,7 +108,8 @@ export function filterProjects(list, c = {}) {
     if (to && created > to) return false;
     // Search axis
     if (q) {
-      const hay = `${p.name || ''} ${p.client || ''} ${p.notes || ''}`.toLowerCase();
+      const titleName = p.title || p.name || '';
+      const hay = `${titleName} ${p.client || ''} ${p.notes || ''}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -117,7 +118,7 @@ export function filterProjects(list, c = {}) {
 
 /**
  * Sort a copy of the list. Modes:
- *   newest | oldest | name_asc | scans_desc | scans_asc | expiring | recent_scan
+ *   newest | oldest | name_asc | scans_desc | scans_asc | expiring | recent_scan | cost_desc
  * 'expiring': dated projects first, soonest first; permanent ones last.
  * 'recent_scan': most recent lastScannedAt first; never-scanned last.
  */
@@ -125,11 +126,13 @@ export function sortProjects(list, mode = 'newest') {
   const arr = (list || []).slice();
   const createdMs = p => new Date(p.createdAt || p.created_at || 0).getTime();
   const viewsOf = p => Number(p.viewsCount || p.views_count || 0);
+  const nameOf = p => String(p.title || p.name || '');
+
   switch (mode) {
     case 'oldest':
       return arr.sort((a, b) => createdMs(a) - createdMs(b));
     case 'name_asc':
-      return arr.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+      return arr.sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
     case 'scans_desc':
       return arr.sort((a, b) => viewsOf(b) - viewsOf(a));
     case 'scans_asc':
@@ -158,15 +161,34 @@ export function sortProjects(list, mode = 'newest') {
 }
 
 /**
- * Computes exact estimated Mux Video API costs (Storage + Delivery).
- * @param {object} project
+ * Computes exact estimated Mux Video API costs (Storage + Delivery) for both single frames and multi-target magazines.
+ * @param {object} projectOrMag
  */
-export function calcMuxCost(project) {
-  if (!project) return { totalCost: 0, formattedTotal: '$0.00', minutesDelivered: 0 };
-  const td = (typeof project.targetData === 'object' && project.targetData) ? project.targetData : (project.target_data || {});
-  const durationSec = Number(td.duration || project.duration || 30);
+export function calcMuxCost(projectOrMag) {
+  if (!projectOrMag) return { totalCost: 0, formattedTotal: '$0.00', minutesDelivered: 0, videoCount: 0 };
+
+  let durationSec = 0;
+  let videoCount = 0;
+
+  // Check if magazine with targets array
+  if (Array.isArray(projectOrMag.targets) && projectOrMag.targets.length > 0) {
+    projectOrMag.targets.forEach(t => {
+      const oType = (t.overlay && t.overlay.type) || t.overlay_type || 'video';
+      if (oType === 'video') {
+        videoCount++;
+        const td = (typeof t.targetData === 'object' && t.targetData) ? t.targetData : (t.target_data || {});
+        durationSec += Number(td.duration || t.duration || 30);
+      }
+    });
+  } else {
+    // Single Living Frame
+    videoCount = 1;
+    const td = (typeof projectOrMag.targetData === 'object' && projectOrMag.targetData) ? projectOrMag.targetData : (projectOrMag.target_data || {});
+    durationSec = Number(td.duration || projectOrMag.duration || 30);
+  }
+
   const durationMin = durationSec / 60;
-  const views = Number(project.viewsCount || project.views_count || 0);
+  const views = Number(projectOrMag.viewsCount || projectOrMag.views_count || 0);
 
   // Mux rates: $0.005/min/month storage, $0.0013/min delivered
   const storageCost = durationMin * 0.005;
@@ -175,6 +197,7 @@ export function calcMuxCost(project) {
   const minutesDelivered = durationMin * views;
 
   return {
+    videoCount,
     durationSec: Number(durationSec.toFixed(1)),
     durationMin: Number(durationMin.toFixed(2)),
     views,

@@ -89,23 +89,29 @@
 <div class="layout">
   <aside class="sidebar">
     <div class="sidebar-brand" style="display:flex;align-items:center;gap:10px">
-      <img src="/assets/logo.svg" style="width:28px;height:28px;border-radius:6px" />
+      <img src="/assets/logo.svg" style="width:28px;height:28px;border-radius:6px" alt="Logo" />
       <div>Kipakosa <span>AR</span></div>
     </div>
-
-
 
     <a class="nav-link" data-page="dashboard" href="dashboard.html">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Dashboard
     </a>
     <a class="nav-link" data-page="projects" href="projects.html">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
-      Projects
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      Living Frames
     </a>
-    <a class="nav-link" data-page="create" href="create.html">
+    <a class="nav-link" data-page="magazines" href="magnizes.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Magazines
+    </a>
+    <a class="nav-link active" data-page="create" href="create.html">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-      New Project
+      + New Frame
+    </a>
+    <a class="nav-link" data-page="create-magazine" href="createMagzine.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      + New Magazine
     </a>
     <div class="sidebar-footer">
       <button class="btn btn-sm btn-default" id="logout-btn" style="width:100%">Logout</button>
@@ -849,8 +855,8 @@
   };
 
   setupFile('img-input', 'img-zone', 'img-label', 'img-name', (f) => {
-    if (f.size > 25 * 1024 * 1024) {
-      toast(`Image too large (${(f.size/1024/1024).toFixed(0)}MB). Max is 25MB.`, 'err');
+    if (f.size > 50 * 1024 * 1024) {
+      toast(`Image too large (${(f.size/1024/1024).toFixed(0)}MB). Max is 50MB.`, 'err');
       return;
     }
     rawImageFile = f;
@@ -859,8 +865,8 @@
   });
 
   setupFile('vid-input', 'vid-zone', 'vid-label', 'vid-name', (f) => {
-    if (f.size > 100 * 1024 * 1024) {
-      toast(`Video too large (${(f.size/1024/1024).toFixed(0)}MB). Max is 100MB.`, 'err');
+    if (f.size > 500 * 1024 * 1024) {
+      toast(`Video too large (${(f.size/1024/1024).toFixed(0)}MB). Max is 500MB.`, 'err');
       return;
     }
     window.videoFile = f;

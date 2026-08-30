@@ -5,9 +5,52 @@
   <title>Dashboard — Kipakosa AR</title>
   <link rel="stylesheet" href="css/app.css?v=4" />
   <script src="js/admin-boot.js?v=1"></script>
+  <script src="/external/chart.umd.min.js"></script>
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1" />
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=1" />
-  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1" /></head>
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1" />
+  <style>
+    .analytics-tab-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .analytics-tab-btn.active {
+      background: var(--accent-gradient);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 2px 10px rgba(201,169,110,0.25);
+    }
+    .kpi-chip {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex: 1;
+      min-width: 130px;
+    }
+    .kpi-chip-title {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .kpi-chip-val {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+    }
+  </style>
+</head>
 <body>
 <div class="mobile-topbar">
   <div class="brand"><img src="/assets/logo.svg" style="width:24px;height:24px;border-radius:6px;margin-right:8px;vertical-align:middle" />Kipakosa <span>AR</span></div>
@@ -17,21 +60,29 @@
 <div class="layout">
   <aside class="sidebar">
     <div class="sidebar-brand" style="display:flex;align-items:center;gap:10px">
-      <img src="/assets/logo.svg" style="width:28px;height:28px;border-radius:6px" />
+      <img src="/assets/logo.svg" style="width:28px;height:28px;border-radius:6px" alt="Logo" />
       <div>Kipakosa <span>AR</span></div>
     </div>
 
-    <a class="nav-link" data-page="dashboard" href="dashboard.html">
+    <a class="nav-link active" data-page="dashboard" href="dashboard.html">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Dashboard
     </a>
     <a class="nav-link" data-page="projects" href="projects.html">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
-      Projects
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      Living Frames
+    </a>
+    <a class="nav-link" data-page="magazines" href="magnizes.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Magazines
     </a>
     <a class="nav-link" data-page="create" href="create.html">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-      New Project
+      + New Frame
+    </a>
+    <a class="nav-link" data-page="create-magazine" href="createMagzine.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      + New Magazine
     </a>
     <div class="sidebar-footer">
       <button class="btn btn-sm btn-default" id="logout-btn" style="width:100%">Logout</button>
@@ -41,21 +92,135 @@
   <main class="main">
 
     <div class="page-header">
-      <div class="page-title">Dashboard Overview</div>
-      <a href="create.html" class="btn btn-primary">+ New Project</a>
+      <div>
+        <div class="page-title">Studio Dashboard</div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-top:2px">Real-time performance, multi-product analytics, and infrastructure costs</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <a href="create.html" class="btn btn-default">+ New Frame</a>
+        <a href="createMagzine.html" class="btn btn-primary">+ New Magazine</a>
+      </div>
     </div>
 
-    <div class="stats-grid">
-      <div class="stat-card"><div class="stat-lbl">Total Projects</div><div class="stat-val" id="st-total">&nbsp;</div></div>
-      <div class="stat-card"><div class="stat-lbl">Total AR Scans</div><div class="stat-val" style="color:var(--accent)" id="st-scans">&nbsp;</div></div>
-      <div class="stat-card"><div class="stat-lbl">Active Projects</div><div class="stat-val" style="color:var(--green)" id="st-active">&nbsp;</div></div>
-      <div class="stat-card"><div class="stat-lbl">Expired Projects</div><div class="stat-val" style="color:var(--red)" id="st-expired">&nbsp;</div></div>
+    <!-- Combined Stats Grid -->
+    <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr))">
+      <div class="stat-card">
+        <div class="stat-lbl">Living Frames</div>
+        <div class="stat-val" id="st-total">—</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px" id="st-total-sub">⚡ Mux: $0.00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-lbl">AR Magazines</div>
+        <div class="stat-val" style="color:var(--accent)" id="st-mags">—</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px" id="st-mags-sub">⚡ Mux: $0.00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-lbl">Total Mux Incurred Cost</div>
+        <div class="stat-val" style="color:var(--accent);font-size:24px" id="st-cost">$0.00</div>
+        <div style="font-size:11px;color:var(--green);margin-top:4px"><span class="badge-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:4px"></span>Covered by Free Tier</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-lbl">Total AR Scans</div>
+        <div class="stat-val" style="color:var(--green)" id="st-scans">—</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px" id="st-scans-sub">Across all experiences</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-lbl">Active Experiences</div>
+        <div class="stat-val" style="color:var(--text)" id="st-active">—</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px" id="st-active-sub">Live &amp; Scan Ready</div>
+      </div>
     </div>
 
-    <div class="panel">
+    <!-- Interactive Performance & Cost Analytics Studio -->
+    <div class="panel" style="margin-top:20px;border:1px solid rgba(255,255,255,0.08);box-shadow:0 10px 30px rgba(0,0,0,0.3)">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;margin-bottom:18px;border-bottom:1px solid var(--border);padding-bottom:14px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:18px">📊</span>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--text)">Interactive Analytics &amp; Visual Graphs</div>
+            <div style="font-size:12px;color:var(--muted)">Select any product, magazine, or individual project to view isolated trends and costs</div>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <!-- Scope Selector (Macro level only) -->
+          <div style="display:flex;align-items:center;gap:6px">
+            <label for="chart-scope-select" style="font-size:12px;font-weight:600;color:var(--muted)">View:</label>
+            <select id="chart-scope-select" class="form-control f-select" style="min-width:190px;padding:6px 10px;font-size:13px;background:#0d131f;border-color:var(--accent)">
+              <option value="all">⚡ All Products (Combined)</option>
+              <option value="frames">🖼️ All Living Frames</option>
+              <option value="mags">📖 All AR Magazines</option>
+            </select>
+          </div>
+
+          <!-- Metric View Buttons -->
+          <div style="display:flex;gap:4px">
+            <button class="analytics-tab-btn active" data-metric="scans" id="btn-metric-scans">📊 Scans</button>
+            <button class="analytics-tab-btn" data-metric="cost" id="btn-metric-cost">⚡ Mux Cost ($)</button>
+            <button class="analytics-tab-btn" data-metric="duration" id="btn-metric-duration">⏱️ Video Mins</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dynamic Scope Summary Chips -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px" id="scope-kpi-container">
+        <div class="kpi-chip">
+          <span class="kpi-chip-title" id="kpi-title-1">Total Scans</span>
+          <span class="kpi-chip-val" style="color:var(--green)" id="kpi-val-1">0</span>
+        </div>
+        <div class="kpi-chip">
+          <span class="kpi-chip-title" id="kpi-title-2">Video Overlays</span>
+          <span class="kpi-chip-val" style="color:var(--accent)" id="kpi-val-2">0</span>
+        </div>
+        <div class="kpi-chip">
+          <span class="kpi-chip-title" id="kpi-title-3">Stored Video</span>
+          <span class="kpi-chip-val" id="kpi-val-3">0 mins</span>
+        </div>
+        <div class="kpi-chip">
+          <span class="kpi-chip-title" id="kpi-title-4">Streamed Minutes</span>
+          <span class="kpi-chip-val" id="kpi-val-4">0 mins</span>
+        </div>
+        <div class="kpi-chip">
+          <span class="kpi-chip-title" id="kpi-title-5">Incurred Mux Cost</span>
+          <span class="kpi-chip-val" style="color:var(--accent)" id="kpi-val-5">$0.00</span>
+        </div>
+        <div class="kpi-chip">
+          <span class="kpi-chip-title" id="kpi-title-6">Cloudflare R2 Footprint</span>
+          <span class="kpi-chip-val" style="color:#38bdf8" id="kpi-val-6">~0 MB</span>
+        </div>
+      </div>
+
+      <!-- Charts Grid -->
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;align-items:stretch" id="charts-grid-layout">
+        <!-- Main Comparison / Breakdown Chart -->
+        <div style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:16px;display:flex;flex-direction:column">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+            <span id="main-chart-title">Item Ranking &amp; Performance</span>
+            <span style="font-size:11px;color:var(--muted)" id="main-chart-subtitle">Top Items</span>
+          </div>
+          <div style="position:relative;flex:1;min-height:260px">
+            <canvas id="mainAnalyticsChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Product / Component Share Donut Chart -->
+        <div style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:16px;display:flex;flex-direction:column">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+            <span id="donut-chart-title">Product Share Distribution</span>
+            <span style="font-size:11px;color:var(--muted)" id="donut-chart-subtitle">Split %</span>
+          </div>
+          <div style="position:relative;flex:1;min-height:260px;display:flex;align-items:center;justify-content:center">
+            <canvas id="donutShareChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Living Frames Table -->
+    <div class="panel" style="margin-top:24px">
       <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
-        <span>Recent Projects</span>
-        <a href="projects.html" style="font-size:12px;color:var(--accent)">View all →</a>
+        <span>Recent Living Frames</span>
+        <a href="projects.html" style="font-size:12px;color:var(--accent)">View all frames →</a>
       </div>
       <div class="table-wrap">
         <table>
@@ -70,7 +235,7 @@
               <th style="text-align:right;width:140px">Actions</th>
             </tr>
           </thead>
-<tbody id="recent-body"></tbody>
+          <tbody id="recent-body"></tbody>
         </table>
       </div>
 
@@ -87,49 +252,278 @@
           KBoot.setText('st-total', list.length);
           KBoot.setText('st-scans', scans);
           KBoot.setText('st-active', list.length - expired);
-          KBoot.setText('st-expired', expired);
           var recent = list.slice().sort(KBoot.byCreatedDesc).slice(0, 5);
           body.innerHTML = recent.length ? recent.map(KBoot.rowHTML).join('')
             : '<tr><td colspan="7" class="empty">No projects yet. <a href="create.html" style="color:var(--accent);font-weight:600">Create one</a></td></tr>';
         })();
       </script>
     </div>
+
+    <!-- Recent Multi-Target Magazines Table -->
+    <div class="panel" style="margin-top:24px">
+      <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Recent Multi-Target Magazines</span>
+        <a href="magnizes.html" style="font-size:12px;color:var(--accent)">View all magazines →</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:70px">Cover</th>
+              <th>Magazine Name</th>
+              <th>Client</th>
+              <th>Pages / Targets</th>
+              <th>Scans</th>
+              <th>Created</th>
+              <th style="text-align:right;width:140px">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="recent-mags-body"></tbody>
+        </table>
+      </div>
+    </div>
   </main>
 </div>
 
 <script type="module">
   import { requireAuth, initNav } from './js/auth.js?v=4';
-  import { getAllProjects, deleteProject } from './js/db.js?v=4';
-  import { fmt, isExpired, statusBadge, toast } from './js/utils.js?v=4';
+  import { getAllProjects, deleteProject, getAllMagazines, deleteMagazine } from './js/db.js?v=4';
+  import { fmt, isExpired, statusBadge, toast, calcMuxCost } from './js/utils.js?v=4';
 
   requireAuth(); 
   initNav('dashboard');
 
-  function updateDashboard(list) {
-    projects = (list || []).sort((a,b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at));
-    const total = projects.length;
-    const expired = projects.filter(p => isExpired(p)).length;
-    const active = total - expired;
-    const totalScans = projects.reduce((acc, p) => acc + (p.viewsCount || p.views_count || 0), 0);
+  let projects = [];
+  let magazines = [];
+  let currentScope = 'all'; // 'all' | 'frames' | 'mags' | 'proj:{id}' | 'mag:{id}'
+  let currentMetric = 'scans'; // 'scans' | 'cost' | 'duration'
 
-    document.getElementById('st-total').textContent   = total;
-    document.getElementById('st-scans').textContent   = totalScans;
-    document.getElementById('st-active').textContent  = active;
-    document.getElementById('st-expired').textContent = expired;
-    renderRecent();
+  let mainChart = null;
+  let donutChart = null;
+
+  function updateDashboard() {
+    const totalFrames = projects.length;
+    const totalMags = magazines.length;
+    const expiredFrames = projects.filter(p => isExpired(p)).length;
+    const active = (totalFrames - expiredFrames) + totalMags;
+
+    let frameScans = 0, magScans = 0;
+    let frameCost = 0, magCost = 0;
+
+    projects.forEach(p => {
+      frameScans += Number(p.viewsCount || p.views_count || 0);
+      frameCost += calcMuxCost(p).totalCost;
+    });
+
+    magazines.forEach(m => {
+      magScans += Number(m.viewsCount || m.views_count || 0);
+      magCost += calcMuxCost(m).totalCost;
+    });
+
+    const totalCost = frameCost + magCost;
+
+    document.getElementById('st-total').textContent  = totalFrames;
+    document.getElementById('st-total-sub').textContent = `⚡ Mux: $${frameCost.toFixed(2)}`;
+    document.getElementById('st-mags').textContent   = totalMags;
+    document.getElementById('st-mags-sub').textContent = `⚡ Mux: $${magCost.toFixed(2)}`;
+    document.getElementById('st-cost').textContent   = totalCost === 0 ? '$0.00' : (totalCost < 0.01 ? '<$0.01' : `$${totalCost.toFixed(2)}`);
+    document.getElementById('st-scans').textContent  = (frameScans + magScans).toLocaleString();
+    document.getElementById('st-scans-sub').textContent = `${frameScans} Frames • ${magScans} Magazines`;
+    document.getElementById('st-active').textContent = active;
+
+    renderRecentFrames();
+    renderRecentMagazines();
+    renderAnalytics();
   }
 
-  let projects = [];
-  const initial = await getAllProjects((freshList) => {
-    updateDashboard(freshList);
-  });
-  updateDashboard(initial);
+  function renderAnalytics() {
+    let selectedItems = [];
 
-  function renderRecent() {
+    if (currentScope === 'frames') {
+      selectedItems = projects.map(p => ({ ...p, _type: 'frame' }));
+    } else if (currentScope === 'mags') {
+      selectedItems = magazines.map(m => ({ ...m, _type: 'mag' }));
+    } else {
+      selectedItems = [...projects.map(p => ({ ...p, _type: 'frame' })), ...magazines.map(m => ({ ...m, _type: 'mag' }))];
+    }
+
+    // Update Dynamic KPI Chips
+    let totalScans = 0, totalOverlays = 0, totalStoredMins = 0, totalDeliveredMins = 0, totalMuxCost = 0, totalR2MB = 0;
+
+    selectedItems.forEach(item => {
+      const cost = calcMuxCost(item);
+      const views = Number(item.viewsCount || item.views_count || 0);
+      totalScans += views;
+      totalOverlays += (cost.videoCount || 1);
+      totalStoredMins += cost.durationMin;
+      totalDeliveredMins += cost.minutesDelivered;
+      totalMuxCost += cost.totalCost;
+
+      if (item._type === 'mag') {
+        const tLen = (item.targets || []).length;
+        totalR2MB += Math.round(tLen * 4.7 + 3.5);
+      } else {
+        totalR2MB += 12; // Average ~12MB per single frame assets
+      }
+    });
+
+    document.getElementById('kpi-val-1').textContent = totalScans.toLocaleString();
+    document.getElementById('kpi-val-2').textContent = totalOverlays;
+    document.getElementById('kpi-val-3').textContent = totalStoredMins.toFixed(1) + ' mins';
+    document.getElementById('kpi-val-4').textContent = totalDeliveredMins.toFixed(1) + ' mins';
+    document.getElementById('kpi-val-5').textContent = totalMuxCost === 0 ? '$0.00' : (totalMuxCost < 0.01 ? '<$0.01' : `$${totalMuxCost.toFixed(2)}`);
+    document.getElementById('kpi-val-6').textContent = `~${totalR2MB} MB (${(totalR2MB/1024).toFixed(2)} GB)`;
+
+    renderCharts(selectedItems);
+  }
+
+  function renderCharts(items) {
+    if (typeof Chart === 'undefined') return;
+
+    // Multiple items ranking
+    const sorted = items.slice().sort((a, b) => {
+      if (currentMetric === 'scans') return (b.viewsCount || b.views_count || 0) - (a.viewsCount || a.views_count || 0);
+      if (currentMetric === 'cost') return calcMuxCost(b).totalCost - calcMuxCost(a).totalCost;
+      return calcMuxCost(b).durationMin - calcMuxCost(a).durationMin;
+    }).slice(0, 8);
+
+    const mainTitle = currentMetric === 'scans' ? 'Top Experiences by Scans' : (currentMetric === 'cost' ? 'Top Infrastructure Costs' : 'Longest Video Durations');
+    const mainSubtitle = `Top ${sorted.length} Items`;
+
+    const labels = sorted.map(item => {
+      const prefix = item._type === 'mag' ? '📖 ' : '🖼️ ';
+      const name = item.title || item.name || 'Untitled';
+      return prefix + (name.length > 14 ? name.slice(0, 12) + '…' : name);
+    });
+
+    const dataValues = sorted.map(item => {
+      if (currentMetric === 'scans') return Number(item.viewsCount || item.views_count || 0);
+      if (currentMetric === 'cost') return +calcMuxCost(item).totalCost.toFixed(3);
+      return +calcMuxCost(item).durationMin.toFixed(2);
+    });
+
+    const barColors = sorted.map((_, i) => i === 0 ? '#C9A96E' : (i % 2 === 0 ? '#38bdf8' : '#22c55e'));
+
+    document.getElementById('main-chart-title').textContent = mainTitle;
+    document.getElementById('main-chart-subtitle').textContent = mainSubtitle;
+
+    // Render Main Bar Chart
+    const mainCtx = document.getElementById('mainAnalyticsChart').getContext('2d');
+    if (mainChart) mainChart.destroy();
+
+    mainChart = new Chart(mainCtx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data: dataValues,
+          backgroundColor: barColors,
+          borderRadius: 6,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0d131f',
+            titleColor: '#f8fafc',
+            bodyColor: '#C9A96E',
+            borderColor: 'rgba(201,169,110,0.3)',
+            borderWidth: 1,
+            padding: 10
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+            ticks: { color: '#94a3b8', font: { size: 11 } }
+          },
+          y: {
+            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+            ticks: { color: '#94a3b8', font: { size: 11 } },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+
+    // 2. Prepare Donut Chart Data
+    let donutLabels = [];
+    let donutValues = [];
+    let donutColors = [];
+
+    if (isIndividual && singleItem) {
+      const cost = calcMuxCost(singleItem);
+      document.getElementById('donut-chart-title').textContent = 'Cost Split';
+      document.getElementById('donut-chart-subtitle').textContent = 'Storage vs Delivery';
+      donutLabels = ['Storage Cost', 'Delivery Cost'];
+      donutValues = [Math.max(0.0001, +cost.storageCost.toFixed(4)), Math.max(0.0001, +cost.deliveryCost.toFixed(4))];
+      donutColors = ['#C9A96E', '#38bdf8'];
+    } else {
+      document.getElementById('donut-chart-title').textContent = 'Product Distribution';
+      document.getElementById('donut-chart-subtitle').textContent = 'Frames vs Magazines';
+      donutLabels = ['Living Frames', 'AR Magazines'];
+
+      let framesSum = 0, magsSum = 0;
+      projects.forEach(p => {
+        if (currentMetric === 'scans') framesSum += Number(p.viewsCount || p.views_count || 0);
+        else if (currentMetric === 'cost') framesSum += calcMuxCost(p).totalCost;
+        else framesSum += calcMuxCost(p).durationMin;
+      });
+      magazines.forEach(m => {
+        if (currentMetric === 'scans') magsSum += Number(m.viewsCount || m.views_count || 0);
+        else if (currentMetric === 'cost') magsSum += calcMuxCost(m).totalCost;
+        else magsSum += calcMuxCost(m).durationMin;
+      });
+
+      donutValues = [Math.max(0.1, framesSum), Math.max(0.1, magsSum)];
+      donutColors = ['#C9A96E', '#38bdf8'];
+    }
+
+    const donutCtx = document.getElementById('donutShareChart').getContext('2d');
+    if (donutChart) donutChart.destroy();
+
+    donutChart = new Chart(donutCtx, {
+      type: 'doughnut',
+      data: {
+        labels: donutLabels,
+        datasets: [{
+          data: donutValues,
+          backgroundColor: donutColors,
+          borderColor: '#090d16',
+          borderWidth: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '70%',
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: '#94a3b8', font: { size: 11 }, padding: 12 }
+          },
+          tooltip: {
+            backgroundColor: '#0d131f',
+            titleColor: '#f8fafc',
+            bodyColor: '#C9A96E',
+            borderColor: 'rgba(201,169,110,0.3)',
+            borderWidth: 1,
+            padding: 10
+          }
+        }
+      }
+    });
+  }
+
+  function renderRecentFrames() {
     const recent = projects.slice(0, 5);
     const body = document.getElementById('recent-body');
     if (!recent.length) {
-      body.innerHTML = `<tr><td colspan="7" class="empty">No projects yet. <a href="create.html" style="color:var(--accent);font-weight:600">Create one</a></td></tr>`;
+      body.innerHTML = '<tr><td colspan="7" class="empty">No frames yet. <a href="create.html" style="color:var(--accent);font-weight:600">Create one</a></td></tr>';
       return;
     }
     body.innerHTML = recent.map(p => `
@@ -137,40 +531,104 @@
         <td style="width:70px">
           ${p.imageUrl ? `<img class="td-thumb" src="${p.imageUrl}" />` : `<div class="td-thumb-placeholder"></div>`}
         </td>
-        <td><a href="project.html?id=${p.id}" style="font-weight:600;color:var(--text)">${p.name}</a></td>
-        <td style="color:var(--text-secondary)">${p.client || '—'}</td>
+        <td><a href="project.html?id=${p.id}" style="font-weight:600;color:var(--text)">${esc(p.name)}</a></td>
+        <td style="color:var(--text-secondary)">${esc(p.client || '—')}</td>
         <td><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--accent)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ${p.viewsCount || p.views_count || 0}</span></td>
         <td>${statusBadge(p)}</td>
         <td style="color:var(--text-secondary)">${fmt(p.expiresAt || p.expires_at)}</td>
-
         <td style="text-align:right">
           <div class="actions" style="display:flex;gap:6px;justify-content:flex-end">
             <a href="project.html?id=${p.id}" class="btn btn-sm btn-default">View</a>
-            <button class="btn btn-sm btn-danger" onclick="delProj('${p.id}', '${p.name.replace(/'/g, "\\'")}')">Delete</button>
+            <button class="btn btn-sm btn-danger" onclick="delProj('${p.id}', '${esc(p.name).replace(/'/g, "\\'")}')">Delete</button>
           </div>
         </td>
       </tr>`).join('');
   }
 
+  function renderRecentMagazines() {
+    const recent = magazines.slice(0, 5);
+    const body = document.getElementById('recent-mags-body');
+    if (!recent.length) {
+      body.innerHTML = '<tr><td colspan="7" class="empty">No magazines yet. <a href="createMagzine.html" style="color:var(--accent);font-weight:600">Create one</a></td></tr>';
+      return;
+    }
+    body.innerHTML = recent.map(m => {
+      const targets = m.targets || [];
+      const firstTarget = targets[0] || {};
+      const coverUrl = m.coverImageUrl || firstTarget.imageUrl || firstTarget.image_url || firstTarget.targetUrl || firstTarget.target_url || '';
+      return `
+      <tr>
+        <td style="width:70px">
+          ${coverUrl ? `<img class="td-thumb" src="${coverUrl}" />` : `<div class="td-thumb-placeholder">📖</div>`}
+        </td>
+        <td><a href="magazine.html?id=${m.id}" style="font-weight:600;color:var(--text)">${esc(m.title || m.name || 'Untitled Magazine')}</a></td>
+        <td style="color:var(--text-secondary)">${esc(m.client || '—')}</td>
+        <td><span class="badge badge-blue">${targets.length} Page${targets.length !== 1 ? 's' : ''}</span></td>
+        <td><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--accent)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ${m.viewsCount || m.views_count || 0}</span></td>
+        <td style="color:var(--text-secondary)">${fmt(m.createdAt || m.created_at)}</td>
+        <td style="text-align:right">
+          <div class="actions" style="display:flex;gap:6px;justify-content:flex-end">
+            <a href="magazine.html?id=${m.id}" class="btn btn-sm btn-default">View</a>
+            <button class="btn btn-sm btn-danger" onclick="delMag('${m.id}', '${esc(m.title || m.name || 'Magazine').replace(/'/g, "\\'")}')">Delete</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  // Event Listeners for Analytics Controls
+  document.getElementById('chart-scope-select').addEventListener('change', (e) => {
+    currentScope = e.target.value;
+    renderAnalytics();
+  });
+
+  document.querySelectorAll('.analytics-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.analytics-tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentMetric = btn.dataset.metric;
+      renderAnalytics();
+    });
+  });
+
+  // Load Initial Data
+  const initialProjects = await getAllProjects((freshList) => {
+    projects = (freshList || []).sort((a,b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at));
+    updateDashboard();
+  });
+  projects = (initialProjects || []).sort((a,b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at));
+
+  const initialMags = await getAllMagazines((freshList) => {
+    magazines = (freshList || []).sort((a,b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at));
+    updateDashboard();
+  });
+  magazines = (initialMags || []).sort((a,b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at));
+
+  updateDashboard();
 
   window.delProj = async function(id, name) {
     if (confirm(`Delete "${name}"?`)) {
       await deleteProject(id);
       projects = projects.filter(p => p.id !== id);
-      updateDashboard(projects);
+      updateDashboard();
       toast('Project deleted', 'success');
     }
   };
-</script>
 
+  window.delMag = async function(id, name) {
+    if (confirm(`Delete magazine "${name}"?`)) {
+      await deleteMagazine(id);
+      magazines = magazines.filter(m => m.id !== id);
+      updateDashboard();
+      toast('Magazine deleted', 'success');
+    }
+  };
+</script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-

@@ -5,9 +5,29 @@
   <title>Projects — Kipakosa AR</title>
   <link rel="stylesheet" href="css/app.css?v=4" />
   <script src="js/admin-boot.js?v=1"></script>
+  <script src="/external/chart.umd.min.js"></script>
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1" />
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=1" />
-  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1" /></head>
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1" />
+  <style>
+    .analytics-tab-btn {
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .analytics-tab-btn.active {
+      background: var(--accent-gradient);
+      color: #fff;
+      border-color: transparent;
+    }
+  </style>
+</head>
 <body>
 <div class="mobile-topbar">
   <div class="brand"><img src="/assets/logo.svg" style="width:24px;height:24px;border-radius:6px;margin-right:8px;vertical-align:middle" />Kipakosa <span>AR</span></div>
@@ -17,7 +37,7 @@
 <div class="layout">
   <aside class="sidebar">
     <div class="sidebar-brand" style="display:flex;align-items:center;gap:10px">
-      <img src="/assets/logo.svg" style="width:28px;height:28px;border-radius:6px" />
+      <img src="/assets/logo.svg" style="width:28px;height:28px;border-radius:6px" alt="Logo" />
       <div>Kipakosa <span>AR</span></div>
     </div>
 
@@ -25,13 +45,21 @@
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Dashboard
     </a>
-    <a class="nav-link" data-page="projects" href="projects.html">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
-      Projects
+    <a class="nav-link active" data-page="projects" href="projects.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      Living Frames
+    </a>
+    <a class="nav-link" data-page="magazines" href="magnizes.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Magazines
     </a>
     <a class="nav-link" data-page="create" href="create.html">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-      New Project
+      + New Frame
+    </a>
+    <a class="nav-link" data-page="create-magazine" href="createMagzine.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      + New Magazine
     </a>
     <div class="sidebar-footer">
       <button class="btn btn-sm btn-default" id="logout-btn" style="width:100%">Logout</button>
@@ -68,8 +96,12 @@
         <option value="has">Has scans</option>
         <option value="near">Near limit (80%+)</option>
       </select>
-      <input type="date" class="form-control f-select" id="f-from" title="Created from" />
-      <input type="date" class="form-control f-select" id="f-to" title="Created to" />
+      <div class="date-filter-capsule" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;padding:3px 10px">
+        <span style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em">From:</span>
+        <input type="date" class="form-control" id="f-from" title="Filter frames created after this date" aria-label="Created From Date" style="border:none;background:transparent;padding:4px 2px;font-size:12px;color:var(--text);width:auto;min-width:115px" />
+        <span style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-left:4px">To:</span>
+        <input type="date" class="form-control" id="f-to" title="Filter frames created before this date" aria-label="Created To Date" style="border:none;background:transparent;padding:4px 2px;font-size:12px;color:var(--text);width:auto;min-width:115px" />
+      </div>
       <select class="form-control f-select" id="f-sort" title="Sort order">
         <option value="newest">Newest first</option>
         <option value="oldest">Oldest first</option>
@@ -102,6 +134,31 @@
           Estimated Cost: <strong id="sum-total-cost" style="color:var(--accent);font-size:14px">$0.00</strong>
         </div>
         <span class="badge badge-green" style="font-size:11px"><span class="badge-dot"></span>Covered by $20/mo Free Credit</span>
+      </div>
+    </div>
+
+    <!-- Living Frames Visual Analytics Charts -->
+    <div class="panel" style="margin-bottom:18px;padding:16px 20px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+        <div style="font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
+          <span>📊</span>
+          <span>Living Frames Performance &amp; Mux Analytics</span>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="analytics-tab-btn active" data-fmetric="scans" id="btn-f-scans">Scans</button>
+          <button class="analytics-tab-btn" data-fmetric="cost" id="btn-f-cost">Mux Cost ($)</button>
+          <button class="analytics-tab-btn" data-fmetric="duration" id="btn-f-duration">Video Mins</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:stretch">
+        <div style="background:rgba(0,0,0,0.2);border-radius:8px;padding:12px;position:relative;min-height:220px">
+          <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px" id="frame-chart-title">Top Frames Ranking</div>
+          <div style="position:relative;height:180px"><canvas id="framesBarChart"></canvas></div>
+        </div>
+        <div style="background:rgba(0,0,0,0.2);border-radius:8px;padding:12px;position:relative;min-height:220px">
+          <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">Status Distribution</div>
+          <div style="position:relative;height:180px"><canvas id="framesDonutChart"></canvas></div>
+        </div>
       </div>
     </div>
 
@@ -288,6 +345,96 @@
         </td>
       </tr>`;
     }).join('');
+
+    renderFramesCharts(data);
+  }
+
+  let framesBarChart = null;
+  let framesDonutChart = null;
+  let currentFMetric = 'scans';
+
+  document.querySelectorAll('[data-fmetric]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-fmetric]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFMetric = btn.dataset.fmetric;
+      renderTable();
+    });
+  });
+
+  function renderFramesCharts(items) {
+    if (typeof Chart === 'undefined' || !document.getElementById('framesBarChart')) return;
+
+    const sorted = items.slice().sort((a, b) => {
+      if (currentFMetric === 'scans') return (b.viewsCount || b.views_count || 0) - (a.viewsCount || a.views_count || 0);
+      if (currentFMetric === 'cost') return calcMuxCost(b).totalCost - calcMuxCost(a).totalCost;
+      return calcMuxCost(b).durationMin - calcMuxCost(a).durationMin;
+    }).slice(0, 6);
+
+    const titleEl = document.getElementById('frame-chart-title');
+    if (titleEl) titleEl.textContent = currentFMetric === 'scans' ? 'Top Frames by Scans' : (currentFMetric === 'cost' ? 'Top Mux Costs ($)' : 'Longest Video Overlays (mins)');
+
+    const labels = sorted.map(p => p.name.length > 12 ? p.name.slice(0, 10) + '…' : p.name);
+    const dataValues = sorted.map(p => {
+      if (currentFMetric === 'scans') return Number(p.viewsCount || p.views_count || 0);
+      if (currentFMetric === 'cost') return +calcMuxCost(p).totalCost.toFixed(3);
+      return +calcMuxCost(p).durationMin.toFixed(2);
+    });
+
+    const ctx = document.getElementById('framesBarChart').getContext('2d');
+    if (framesBarChart) framesBarChart.destroy();
+
+    framesBarChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels.length ? labels : ['No data'],
+        datasets: [{
+          data: dataValues.length ? dataValues : [0],
+          backgroundColor: '#C9A96E',
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#94a3b8', font: { size: 10 } }, beginAtZero: true }
+        }
+      }
+    });
+
+    // Donut chart: Active vs Expired
+    let activeCount = 0, expiredCount = 0;
+    items.forEach(p => {
+      if (isExpired(p)) expiredCount++;
+      else activeCount++;
+    });
+
+    const donutCtx = document.getElementById('framesDonutChart').getContext('2d');
+    if (framesDonutChart) framesDonutChart.destroy();
+
+    framesDonutChart = new Chart(donutCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Active', 'Expired'],
+        datasets: [{
+          data: [Math.max(activeCount, 0), Math.max(expiredCount, 0)],
+          backgroundColor: ['#22c55e', '#ef4444'],
+          borderColor: '#090d16',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 10 } }
+        }
+      }
+    });
   }
 
   window.delProj = async function(id, name) {

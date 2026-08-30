@@ -1,15 +1,31 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Magazines — Kipakosa AR</title>
   <link rel="stylesheet" href="css/app.css?v=4" />
   <script src="js/admin-boot.js?v=1"></script>
+  <script src="/external/chart.umd.min.js"></script>
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1" />
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=1" />
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1" />
   <style>
+    .analytics-tab-btn {
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .analytics-tab-btn.active {
+      background: var(--accent-gradient);
+      color: #fff;
+      border-color: transparent;
+    }
     .mag-badge {
       display: inline-flex;
       align-items: center;
@@ -23,39 +39,6 @@
       background: rgba(56, 189, 248, 0.12);
       color: #38bdf8;
       border: 1px solid rgba(56, 189, 248, 0.3);
-    }
-    .internal-banner {
-      background: rgba(245, 158, 11, 0.08);
-      border: 1px solid rgba(245, 158, 11, 0.25);
-      border-radius: 12px;
-      padding: 12px 16px;
-      margin-bottom: 24px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      color: #fbbf24;
-      font-size: 13px;
-    }
-    .mag-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 20px;
-    }
-    .mag-card {
-      background: #111827;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 16px;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      transition: transform 0.2s, border-color 0.2s;
-      text-decoration: none;
-      color: inherit;
-    }
-    .mag-card:hover {
-      transform: translateY(-2px);
-      border-color: rgba(56, 189, 248, 0.4);
     }
   </style>
 </head>
@@ -77,12 +60,20 @@
       Dashboard
     </a>
     <a class="nav-link" data-page="projects" href="projects.html">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
-      Projects
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      Living Frames
+    </a>
+    <a class="nav-link active" data-page="magazines" href="magnizes.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Magazines
     </a>
     <a class="nav-link" data-page="create" href="create.html">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-      New Project
+      + New Frame
+    </a>
+    <a class="nav-link" data-page="create-magazine" href="createMagzine.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      + New Magazine
     </a>
     <div class="sidebar-footer">
       <button class="btn btn-sm btn-default" id="logout-btn" style="width:100%">Logout</button>
@@ -90,131 +81,363 @@
   </aside>
 
   <main class="main">
-    <div class="page-header" style="align-items:flex-start;flex-direction:column;gap:6px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span class="mag-badge">Internal Route</span>
-        <span style="font-size:12px;color:var(--muted)">Direct URL Access Only</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
-        <div class="page-title" style="margin:0">Magazines & Multi-Page Issues</div>
-        <a href="createMagzine" class="btn btn-primary">+ Create Magazine</a>
-      </div>
-    </div>
-
-    <div class="internal-banner">
-      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+    <div class="page-header">
       <div>
-        <strong>Internal Magazine Studio:</strong> Manage multi-target publications and sequential AR page experiences here. Click on any magazine to view its target bindings.
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span class="badge badge-blue">Multi-Target AR</span>
+        </div>
+        <div class="page-title">Multi-Target Magazines <span id="count" style="font-size:13px;font-weight:400;color:var(--muted)"></span></div>
       </div>
+      <a href="createMagzine" class="btn btn-primary">+ New Multi-Target Magazine</a>
     </div>
 
-    <div class="stats-grid" style="margin-bottom:24px">
-      <div class="stat-card">
-        <div class="stat-lbl">Total Magazines</div>
-        <div class="stat-val" id="stat-total" style="color:#38bdf8">0</div>
+    <div class="filter-bar">
+      <input class="form-control" type="text" id="search" placeholder="Search name, client or notes…" />
+      <div class="seg-ctrl">
+        <button class="seg-btn active" data-f="all">All</button>
+        <button class="seg-btn" data-f="active">Active</button>
+        <button class="seg-btn" data-f="expired">Expired</button>
+        <button class="seg-btn" data-f="soon">Expiring</button>
       </div>
-      <div class="stat-card">
-        <div class="stat-lbl">Active Issues</div>
-        <div class="stat-val" id="stat-active" style="color:var(--green)">0</div>
+      <select class="form-control f-select" id="f-type" title="Expiration type">
+        <option value="all">All types</option>
+        <option value="permanent">Permanent</option>
+        <option value="time">Time-based</option>
+        <option value="scans">Scan limit</option>
+        <option value="both">Date + scans</option>
+      </select>
+      <select class="form-control f-select" id="f-client" title="Filter by client">
+        <option value="all">All clients</option>
+      </select>
+      <select class="form-control f-select" id="f-usage" title="Scan usage">
+        <option value="all">Any usage</option>
+        <option value="never">Never scanned</option>
+        <option value="has">Has scans</option>
+        <option value="near">Near limit (80%+)</option>
+      </select>
+      <div class="date-filter-capsule" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;padding:3px 10px">
+        <span style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em">From:</span>
+        <input type="date" class="form-control" id="f-from" title="Filter magazines created after this date" aria-label="Created From Date" style="border:none;background:transparent;padding:4px 2px;font-size:12px;color:var(--text);width:auto;min-width:115px" />
+        <span style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-left:4px">To:</span>
+        <input type="date" class="form-control" id="f-to" title="Filter magazines created before this date" aria-label="Created To Date" style="border:none;background:transparent;padding:4px 2px;font-size:12px;color:var(--text);width:auto;min-width:115px" />
       </div>
-      <div class="stat-card">
-        <div class="stat-lbl">AR Bound Pages</div>
-        <div class="stat-val" id="stat-pages">0</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-lbl">Total Scans</div>
-        <div class="stat-val" id="stat-scans" style="color:var(--accent)">0</div>
-      </div>
+      <select class="form-control f-select" id="f-sort" title="Sort order">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="cost_desc">Highest Mux Cost / Usage</option>
+        <option value="scans_desc">Most scans</option>
+        <option value="scans_asc">Fewest scans</option>
+        <option value="name_asc">Name A–Z</option>
+        <option value="expiring">Expiring soonest</option>
+        <option value="recent_scan">Recently scanned</option>
+      </select>
+      <button class="btn btn-sm btn-default filter-clear" id="f-reset" style="display:none">Clear ✕</button>
     </div>
 
-    <div class="panel">
-      <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
-        <span>Publications & Editions</span>
-        <span id="mag-count-label" style="font-size:12px;color:var(--muted)">0 Issues</span>
-      </div>
-
-      <div id="magazines-grid" class="mag-cards" style="margin-top:16px">
-        <div style="color:var(--muted);font-size:13px;padding:30px;grid-column:1/-1;text-align:center">
-          Loading publications...
+    <!-- Mux Live API Cost & Usage Summary for Magazines -->
+    <div id="mux-summary-card" class="panel" style="margin-bottom:16px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:linear-gradient(135deg,rgba(56,189,248,0.08),rgba(9,13,22,0.7));border:1px solid rgba(56,189,248,0.22);border-radius:10px">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:16px">⚡</span>
+          <span style="font-weight:700;font-size:13px;color:var(--text)">Magazine Mux Video API Usage</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-secondary)">
+          Streamed: <strong id="sum-delivered-mins" style="color:var(--text)">0 mins</strong> (<span id="sum-views">0</span> scans)
+        </div>
+        <div style="font-size:12px;color:var(--text-secondary)">
+          Video Storage: <strong id="sum-storage-mins" style="color:var(--text)">0 mins</strong> (<span id="sum-video-targets">0</span> video overlays)
         </div>
       </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:12px;color:var(--text-secondary)">
+          Estimated Cost: <strong id="sum-total-cost" style="color:var(--accent);font-size:14px">$0.00</strong>
+        </div>
+        <span class="badge badge-green" style="font-size:11px"><span class="badge-dot"></span>Covered by $20/mo Free Credit</span>
+      </div>
+    </div>
+
+    <!-- AR Magazines Visual Analytics Charts -->
+    <div class="panel" style="margin-bottom:18px;padding:16px 20px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+        <div style="font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
+          <span>📊</span>
+          <span>AR Magazines Performance &amp; Targets Analytics</span>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="analytics-tab-btn active" data-mmetric="scans" id="btn-m-scans">Scans</button>
+          <button class="analytics-tab-btn" data-mmetric="cost" id="btn-m-cost">Mux Cost ($)</button>
+          <button class="analytics-tab-btn" data-mmetric="targets" id="btn-m-targets">Targets Count</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:stretch">
+        <div style="background:rgba(0,0,0,0.2);border-radius:8px;padding:12px;position:relative;min-height:220px">
+          <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px" id="mag-chart-title">Top Magazines Ranking</div>
+          <div style="position:relative;height:180px"><canvas id="magsBarChart"></canvas></div>
+        </div>
+        <div style="background:rgba(0,0,0,0.2);border-radius:8px;padding:12px;position:relative;min-height:220px">
+          <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">Target Size Distribution</div>
+          <div style="position:relative;height:180px"><canvas id="magsDonutChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:70px">Cover</th>
+            <th>Magazine Name</th>
+            <th>Client</th>
+            <th>Targets</th>
+            <th>Scans &amp; Mux Cost</th>
+            <th>Status</th>
+            <th>Expires</th>
+            <th style="text-align:right;width:140px">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="mag-body"></tbody>
+      </table>
     </div>
   </main>
 </div>
 
 <script type="module">
-  import { getAllMagazines } from './js/db.js';
+  import { initNav } from './js/auth.js';
+  import { getAllMagazines, deleteMagazine } from './js/db.js';
+  import { fmt, statusBadge, isExpired, expType, filterProjects, sortProjects, calcMuxCost } from './js/utils.js';
 
-  async function loadMagazines() {
+  initNav('magazines');
+
+  let allMagazines = [];
+  let filterState = {
+    search: '',
+    status: 'all',
+    type: 'all',
+    client: 'all',
+    usage: 'all',
+    from: '',
+    to: '',
+    sort: 'newest'
+  };
+
+  async function init() {
     try {
-      const magazines = await getAllMagazines();
-      render(magazines);
+      allMagazines = await getAllMagazines();
+      populateClients();
+      render();
     } catch (err) {
       console.error('Failed to load magazines:', err);
     }
   }
 
-  function render(list = []) {
-    const grid = document.getElementById('magazines-grid');
-    const totalEl = document.getElementById('stat-total');
-    const activeEl = document.getElementById('stat-active');
-    const pagesEl = document.getElementById('stat-pages');
-    const scansEl = document.getElementById('stat-scans');
-    const countLabel = document.getElementById('mag-count-label');
+  function populateClients() {
+    const select = document.getElementById('f-client');
+    const clients = Array.from(new Set(allMagazines.map(m => m.client).filter(Boolean))).sort();
+    select.innerHTML = '<option value="all">All clients</option>' +
+      clients.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  }
 
-    totalEl.textContent = list.length;
-    activeEl.textContent = list.filter(m => m.status === 'published').length;
-    
-    let totalPages = 0;
-    let totalScans = 0;
-    list.forEach(m => {
-      totalPages += Number(m.targetsCount || m.targets?.length || 0);
-      totalScans += Number(m.viewsCount || m.views_count || 0);
+  function updateMuxSummary(items) {
+    let totalStorageMins = 0;
+    let totalDeliveredMins = 0;
+    let totalViews = 0;
+    let totalCost = 0;
+    let totalVideoTargets = 0;
+
+    items.forEach(m => {
+      const cost = calcMuxCost(m);
+      totalStorageMins += cost.durationMin;
+      totalDeliveredMins += cost.minutesDelivered;
+      totalViews += cost.views;
+      totalCost += cost.totalCost;
+      totalVideoTargets += (cost.videoCount || 0);
     });
 
-    pagesEl.textContent = totalPages;
-    scansEl.textContent = totalScans.toLocaleString();
-    countLabel.textContent = `${list.length} ${list.length === 1 ? 'Issue' : 'Issues'}`;
+    const sumDelivered = document.getElementById('sum-delivered-mins');
+    const sumViews = document.getElementById('sum-views');
+    const sumStorage = document.getElementById('sum-storage-mins');
+    const sumCost = document.getElementById('sum-total-cost');
+    const sumVideoTargets = document.getElementById('sum-video-targets');
 
-    if (list.length === 0) {
-      grid.innerHTML = `
-        <div style="grid-column:1/-1;text-align:center;padding:48px 20px;background:rgba(255,255,255,0.02);border-radius:14px;border:1px dashed rgba(255,255,255,0.1)">
-          <div style="font-size:36px;margin-bottom:12px">📖</div>
-          <div style="font-size:16px;font-weight:700;color:#f8fafc;margin-bottom:6px">No Magazines Created Yet</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:20px;max-width:400px;margin-left:auto;margin-right:auto">
-            Create your first multi-page magazine publication with bound AR video and image overlays.
-          </p>
-          <a href="createMagzine" class="btn btn-primary">+ Create First Magazine</a>
-        </div>
-      `;
+    if (sumDelivered) sumDelivered.textContent = totalDeliveredMins.toFixed(1) + ' mins';
+    if (sumViews) sumViews.textContent = totalViews.toLocaleString();
+    if (sumStorage) sumStorage.textContent = totalStorageMins.toFixed(1) + ' mins';
+    if (sumVideoTargets) sumVideoTargets.textContent = totalVideoTargets;
+    if (sumCost) sumCost.textContent = totalCost === 0 ? '$0.00' : (totalCost < 0.01 ? '<$0.01' : '$' + totalCost.toFixed(2));
+  }
+
+  function render() {
+    const body = document.getElementById('mag-body');
+    const countEl = document.getElementById('count');
+    const resetBtn = document.getElementById('f-reset');
+
+    const isFiltered = filterState.search ||
+      filterState.status !== 'all' ||
+      filterState.type !== 'all' ||
+      filterState.client !== 'all' ||
+      filterState.usage !== 'all' ||
+      filterState.from ||
+      filterState.to ||
+      filterState.sort !== 'newest';
+
+    if (resetBtn) resetBtn.style.display = isFiltered ? 'inline-block' : 'none';
+
+    let filtered = filterProjects(allMagazines, filterState);
+    filtered = sortProjects(filtered, filterState.sort);
+
+    countEl.textContent = '(' + filtered.length + ')';
+    updateMuxSummary(filtered);
+
+    if (filtered.length === 0) {
+      body.innerHTML = '<tr><td colspan="8" class="empty" style="text-align:center;padding:40px;color:var(--muted)">No multi-target magazines found. <a href="createMagzine" style="color:var(--accent);font-weight:600">Create one</a></td></tr>';
       return;
     }
 
-    grid.innerHTML = list.map(m => {
+    body.innerHTML = filtered.map(m => {
       const targets = Array.isArray(m.targets) ? m.targets : [];
-      const pageCount = targets.length;
-      const isPub = m.status === 'published';
-      return `
-        <a href="magazine?id=${m.id}" class="mag-card">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start">
-            <div>
-              <div style="font-weight:700;font-size:16px;color:#f8fafc">${esc(m.title || 'Untitled Magazine')}</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(m.issueNumber || m.issue_number || 'Issue')}</div>
-            </div>
-            <span class="badge ${isPub ? 'badge-green' : 'badge-gray'}">
-              ${isPub ? '<span class="badge-dot"></span>Published' : 'Draft'}
-            </span>
-          </div>
-          <div style="font-size:13px;color:#94a3b8;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
-            ${esc(m.notes || (m.client ? 'Client: ' + m.client : 'Multi-target magazine publication'))}
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;margin-top:auto">
-            <span>📄 ${pageCount} AR ${pageCount === 1 ? 'Page' : 'Pages'}</span>
-            <span>⚡ ${Number(m.viewsCount || m.views_count || 0).toLocaleString()} scans</span>
-          </div>
-        </a>
-      `;
+      const coverUrl = m.coverImageUrl || (targets[0] && targets[0].imageUrl) || '';
+      const expDate = m.expiresAt || m.expires_at;
+      const scanLimit = m.maxScans || m.max_scans;
+      const views = Number(m.viewsCount || m.views_count || 0);
+      const cost = calcMuxCost(m);
+
+      return '<tr>' +
+        '<td>' +
+          (coverUrl ? '<img class="td-thumb" src="' + coverUrl + '" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" />' : '<div class="td-thumb-placeholder" style="width:48px;height:48px;background:rgba(255,255,255,0.05);border-radius:6px"></div>') +
+        '</td>' +
+        '<td>' +
+          '<a href="magazine?id=' + m.id + '" style="font-weight:600;color:var(--text);text-decoration:none">' + esc(m.title || 'Untitled') + '</a>' +
+          (m.notes ? '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + esc(m.notes) + '</div>' : '') +
+        '</td>' +
+        '<td style="color:var(--muted)">' + esc(m.client || '—') + '</td>' +
+        '<td>' +
+          '<span class="badge badge-blue">' + targets.length + (targets.length === 1 ? ' target' : ' targets') + '</span>' +
+        '</td>' +
+        '<td>' +
+          '<div style="display:flex;flex-direction:column;gap:2px">' +
+            '<span style="font-weight:600;color:var(--accent)">' + views.toLocaleString() + (scanLimit ? ' / ' + scanLimit : ' scans') + '</span>' +
+            '<span style="font-size:11px;color:var(--text-secondary);display:inline-flex;align-items:center;gap:3px">⚡ ' + cost.formattedTotal + ' Mux</span>' +
+          '</div>' +
+        '</td>' +
+        '<td>' + statusBadge(m) + '</td>' +
+        '<td style="color:var(--muted)">' + (expDate ? fmt(expDate) : 'Permanent') + '</td>' +
+        '<td style="text-align:right">' +
+          '<a href="magazine?id=' + m.id + '" class="btn btn-sm btn-default">View</a>' +
+          '<button class="btn btn-sm btn-danger del-btn" data-id="' + m.id + '" style="margin-left:4px">Delete</button>' +
+        '</td>' +
+      '</tr>';
     }).join('');
+
+    body.querySelectorAll('.del-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.dataset.id;
+        if (!confirm('Are you sure you want to delete this multi-target magazine?')) return;
+        try {
+          await deleteMagazine(id);
+          allMagazines = allMagazines.filter(m => m.id !== id);
+          populateClients();
+          render();
+        } catch (err) {
+          alert('Delete failed: ' + err.message);
+        }
+      });
+    });
+
+    renderMagsCharts(filtered);
+  }
+
+  let magsBarChart = null;
+  let magsDonutChart = null;
+  let currentMMetric = 'scans';
+
+  document.querySelectorAll('[data-mmetric]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-mmetric]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentMMetric = btn.dataset.mmetric;
+      render();
+    });
+  });
+
+  function renderMagsCharts(items) {
+    if (typeof Chart === 'undefined' || !document.getElementById('magsBarChart')) return;
+
+    const sorted = items.slice().sort((a, b) => {
+      if (currentMMetric === 'scans') return (b.viewsCount || b.views_count || 0) - (a.viewsCount || a.views_count || 0);
+      if (currentMMetric === 'cost') return calcMuxCost(b).totalCost - calcMuxCost(a).totalCost;
+      return (b.targets || []).length - (a.targets || []).length;
+    }).slice(0, 6);
+
+    const titleEl = document.getElementById('mag-chart-title');
+    if (titleEl) titleEl.textContent = currentMMetric === 'scans' ? 'Top Magazines by Scans' : (currentMMetric === 'cost' ? 'Top Magazine Mux Costs ($)' : 'Most Target Pages');
+
+    const labels = sorted.map(m => {
+      const name = m.title || m.name || 'Untitled';
+      return name.length > 12 ? name.slice(0, 10) + '…' : name;
+    });
+
+    const dataValues = sorted.map(m => {
+      if (currentMMetric === 'scans') return Number(m.viewsCount || m.views_count || 0);
+      if (currentMMetric === 'cost') return +calcMuxCost(m).totalCost.toFixed(3);
+      return (m.targets || []).length;
+    });
+
+    const ctx = document.getElementById('magsBarChart').getContext('2d');
+    if (magsBarChart) magsBarChart.destroy();
+
+    magsBarChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels.length ? labels : ['No data'],
+        datasets: [{
+          data: dataValues.length ? dataValues : [0],
+          backgroundColor: '#38bdf8',
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#94a3b8', font: { size: 10 } }, beginAtZero: true }
+        }
+      }
+    });
+
+    // Donut chart: Targets distribution (Small 1-5, Medium 6-15, Large 16+)
+    let smallMags = 0, medMags = 0, largeMags = 0;
+    items.forEach(m => {
+      const count = (m.targets || []).length;
+      if (count <= 5) smallMags++;
+      else if (count <= 15) medMags++;
+      else largeMags++;
+    });
+
+    const donutCtx = document.getElementById('magsDonutChart').getContext('2d');
+    if (magsDonutChart) magsDonutChart.destroy();
+
+    magsDonutChart = new Chart(donutCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['1-5 pages', '6-15 pages', '16+ pages'],
+        datasets: [{
+          data: [Math.max(smallMags, 0), Math.max(medMags, 0), Math.max(largeMags, 0)],
+          backgroundColor: ['#38bdf8', '#C9A96E', '#a855f7'],
+          borderColor: '#090d16',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 10 } }
+        }
+      }
+    });
   }
 
   function esc(s) {
@@ -223,7 +446,65 @@
     }[c]));
   }
 
-  loadMagazines();
+  // Filter Listeners
+  document.getElementById('search').addEventListener('input', (e) => {
+    filterState.search = e.target.value.trim();
+    render();
+  });
+
+  document.querySelectorAll('.seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filterState.status = btn.dataset.f;
+      render();
+    });
+  });
+
+  document.getElementById('f-type').addEventListener('change', (e) => {
+    filterState.type = e.target.value;
+    render();
+  });
+
+  document.getElementById('f-client').addEventListener('change', (e) => {
+    filterState.client = e.target.value;
+    render();
+  });
+
+  document.getElementById('f-usage').addEventListener('change', (e) => {
+    filterState.usage = e.target.value;
+    render();
+  });
+
+  document.getElementById('f-from').addEventListener('change', (e) => {
+    filterState.from = e.target.value;
+    render();
+  });
+
+  document.getElementById('f-to').addEventListener('change', (e) => {
+    filterState.to = e.target.value;
+    render();
+  });
+
+  document.getElementById('f-sort').addEventListener('change', (e) => {
+    filterState.sort = e.target.value;
+    render();
+  });
+
+  document.getElementById('f-reset').addEventListener('click', () => {
+    filterState = { search: '', status: 'all', type: 'all', client: 'all', usage: 'all', from: '', to: '', sort: 'newest' };
+    document.getElementById('search').value = '';
+    document.querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('active', b.dataset.f === 'all'));
+    document.getElementById('f-type').value = 'all';
+    document.getElementById('f-client').value = 'all';
+    document.getElementById('f-usage').value = 'all';
+    document.getElementById('f-from').value = '';
+    document.getElementById('f-to').value = '';
+    document.getElementById('f-sort').value = 'newest';
+    render();
+  });
+
+  init();
 </script>
 </body>
 </html>

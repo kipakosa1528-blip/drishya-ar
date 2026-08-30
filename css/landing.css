@@ -199,9 +199,10 @@ body.cursor-hovered .cursor-ring {
 }
 
 .brand-monogram {
-  width: 24px;
-  height: 24px;
+  height: 20px;
+  width: auto;
   object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
 }
 
 .brand-name {
@@ -711,9 +712,10 @@ body.cursor-hovered .cursor-ring {
 }
 
 /* ══════════════════════════════════════════════
-   ACT III — ASYMMETRICAL LIVING WORKS
+   ACT III — ASYMMETRICAL LIVING WORKS & MAGAZINES
 ══════════════════════════════════════════════ */
-.asymmetric-gallery-section {
+.asymmetric-gallery-section,
+.living-magazines-section {
   position: relative;
   z-index: 10;
   padding: 120px 0;
@@ -1002,7 +1004,36 @@ body.cursor-hovered .cursor-ring {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
+  gap: 20px;
+}
+.social-channels-grid {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 8px 0 12px;
+}
+.social-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(8px);
+}
+.social-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--gold-border);
+  color: var(--gold-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--gold-glow);
 }
 .manifesto-direct-contact {
   font-size: 13px;

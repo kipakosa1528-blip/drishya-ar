@@ -1,10 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Magazine Detail — Kipakosa AR</title>
   <link rel="stylesheet" href="css/app.css?v=4" />
   <script src="js/admin-boot.js?v=1"></script>
+  <script src="/external/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1" />
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=1" />
@@ -24,36 +25,44 @@
       color: #38bdf8;
       border: 1px solid rgba(56, 189, 248, 0.3);
     }
-    .targets-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 20px;
+    .targets-detail-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
-    .target-card {
-      background: #111827;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 14px;
+    .target-detail-card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 12px;
       padding: 16px;
       display: flex;
       flex-direction: column;
       gap: 12px;
-      transition: border-color 0.2s;
     }
-    .target-card:hover {
-      border-color: rgba(56, 189, 248, 0.4);
-    }
-    .target-preview-row {
+    .target-detail-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 16px;
     }
-    .target-thumb {
+    @media (max-width: 700px) {
+      .target-detail-row { grid-template-columns: 1fr; }
+    }
+    .preview-box {
       width: 100%;
-      height: 160px;
-      object-fit: cover;
+      max-height: 200px;
+      height: 200px;
       background: #000;
       border-radius: 8px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .preview-box img, .preview-box video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
   </style>
 </head>
@@ -75,12 +84,20 @@
       Dashboard
     </a>
     <a class="nav-link" data-page="projects" href="projects.html">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
-      Projects
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      Living Frames
+    </a>
+    <a class="nav-link active" data-page="magazines" href="magnizes.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Magazines
     </a>
     <a class="nav-link" data-page="create" href="create.html">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-      New Project
+      + New Frame
+    </a>
+    <a class="nav-link" data-page="create-magazine" href="createMagzine.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      + New Magazine
     </a>
     <div class="sidebar-footer">
       <button class="btn btn-sm btn-default" id="logout-btn" style="width:100%">Logout</button>
@@ -89,64 +106,149 @@
 
   <main class="main">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <a href="magnizes" style="font-size:13px;color:var(--text-secondary);display:inline-flex;align-items:center;gap:4px">← Back to Magazines</a>
+      <a href="magnizes" style="font-size:13px;color:var(--text-secondary);display:inline-flex;align-items:center;gap:4px">← Multi-Target Magazines</a>
       <span class="mag-badge">Internal Route</span>
     </div>
 
-    <div class="page-header" style="align-items:flex-start;flex-direction:column;gap:6px">
-      <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
-        <div>
-          <div class="page-title" id="m-title" style="margin:0">Loading Magazine...</div>
-          <div id="m-issue" style="font-size:14px;color:var(--muted);margin-top:4px"></div>
-        </div>
-        <div class="actions" style="display:flex;gap:8px">
-          <a id="m-ar-link" href="#" target="_blank" class="btn btn-primary" style="display:none">Launch AR Experience 🚀</a>
-          <button class="btn btn-danger" id="m-del-btn">Delete Magazine</button>
-        </div>
+    <div class="page-header">
+      <div class="page-title" id="p-title">Loading Magazine...</div>
+      <div class="actions" style="display:flex;gap:8px">
+        <button class="btn btn-danger" id="del-btn">Delete Magazine</button>
       </div>
     </div>
 
     <div id="not-found" class="panel" style="display:none;text-align:center;padding:40px">
       <div style="font-size:18px;font-weight:600;margin-bottom:8px">Magazine Not Found</div>
-      <p style="color:var(--text-secondary);margin-bottom:16px">This magazine publication may have been deleted or the link is invalid.</p>
+      <p style="color:var(--text-secondary);margin-bottom:16px">This multi-target magazine may have been deleted or the link is incorrect.</p>
       <a href="magnizes" class="btn btn-primary">Back to Magazines</a>
     </div>
 
-    <div id="detail-container" style="display:grid;grid-template-columns:1fr 340px;gap:24px">
-      <!-- Left: Targets List & Overview -->
+    <div id="detail-grid" style="display:grid;grid-template-columns:1fr 340px;gap:24px">
+      <!-- Left: Multi-Target Asset Previews & Analytics -->
       <div style="display:flex;flex-direction:column;gap:20px">
-        <!-- Target Pages / Spreads -->
         <div class="panel">
           <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
-            <span>Magazine Target Pages (<span id="m-targets-count">0</span>)</span>
-            <span style="font-size:12px;color:var(--muted)">Multi-Target AR Bindings</span>
+            <span>Multi-Target Asset Previews (<span id="p-target-count">0</span>)</span>
+            <span style="font-size:12px;color:var(--muted)">Target Photos & Overlays</span>
           </div>
 
-          <div id="targets-list" class="targets-grid" style="margin-top:16px">
-            <!-- Dynamically populated target cards -->
+          <div id="targets-container" class="targets-detail-list" style="margin-top:14px">
+            <!-- Dynamically populated target previews -->
           </div>
         </div>
-      </div>
 
-      <!-- Right: Publication Details & QR Share -->
-      <div style="display:flex;flex-direction:column;gap:20px">
         <div class="panel">
-          <div class="panel-title">Publication Info</div>
+          <div class="panel-title">Project Details & Analytics</div>
           <table style="width:100%;font-size:13px;border-collapse:collapse">
-            <tr><td style="color:var(--muted);padding:8px 0;width:110px">Status</td><td id="m-status"></td></tr>
-            <tr><td style="color:var(--muted);padding:8px 0">Total Scans</td><td id="m-scans" style="font-weight:700;color:var(--accent)">0</td></tr>
-            <tr><td style="color:var(--muted);padding:8px 0">Client</td><td id="m-client">—</td></tr>
-            <tr><td style="color:var(--muted);padding:8px 0">Created</td><td id="m-created">—</td></tr>
-            <tr><td style="color:var(--muted);padding:8px 0">Expires</td><td id="m-expires">Permanent</td></tr>
-            <tr id="m-notes-row" style="display:none"><td style="color:var(--muted);padding:8px 0">Notes</td><td id="m-notes"></td></tr>
+            <tr><td style="color:var(--muted);padding:8px 0;width:140px">Status</td><td id="p-status"></td></tr>
+            <tr>
+              <td style="color:var(--muted);padding:8px 0">Total Scans</td>
+              <td>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <span id="p-scans" style="display:inline-flex;align-items:center;gap:5px;font-size:14px;font-weight:700;color:var(--accent)"></span>
+                  <div id="p-scan-track" style="display:none;width:100%;max-width:240px;height:6px;background:rgba(255,255,255,0.1);border-radius:999px;overflow:hidden">
+                    <div id="p-scan-fill" style="height:100%;background:var(--accent);width:0%"></div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr><td style="color:var(--muted);padding:8px 0">Expiration Method</td><td id="p-exp-method" style="font-weight:600"></td></tr>
+            <tr><td style="color:var(--muted);padding:8px 0">Last Scanned</td><td id="p-last-scan" style="color:var(--text-secondary)">Never</td></tr>
+            <tr><td style="color:var(--muted);padding:8px 0">Client</td><td id="p-client"></td></tr>
+            <tr><td style="color:var(--muted);padding:8px 0">Created</td><td id="p-created"></td></tr>
+            <tr id="notes-row" style="display:none"><td style="color:var(--muted);padding:8px 0">Notes</td><td id="p-notes"></td></tr>
           </table>
         </div>
 
-        <div class="panel" style="text-align:center">
-          <div class="panel-title" style="text-align:left">Magazine QR Code</div>
-          <div id="qr-container" style="display:inline-block;padding:12px;background:#fff;border-radius:12px;margin:12px 0"></div>
-          <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Point camera at any registered magazine page to launch the interactive overlay.</p>
-          <button class="btn btn-default btn-sm" id="dl-qr-btn" style="width:100%">Download High-Res QR 📥</button>
+        <!-- Mux API & Bandwidth Billing Card -->
+        <div class="panel" style="border:1px solid rgba(56,189,248,0.25);background:linear-gradient(135deg,rgba(56,189,248,0.06),rgba(9,13,22,0.6))">
+          <div class="panel-title" style="display:flex;align-items:center;justify-content:space-between">
+            <span>⚡ Mux Video API Billing &amp; Bandwidth</span>
+            <span class="badge badge-green" style="font-size:10px"><span class="badge-dot"></span>Real-time</span>
+          </div>
+          <table style="width:100%;font-size:13px;border-collapse:collapse">
+            <tr>
+              <td style="color:var(--muted);padding:6px 0;width:170px">Video Overlays Count</td>
+              <td id="mux-vid-count" style="font-weight:600">—</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);padding:6px 0">Total Video Duration</td>
+              <td id="mux-total-duration" style="font-weight:600">—</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);padding:6px 0">Streamed Minutes</td>
+              <td id="mux-delivered" style="font-weight:600">—</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);padding:6px 0">Mux Delivery Cost</td>
+              <td id="mux-delivery-cost" style="font-weight:600;color:var(--text)">$0.00</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);padding:6px 0">Mux Storage Cost</td>
+              <td id="mux-storage-cost" style="font-weight:600;color:var(--text)">$0.00/mo</td>
+            </tr>
+            <tr style="border-top:1px solid var(--border)">
+              <td style="color:var(--accent);padding:8px 0;font-weight:700">Total Incurred Mux Cost</td>
+              <td id="mux-total-cost" style="color:var(--accent);font-weight:800;font-size:15px">$0.00</td>
+            </tr>
+          </table>
+
+          <!-- Individual Magazine Performance Chart -->
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06)">
+            <div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:8px">Mux Cost Composition</div>
+            <div style="position:relative;height:120px">
+              <canvas id="singleMagCostChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cloudflare R2 Infrastructure & Storage Card -->
+        <div class="panel" style="border:1px solid rgba(249,115,22,0.25);background:linear-gradient(135deg,rgba(249,115,22,0.06),rgba(9,13,22,0.6))">
+          <div class="panel-title" style="display:flex;align-items:center;justify-content:space-between">
+            <span style="display:flex;align-items:center;gap:6px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#f97316"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>
+              Cloudflare R2 Storage &amp; Asset Footprint
+            </span>
+            <span class="badge badge-green" style="font-size:10px"><span class="badge-dot"></span>Zero Egress Cost</span>
+          </div>
+          <table style="width:100%;font-size:13px;border-collapse:collapse">
+            <tr>
+              <td style="color:var(--muted);padding:6px 0;width:170px">Total Target Pages</td>
+              <td id="m-target-count-val" style="font-weight:600">—</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);padding:6px 0">Estimated Asset Footprint</td>
+              <td id="m-footprint" style="font-weight:600">—</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);padding:6px 0">R2 Bandwidth Egress</td>
+              <td id="m-egress" style="font-weight:600;color:var(--green)">$0.00 (100% Free on Cloudflare R2)</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);padding:6px 0">R2 Monthly Storage</td>
+              <td id="m-storage-cost" style="font-weight:600;color:var(--text)">$0.00/mo</td>
+            </tr>
+            <tr style="border-top:1px solid var(--border)">
+              <td style="color:var(--accent);padding:8px 0;font-weight:700">Estimated R2 Cost</td>
+              <td id="m-total-cost" style="color:var(--accent);font-weight:800;font-size:15px">&lt;$0.01/mo</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- Right: QR Code & Share -->
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div class="panel">
+          <div class="panel-title">AR Experience QR Code</div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Point mobile camera at any bound target image to trigger the AR overlay.</p>
+          <div style="display:flex;justify-content:center;margin-bottom:12px">
+            <div id="qr-box" style="background:#fff;padding:12px;border-radius:12px;display:inline-block"></div>
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:10px">
+            <button class="btn btn-sm btn-default" id="dl-qr-png" style="flex:1">Download PNG</button>
+            <button class="btn btn-sm btn-default" id="dl-qr-svg" style="flex:1">Download SVG</button>
+          </div>
+          <button class="btn btn-sm btn-primary" id="open-ar-btn" style="width:100%">Open AR Viewer 🚀</button>
         </div>
       </div>
     </div>
@@ -155,14 +257,14 @@
 
 <script type="module">
   import { getMagazine, deleteMagazine } from './js/db.js';
-  import { fmt } from './js/utils.js';
+  import { fmt, statusBadge, isExpired, expType } from './js/utils.js';
 
   const params = new URLSearchParams(location.search);
   const id = params.get('id');
 
   if (!id) {
     document.getElementById('not-found').style.display = 'block';
-    document.getElementById('detail-container').style.display = 'none';
+    document.getElementById('detail-grid').style.display = 'none';
   } else {
     loadDetail(id);
   }
@@ -172,67 +274,130 @@
       const m = await getMagazine(magId);
       if (!m) {
         document.getElementById('not-found').style.display = 'block';
-        document.getElementById('detail-container').style.display = 'none';
+        document.getElementById('detail-grid').style.display = 'none';
         return;
       }
 
-      document.getElementById('m-title').textContent = m.title || 'Untitled Magazine';
-      document.getElementById('m-issue').textContent = m.issueNumber || m.issue_number || '';
-      document.getElementById('m-client').textContent = m.client || '—';
-      document.getElementById('m-created').textContent = fmt(m.createdAt || m.created_at);
-      document.getElementById('m-scans').textContent = Number(m.viewsCount || m.views_count || 0).toLocaleString();
-      document.getElementById('m-status').innerHTML = m.status === 'published' 
-        ? '<span class="badge badge-green"><span class="badge-dot"></span>Published</span>' 
-        : '<span class="badge badge-gray">Draft</span>';
+      document.getElementById('p-title').textContent = m.title || 'Untitled Magazine';
+      document.getElementById('p-client').textContent = m.client || '—';
+      document.getElementById('p-created').textContent = fmt(m.createdAt || m.created_at);
+      document.getElementById('p-status').innerHTML = statusBadge(m);
 
-      if (m.notes) {
-        document.getElementById('m-notes').textContent = m.notes;
-        document.getElementById('m-notes-row').style.display = 'table-row';
+      const views = Number(m.viewsCount || m.views_count || 0);
+      const maxScans = m.maxScans || m.max_scans;
+      const lastScan = m.lastScannedAt || m.last_scanned_at;
+
+      document.getElementById('p-scans').textContent = views.toLocaleString() + (maxScans ? ' / ' + Number(maxScans).toLocaleString() + ' scans' : ' scans');
+      if (lastScan) document.getElementById('p-last-scan').textContent = fmt(lastScan);
+
+      if (maxScans) {
+        document.getElementById('p-scan-track').style.display = 'block';
+        const pct = Math.min(100, Math.round((views / Number(maxScans)) * 100));
+        document.getElementById('p-scan-fill').style.width = pct + '%';
       }
 
-      // Render Targets
-      const targets = Array.isArray(m.targets) ? m.targets : [];
-      document.getElementById('m-targets-count').textContent = targets.length;
+      const type = expType(m);
+      const expDate = m.expiresAt || m.expires_at;
+      if (type === 'permanent') document.getElementById('p-exp-method').textContent = '∞ Permanent (Never expires)';
+      else if (type === 'time') document.getElementById('p-exp-method').textContent = '⏰ Time-based (' + (expDate ? fmt(expDate) : '—') + ')';
+      else if (type === 'scans') document.getElementById('p-exp-method').textContent = '🔒 Scan limit (' + (maxScans ? Number(maxScans).toLocaleString() + ' scans' : '—') + ')';
+      else if (type === 'both') document.getElementById('p-exp-method').textContent = '⚡ Date (' + fmt(expDate) + ') OR Scans (' + Number(maxScans).toLocaleString() + ')';
 
-      const container = document.getElementById('targets-list');
+      if (m.notes) {
+        document.getElementById('p-notes').textContent = m.notes;
+        document.getElementById('notes-row').style.display = 'table-row';
+      }
+
+      // Render Targets & Mux Billing
+      const targets = Array.isArray(m.targets) ? m.targets : [];
+      document.getElementById('p-target-count').textContent = targets.length;
+      document.getElementById('m-target-count-val').textContent = targets.length + (targets.length === 1 ? ' target' : ' targets');
+
+      // Mux API calculations
+      const muxCost = calcMuxCost(m);
+      document.getElementById('mux-vid-count').textContent = `${muxCost.videoCount} video ${muxCost.videoCount === 1 ? 'overlay' : 'overlays'}`;
+      document.getElementById('mux-total-duration').textContent = `${muxCost.durationMin.toFixed(1)} mins (${muxCost.durationSec}s total)`;
+      document.getElementById('mux-delivered').textContent = `${muxCost.minutesDelivered.toFixed(1)} mins (${views} scans)`;
+      document.getElementById('mux-delivery-cost').textContent = muxCost.formattedDelivery;
+      document.getElementById('mux-storage-cost').textContent = muxCost.formattedStorage;
+      document.getElementById('mux-total-cost').textContent = muxCost.formattedTotal;
+
+      // Render single magazine mini-chart
+      if (typeof Chart !== 'undefined' && document.getElementById('singleMagCostChart')) {
+        const chartCtx = document.getElementById('singleMagCostChart').getContext('2d');
+        new Chart(chartCtx, {
+          type: 'bar',
+          data: {
+            labels: ['Delivery Cost', 'Storage Cost', 'Total Incurred'],
+            datasets: [{
+              data: [+muxCost.deliveryCost.toFixed(4), +muxCost.storageCost.toFixed(4), +muxCost.totalCost.toFixed(4)],
+              backgroundColor: ['#38bdf8', '#C9A96E', '#a855f7'],
+              borderRadius: 4
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#94a3b8', font: { size: 10 } }, beginAtZero: true },
+              y: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } }
+            }
+          }
+        });
+      }
+
+      // Estimate R2 footprint: ~1.5MB original + ~3MB overlay + ~0.2MB mind per target
+      const totalMB = Math.max(1, Math.round(targets.length * 4.7 + 3.5));
+      document.getElementById('m-footprint').textContent = `~${totalMB} MB (${(totalMB / 1024).toFixed(3)} GB stored)`;
+      const monthlyStorage = (totalMB / 1024) * 0.015;
+      document.getElementById('m-storage-cost').textContent = `$${monthlyStorage.toFixed(4)}/mo`;
+      document.getElementById('m-total-cost').textContent = monthlyStorage < 0.01 ? '<$0.01/mo' : `$${monthlyStorage.toFixed(2)}/mo`;
+
+      const container = document.getElementById('targets-container');
       container.innerHTML = '';
 
       if (targets.length === 0) {
-        container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px;grid-column:1/-1;text-align:center">No AR target pages bound yet.</div>';
+        container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">No targets configured.</div>';
       } else {
         targets.forEach((t, i) => {
           const card = document.createElement('div');
-          card.className = 'target-card';
-          const overlayType = t.overlay?.type || t.overlay_type || 'video';
-          const overlayUrl = t.overlay?.url || t.overlay_url || '';
+          card.className = 'target-detail-card';
+          const overlayType = (t.overlay && t.overlay.type) || t.overlay_type || 'video';
+          const overlayUrl = (t.overlay && t.overlay.url) || t.overlay_url || '';
           const imageUrl = t.imageUrl || t.image_url || '';
 
-          card.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span style="font-weight:700;font-size:14px;color:#f8fafc">${t.name || ('Page ' + (t.pageNumber || i + 1))}</span>
-              <span class="badge ${overlayType === 'video' ? 'badge-blue' : 'badge-green'}">${overlayType === 'video' ? '🎥 Video' : '🖼️ Image'}</span>
-            </div>
-            <div class="target-preview-row">
-              <div>
-                <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Target Image</div>
-                ${imageUrl ? `<img class="target-thumb" src="${imageUrl}" />` : `<div class="target-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px">No Image</div>`}
-              </div>
-              <div>
-                <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">AR Overlay</div>
-                ${overlayType === 'video' 
-                  ? `<video class="target-thumb" src="${overlayUrl}" muted loop controls></video>` 
-                  : (overlayUrl ? `<img class="target-thumb" src="${overlayUrl}" />` : `<div class="target-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px">No Overlay</div>`)}
-              </div>
-            </div>
-          `;
+          card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center">' +
+              '<span style="font-weight:700;font-size:14px;color:#f8fafc">' + (t.name || ('Target #' + (i + 1))) + '</span>' +
+              '<span class="badge ' + (overlayType === 'video' ? 'badge-blue' : 'badge-green') + '">' + (overlayType === 'video' ? '🎬 Video Overlay' : '🖼️ Image Overlay') + '</span>' +
+            '</div>' +
+            '<div class="target-detail-row">' +
+              '<div>' +
+                '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Target Image (Print Ready)</div>' +
+                '<div class="preview-box">' +
+                  (imageUrl ? '<img src="' + imageUrl + '" />' : '<span style="color:var(--muted);font-size:12px">No Image</span>') +
+                '</div>' +
+                (imageUrl ? '<a href="' + imageUrl + '" download="target-' + (i + 1) + '.jpg" class="btn btn-default btn-sm" style="width:100%;margin-top:8px;text-align:center;display:block">Download Target Image 📥</a>' : '') +
+              '</div>' +
+              '<div>' +
+                '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">AR ' + (overlayType === 'video' ? 'Video' : 'Image') + ' Overlay</div>' +
+                '<div class="preview-box">' +
+                  (overlayType === 'video' 
+                    ? '<video src="' + overlayUrl + '" controls loop playsinline style="width:100%;height:100%"></video>' 
+                    : (overlayUrl ? '<img src="' + overlayUrl + '" />' : '<span style="color:var(--muted);font-size:12px">No Overlay</span>')) +
+                '</div>' +
+                (overlayUrl ? '<a href="' + overlayUrl + '" download="overlay-' + (i + 1) + '" class="btn btn-default btn-sm" style="width:100%;margin-top:8px;text-align:center;display:block">Download Overlay 📥</a>' : '') +
+              '</div>' +
+            '</div>';
           container.appendChild(card);
         });
       }
 
-      // Generate QR Code
-      const qrEl = document.getElementById('qr-container');
+      // QR Code
+      const qrEl = document.getElementById('qr-box');
       qrEl.innerHTML = '';
-      const magUrl = `${location.origin}/ar?magId=${m.id}`;
+      const magUrl = location.origin + "/magAr?id=" + m.id;
       const qr = new QRCodeStyling({
         width: 180,
         height: 180,
@@ -243,13 +408,19 @@
       });
       qr.append(qrEl);
 
-      document.getElementById('dl-qr-btn')?.addEventListener('click', () => {
-        qr.download({ name: `magazine-${m.id}-qr`, extension: "png" });
+      document.getElementById('dl-qr-png')?.addEventListener('click', () => {
+        qr.download({ name: "magazine-" + m.id + "-qr", extension: "png" });
+      });
+      document.getElementById('dl-qr-svg')?.addEventListener('click', () => {
+        qr.download({ name: "magazine-" + m.id + "-qr", extension: "svg" });
+      });
+      document.getElementById('open-ar-btn')?.addEventListener('click', () => {
+        window.open(magUrl, '_blank');
       });
 
       // Delete action
-      document.getElementById('m-del-btn')?.addEventListener('click', async () => {
-        if (!confirm(`Are you sure you want to delete "${m.title}"?`)) return;
+      document.getElementById('del-btn')?.addEventListener('click', async () => {
+        if (!confirm('Are you sure you want to delete "' + (m.title || 'this magazine') + '"?')) return;
         try {
           await deleteMagazine(m.id);
           location.href = 'magnizes';

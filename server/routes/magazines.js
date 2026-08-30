@@ -150,10 +150,15 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
           }
         }
 
+        const framing = t.overlayFraming || t.overlay_framing || {};
+        const aspect = framing.aspectRatio || framing.aspect_ratio || (targetData?.properties?.width && targetData?.properties?.height ? targetData.properties.width / targetData.properties.height : 1);
+        const planeW = framing.planeW != null ? framing.planeW : 1;
+        const planeH = framing.planeH != null ? framing.planeH : +(1 / aspect).toFixed(4);
+
         processedTargets.push({
           id: targetId,
           page_number: pageNum,
-          name: t.name || `Page ${pageNum}`,
+          name: t.name || `Target ${pageNum}`,
           target_name: targetName,
           image_path: imagePath,
           image_url: r2Url(imagePath),
@@ -165,6 +170,12 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
             mux_playback_id: muxPlaybackId,
             mux_asset_id: muxAssetId,
             mux_stream_url: muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}.m3u8` : null,
+            aspect_ratio: aspect,
+            planeW,
+            planeH,
+            zoom: framing.zoom || 1.0,
+            panX: framing.panX || 0,
+            panY: framing.panY || 0,
             loop: t.loop !== false,
             autoplay: t.autoplay !== false,
             muted: !!t.muted,
