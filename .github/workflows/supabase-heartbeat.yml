@@ -1,0 +1,24 @@
+name: Supabase Database Heartbeat
+
+on:
+  schedule:
+    # Runs everyday at 06:00 UTC (11:45 AM NPT)
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  heartbeat:
+    name: Ping Database & Health Endpoint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Kipakosa Health & Database Endpoint
+        run: |
+          echo "Sending heartbeat to Kipakosa API & Supabase database..."
+          HTTP_RESPONSE=$(curl -s -o response.json -w "%{http_code}" https://kipakosa.vercel.app/api/health)
+          echo "HTTP Response Status: $HTTP_RESPONSE"
+          cat response.json
+          if [ "$HTTP_RESPONSE" -ne 200 ]; then
+            echo "Warning: Heartbeat returned non-200 status code."
+            exit 1
+          fi
+          echo "Supabase database heartbeat successfully received."

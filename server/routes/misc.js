@@ -64,5 +64,31 @@ export function registerMiscRoutes(app, { requireAuth }) {
       adminEmail: ADMIN_EMAIL
     });
   });
+
+  // Database Heartbeat & Health Check Endpoint (Prevents Supabase auto-pausing)
+  app.get('/api/health', async (req, res) => {
+    try {
+      const start = Date.now();
+      // Lightweight query that exercises Supabase DB without loading heavy payloads
+      const { count, error } = await supabase
+        .from('projects')
+        .select('id', { count: 'exact', head: true });
+
+      if (error) {
+        return res.status(500).json({ status: 'error', error: error.message, time: new Date().toISOString() });
+      }
+
+      res.json({
+        status: 'healthy',
+        heartbeat: 'active',
+        responseTimeMs: Date.now() - start,
+        database: 'connected',
+        projectsCount: count || 0,
+        timestamp: new Date().toISOString()
+      });
+    } catch (err) {
+      res.status(500).json({ status: 'error', error: err.message, time: new Date().toISOString() });
+    }
+  });
 }
 
