@@ -3,7 +3,7 @@
 
 import express from 'express';
 import { PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
-import { supabase, getR2, R2_BUCKET, r2Url, prepareMagazineTarget, createMuxAsset } from '../lib/clients.js';
+import { supabase, getR2, R2_BUCKET, r2Url, prepareMagazineTarget, createMuxAsset, deleteMuxAsset } from '../lib/clients.js';
 import { formatMagazine } from '../lib/magazine-types.js';
 
 /** Purge all R2 files stored under a magazine ID prefix. */
@@ -224,16 +224,153 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
         targets
       } = req.body;
 
+      const { data: existing, error: getErr } = await supabase
+        .from('magazines')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (getErr || !existing) return res.status(404).json({ error: 'Magazine not found' });
+
       const updates = { updated_at: new Date().toISOString() };
       if (title !== undefined) updates.title = title;
       if (issueNumber !== undefined || issue_number !== undefined) updates.issue_number = issueNumber || issue_number;
       if (client !== undefined) updates.client = client;
       if (notes !== undefined) updates.notes = notes;
-      if (expiresAt !== undefined || expires_at !== undefined) updates.expires_at = expiresAt || expires_at;
-      if (maxScans !== undefined || max_scans !== undefined) updates.max_scans = maxScans || max_scans;
+      if (expiresAt !== undefined || expires_at !== undefined) updates.expires_at = expiresAt || expires_at || null;
+      if (maxScans !== undefined || max_scans !== undefined) updates.max_scans = maxScans ? Number(maxScans) : (max_scans ? Number(max_scans) : null);
       if (status !== undefined) updates.status = status;
-      if (coverImagePath !== undefined || cover_image_path !== undefined) updates.cover_image_path = coverImagePath || cover_image_path;
-      if (targets !== undefined) updates.targets = targets;
+
+      const r2 = getR2();
+
+      // If targets array was modified/provided
+      if (targets !== undefined && Array.isArray(targets)) {
+        const processedTargets = [];
+        const existingTargets = Array.isArray(existing.targets) ? existing.targets : [];
+
+        for (let i = 0; i < targets.length; i++) {
+          const t = targets[i];
+          const targetId = t.id || `target_${i + 1}`;
+          const pageNum = t.pageNumber || t.page_number || i + 1;
+          const targetName = t.targetName || t.target_name || `target${i}`;
+          let imagePath = t.imagePath || t.image_path || `magazines/${id}/targets/${i}/original.jpg`;
+          let overlayPath = t.overlayPath || t.overlay_path || t.videoPath || t.video_path || `magazines/${id}/targets/${i}/overlay.mp4`;
+          const overlayType = (t.overlayType || t.overlay_type || t.overlay?.type || 'video') === 'image' ? 'image' : 'video';
+
+          const prevTarget = existingTargets[i] || null;
+
+          // 1. Target Image (Upload if base64 provided, or keep existing)
+          if (t.imageBase64 && r2) {
+            const buf = Buffer.from(t.imageBase64.split(',')[1] || t.imageBase64, 'base64');
+            await r2.send(new PutObjectCommand({
+              Bucket: R2_BUCKET,
+              Key: imagePath,
+              Body: buf,
+              ContentType: 'image/jpeg'
+            }));
+          }
+
+          let targetData = t.targetData || t.target_data || (prevTarget ? prevTarget.target_data : null);
+
+          // Re-prepare target data if image changed or not yet prepared
+          if (t.imageBase64 || !targetData) {
+            try {
+              const imgUrl = r2Url(imagePath);
+              const imgFetch = await fetch(imgUrl);
+              if (imgFetch.ok) {
+                const imgBuffer = Buffer.from(await imgFetch.arrayBuffer());
+                targetData = await prepareMagazineTarget(imgBuffer, i, targetName);
+              }
+            } catch (pErr) {
+              console.warn(`Target ${i} prep warning:`, pErr.message);
+              targetData = targetData || { name: targetName, width: 1.0, height: 1.33 };
+            }
+          }
+
+          // 2. Overlay (Upload if base64 provided)
+          if (t.overlayBase64 && r2) {
+            const buf = Buffer.from(t.overlayBase64.split(',')[1] || t.overlayBase64, 'base64');
+            await r2.send(new PutObjectCommand({
+              Bucket: R2_BUCKET,
+              Key: overlayPath,
+              Body: buf,
+              ContentType: overlayType === 'image' ? 'image/jpeg' : 'video/mp4'
+            }));
+
+            // If replacing previous video overlay, delete old Mux asset to avoid orphan storage
+            const oldMuxId = prevTarget?.overlay?.mux_asset_id || prevTarget?.mux_asset_id;
+            if (oldMuxId) {
+              await deleteMuxAsset(oldMuxId);
+            }
+          }
+
+          let muxAssetId = t.overlay?.mux_asset_id || t.mux_asset_id || (t.overlayBase64 ? null : prevTarget?.overlay?.mux_asset_id);
+          let muxPlaybackId = t.overlay?.mux_playback_id || t.mux_playback_id || (t.overlayBase64 ? null : prevTarget?.overlay?.mux_playback_id);
+          let overlayUrl = t.overlayUrl || t.overlay_url || t.overlay?.url || '';
+
+          // Ingest into Mux if video overlay is new and not yet ingested
+          if (overlayType === 'video' && (!muxPlaybackId || t.overlayBase64)) {
+            try {
+              const videoPublicUrl = overlayPath.startsWith('http') ? overlayPath : r2Url(overlayPath);
+              const muxResult = await createMuxAsset(videoPublicUrl);
+              if (muxResult) {
+                muxAssetId = muxResult.assetId;
+                muxPlaybackId = muxResult.playbackId;
+                overlayUrl = `https://stream.mux.com/${muxPlaybackId}/capped-1080p.mp4`;
+              }
+            } catch (muxErr) {
+              console.warn(`Magazine target ${i} mux warning:`, muxErr.message);
+            }
+          }
+
+          if (!overlayUrl) {
+            overlayUrl = overlayPath.startsWith('http') ? overlayPath : r2Url(overlayPath);
+          }
+
+          processedTargets.push({
+            id: targetId,
+            page_number: pageNum,
+            target_name: targetName,
+            image_path: imagePath,
+            image_url: imagePath.startsWith('http') ? imagePath : r2Url(imagePath),
+            target_data: targetData,
+            overlay: {
+              type: overlayType,
+              path: overlayPath,
+              url: overlayUrl,
+              duration: t.overlay?.duration || t.duration || 30,
+              mux_asset_id: muxAssetId,
+              mux_playback_id: muxPlaybackId,
+              mux_stream_url: muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}.m3u8` : null
+            }
+          });
+        }
+
+        // Clean up any removed targets beyond the new length
+        if (existingTargets.length > targets.length) {
+          for (let rem = targets.length; rem < existingTargets.length; rem++) {
+            const remTarget = existingTargets[rem];
+            const remMuxId = remTarget.overlay?.mux_asset_id || remTarget.mux_asset_id;
+            if (remMuxId) {
+              await deleteMuxAsset(remMuxId);
+            }
+            if (r2) {
+              try {
+                const listed = await r2.send(new ListObjectsV2Command({ Bucket: R2_BUCKET, Prefix: `magazines/${id}/targets/${rem}/` }));
+                const objects = (listed.Contents || []).map(o => ({ Key: o.Key }));
+                if (objects.length > 0) {
+                  await r2.send(new DeleteObjectsCommand({ Bucket: R2_BUCKET, Delete: { Objects: objects } }));
+                }
+              } catch (delErr) {
+                console.warn(`Error deleting removed target files in R2:`, delErr.message);
+              }
+            }
+          }
+        }
+
+        updates.targets = processedTargets;
+        updates.cover_image_path = coverImagePath || cover_image_path || processedTargets[0]?.image_path || existing.cover_image_path;
+      }
 
       const { data, error } = await supabase
         .from('magazines')
@@ -245,6 +382,7 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
       if (error) return res.status(500).json({ error: error.message });
       res.json(formatMagazine(data));
     } catch (err) {
+      console.error('Update magazine error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -252,11 +390,23 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
   app.delete('/api/magazines/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
+      const { data: existing } = await supabase.from('magazines').select('targets').eq('id', id).single();
+      const targets = Array.isArray(existing?.targets) ? existing.targets : [];
+
+      // Delete all Mux assets attached to targets
+      for (const t of targets) {
+        const muxId = t.overlay?.mux_asset_id || t.mux_asset_id;
+        if (muxId) {
+          await deleteMuxAsset(muxId);
+        }
+      }
+
       const { error } = await supabase.from('magazines').delete().eq('id', id);
       if (error) return res.status(500).json({ error: error.message });
       await purgeMagazineFiles(id);
       res.json({ success: true });
     } catch (err) {
+      console.error('Delete magazine error:', err);
       res.status(500).json({ error: err.message });
     }
   });

@@ -70,6 +70,22 @@ export async function createMuxAsset(videoUrl) {
   }
 }
 
+/**
+ * Permanently deletes a video asset from Mux to terminate storage costs immediately.
+ * @param {string} assetId
+ * @returns {Promise<boolean>}
+ */
+export async function deleteMuxAsset(assetId) {
+  if (!mux || !assetId) return false;
+  try {
+    await mux.video.assets.delete(assetId);
+    return true;
+  } catch (err) {
+    console.warn(`Mux asset delete error (${assetId}):`, err.message);
+    return false;
+  }
+}
+
 /** @returns {boolean} whether direct-to-R2 uploads are available */
 export function hasR2() {
   return !!r2;

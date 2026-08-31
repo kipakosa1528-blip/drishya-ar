@@ -113,7 +113,90 @@
     <div class="page-header">
       <div class="page-title" id="p-title">Loading Magazine...</div>
       <div class="actions" style="display:flex;gap:8px">
+        <button class="btn btn-default" id="edit-mag-btn">Edit Magazine</button>
         <button class="btn btn-danger" id="del-btn">Delete Magazine</button>
+      </div>
+    </div>
+
+    <!-- Edit Magazine Modal -->
+    <div id="edit-mag-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(4,8,16,0.85);backdrop-filter:blur(8px);z-index:9999;align-items:center;justify-content:center;padding:16px">
+      <div class="panel" style="max-width:760px;width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,0.8);border:1px solid rgba(255,255,255,0.18)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px">
+          <div>
+            <div class="panel-title" style="margin:0">Edit AR Magazine Studio</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Manage magazine metadata, add/remove pages, or replace target markers &amp; overlays</div>
+          </div>
+          <button type="button" class="btn btn-sm btn-default" id="close-edit-mag-modal" style="font-size:14px;line-height:1;padding:4px 8px">✕</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
+          <div class="form-group">
+            <label>Magazine Title <span style="color:var(--accent)">*</span></label>
+            <input class="form-control" type="text" id="emag-title" required />
+          </div>
+          <div class="form-group">
+            <label>Issue Number</label>
+            <input class="form-control" type="text" id="emag-issue" placeholder="e.g. Vol. 1, Issue 4" />
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label>Client Name</label>
+            <input class="form-control" type="text" id="emag-client" placeholder="e.g. Vogue Nepal" />
+          </div>
+          <div class="form-group">
+            <label>Internal Notes</label>
+            <input class="form-control" type="text" id="emag-notes" placeholder="e.g. Wedding Edition" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label style="margin-bottom:8px">Expiration Method</label>
+          <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;margin-bottom:10px">
+            <button type="button" class="btn btn-default emag-exp-btn" data-mode="time" id="emag-btn-time">⏰ Time</button>
+            <button type="button" class="btn btn-default emag-exp-btn" data-mode="scans" id="emag-btn-scans">🔒 Scans</button>
+            <button type="button" class="btn btn-default emag-exp-btn" data-mode="both" id="emag-btn-both">⚡ Both</button>
+            <button type="button" class="btn btn-default emag-exp-btn" data-mode="none" id="emag-btn-none">∞ Never</button>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group" id="emag-group-time" style="display:none">
+            <label>Expiry Date</label>
+            <input class="form-control" type="date" id="emag-expiry" />
+          </div>
+          <div class="form-group" id="emag-group-scans" style="display:none">
+            <label>Max Scan Limit</label>
+            <input class="form-control" type="number" id="emag-max-scans" min="1" placeholder="e.g. 1000" />
+          </div>
+        </div>
+
+        <!-- Target Pages List Editor -->
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div>
+              <div style="font-size:14px;font-weight:700">Magazine Target Pages (<span id="emag-page-count">0</span>)</div>
+              <div style="font-size:11px;color:var(--muted)">Manage target images and media overlays per page</div>
+            </div>
+            <button type="button" class="btn btn-sm btn-default" id="emag-add-page-btn">+ Add New Page</button>
+          </div>
+
+          <div id="emag-targets-list" style="display:flex;flex-direction:column;gap:12px;max-height:360px;overflow-y:auto;padding-right:4px">
+            <!-- Dynamically populated page editor rows -->
+          </div>
+        </div>
+
+        <!-- Progress Spinner Banner -->
+        <div id="emag-progress-banner" style="display:none;margin-top:14px;padding:10px 14px;background:linear-gradient(135deg,rgba(56,189,248,0.12),rgba(9,13,22,0.8));border:1px solid rgba(56,189,248,0.3);border-radius:8px;align-items:center;gap:10px">
+          <div class="skeleton" style="width:16px;height:16px;border-radius:50%;border:2px solid var(--accent);border-top-color:transparent;animation:spin 1s linear infinite"></div>
+          <div style="font-size:12px;color:var(--text);font-weight:600" id="emag-progress-msg">Uploading media &amp; recompiling magazine targets...</div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:14px">
+          <button type="button" class="btn btn-default" id="cancel-edit-mag-btn">Cancel</button>
+          <button type="button" class="btn btn-primary" id="save-edit-mag-btn">Save Changes</button>
+        </div>
       </div>
     </div>
 
@@ -256,11 +339,15 @@
 </div>
 
 <script type="module">
-  import { getMagazine, deleteMagazine } from './js/db.js';
-  import { fmt, statusBadge, isExpired, expType } from './js/utils.js';
+  import { getMagazine, updateMagazine, deleteMagazine } from './js/db.js';
+  import { fmt, statusBadge, isExpired, expType, calcMuxCost, toast } from './js/utils.js';
 
   const params = new URLSearchParams(location.search);
   const id = params.get('id');
+
+  let currentMag = null;
+  let editingTargets = [];
+  let editExpMode = 'none';
 
   if (!id) {
     document.getElementById('not-found').style.display = 'block';
@@ -268,6 +355,234 @@
   } else {
     loadDetail(id);
   }
+
+  function setEditExpMode(mode) {
+    editExpMode = mode;
+    document.querySelectorAll('.emag-exp-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === mode);
+    });
+    document.getElementById('emag-group-time').style.display = (mode === 'time' || mode === 'both') ? 'block' : 'none';
+    document.getElementById('emag-group-scans').style.display = (mode === 'scans' || mode === 'both') ? 'block' : 'none';
+  }
+
+  document.querySelectorAll('.emag-exp-btn').forEach(btn => {
+    btn.addEventListener('click', () => setEditExpMode(btn.dataset.mode));
+  });
+
+  function renderEditTargetsList() {
+    const listEl = document.getElementById('emag-targets-list');
+    document.getElementById('emag-page-count').textContent = editingTargets.length;
+    listEl.innerHTML = '';
+
+    editingTargets.forEach((t, idx) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px';
+      
+      const overlayType = (t.overlay && t.overlay.type) || t.overlay_type || 'video';
+      const imgPreview = t.imageBase64 || t.imageUrl || t.image_url || '';
+      const overlayPreview = t.overlayBase64 || (t.overlay && t.overlay.url) || t.overlay_url || '';
+
+      row.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:700;font-size:13px;color:var(--text)">📄 Page ${idx + 1} Target</span>
+          ${editingTargets.length > 1 ? `<button type="button" class="btn btn-sm btn-danger del-page-btn" data-idx="${idx}" style="font-size:11px;padding:3px 8px">Remove Page</button>` : ''}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <!-- Target Marker -->
+          <div style="background:rgba(0,0,0,0.2);padding:8px;border-radius:6px">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;display:flex;justify-content:space-between">
+              <span>Target Image</span>
+              ${t.imageBase64 ? '<span class="badge badge-green" style="font-size:9px">New Image</span>' : ''}
+            </div>
+            <img src="${imgPreview}" style="width:100%;height:80px;object-fit:cover;border-radius:4px;border:1px solid var(--border);background:#000;display:${imgPreview ? 'block' : 'none'}" class="row-img-preview" />
+            <label class="btn btn-sm btn-default" style="width:100%;text-align:center;cursor:pointer;margin-top:6px;font-size:11px">
+              <span>${imgPreview ? 'Replace Image' : 'Select Target'}</span>
+              <input type="file" accept="image/jpeg,image/png" class="row-img-input" data-idx="${idx}" style="display:none" />
+            </label>
+          </div>
+
+          <!-- Overlay Media -->
+          <div style="background:rgba(0,0,0,0.2);padding:8px;border-radius:6px">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;display:flex;justify-content:space-between">
+              <span>Overlay (${overlayType})</span>
+              ${t.overlayBase64 ? '<span class="badge badge-blue" style="font-size:9px">New Media</span>' : ''}
+            </div>
+            <div style="height:80px;border-radius:4px;border:1px solid var(--border);background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center">
+              ${overlayType === 'video' 
+                ? (overlayPreview ? `<video src="${overlayPreview}" style="width:100%;height:100%;object-fit:cover" muted></video>` : '<span style="font-size:10px;color:var(--muted)">No video</span>')
+                : (overlayPreview ? `<img src="${overlayPreview}" style="width:100%;height:100%;object-fit:cover" />` : '<span style="font-size:10px;color:var(--muted)">No image</span>')}
+            </div>
+            <div style="display:flex;gap:4px;margin-top:6px">
+              <label class="btn btn-sm btn-default" style="flex:1;text-align:center;cursor:pointer;font-size:11px">
+                <span>${overlayPreview ? 'Replace' : 'Upload'}</span>
+                <input type="file" accept="${overlayType === 'video' ? 'video/mp4,video/quicktime' : 'image/jpeg,image/png'}" class="row-overlay-input" data-idx="${idx}" style="display:none" />
+              </label>
+              <select class="form-control row-type-select" data-idx="${idx}" style="width:75px;font-size:11px;padding:2px 4px;height:26px">
+                <option value="video" ${overlayType === 'video' ? 'selected' : ''}>Video</option>
+                <option value="image" ${overlayType === 'image' ? 'selected' : ''}>Image</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      `;
+      listEl.appendChild(row);
+    });
+
+    // Wire up events
+    listEl.querySelectorAll('.del-page-btn').forEach(b => {
+      b.onclick = () => {
+        const idx = Number(b.dataset.idx);
+        editingTargets.splice(idx, 1);
+        renderEditTargetsList();
+      };
+    });
+
+    listEl.querySelectorAll('.row-type-select').forEach(sel => {
+      sel.onchange = (e) => {
+        const idx = Number(sel.dataset.idx);
+        if (!editingTargets[idx].overlay) editingTargets[idx].overlay = {};
+        editingTargets[idx].overlay.type = e.target.value;
+        renderEditTargetsList();
+      };
+    });
+
+    listEl.querySelectorAll('.row-img-input').forEach(inp => {
+      inp.onchange = (e) => {
+        const idx = Number(inp.dataset.idx);
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          editingTargets[idx].imageBase64 = evt.target.result;
+          renderEditTargetsList();
+        };
+        reader.readAsDataURL(file);
+      };
+    });
+
+    listEl.querySelectorAll('.row-overlay-input').forEach(inp => {
+      inp.onchange = (e) => {
+        const idx = Number(inp.dataset.idx);
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          editingTargets[idx].overlayBase64 = evt.target.result;
+          renderEditTargetsList();
+        };
+        reader.readAsDataURL(file);
+      };
+    });
+  }
+
+  document.getElementById('emag-add-page-btn').onclick = () => {
+    const nextNum = editingTargets.length + 1;
+    editingTargets.push({
+      id: `target_${nextNum}`,
+      page_number: nextNum,
+      target_name: `target_${nextNum}`,
+      overlay: { type: 'video', duration: 30 }
+    });
+    renderEditTargetsList();
+  };
+
+  function openEditMagModal() {
+    if (!currentMag) return;
+    document.getElementById('emag-title').value = currentMag.title || '';
+    document.getElementById('emag-issue').value = currentMag.issueNumber || currentMag.issue_number || '';
+    document.getElementById('emag-client').value = currentMag.client || '';
+    document.getElementById('emag-notes').value = currentMag.notes || '';
+
+    const exp = currentMag.expiresAt || currentMag.expires_at;
+    const scans = currentMag.maxScans || currentMag.max_scans;
+
+    document.getElementById('emag-expiry').value = exp ? exp.split('T')[0] : '';
+    document.getElementById('emag-max-scans').value = scans || '';
+
+    if (exp && scans) setEditExpMode('both');
+    else if (exp)      setEditExpMode('time');
+    else if (scans)    setEditExpMode('scans');
+    else               setEditExpMode('none');
+
+    // Clone targets array
+    editingTargets = JSON.parse(JSON.stringify(Array.isArray(currentMag.targets) ? currentMag.targets : []));
+    if (editingTargets.length === 0) {
+      editingTargets.push({ id: 'target_1', page_number: 1, target_name: 'target_1', overlay: { type: 'video', duration: 30 } });
+    }
+
+    document.getElementById('emag-progress-banner').style.display = 'none';
+    document.getElementById('save-edit-mag-btn').disabled = false;
+    renderEditTargetsList();
+
+    document.getElementById('edit-mag-modal').style.display = 'flex';
+  }
+
+  function closeEditMagModal() {
+    document.getElementById('edit-mag-modal').style.display = 'none';
+  }
+
+  document.getElementById('edit-mag-btn').onclick = openEditMagModal;
+  document.getElementById('close-edit-mag-modal').onclick = closeEditMagModal;
+  document.getElementById('cancel-edit-mag-btn').onclick = closeEditMagModal;
+  document.getElementById('edit-mag-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'edit-mag-modal') closeEditMagModal();
+  });
+
+  document.getElementById('save-edit-mag-btn').onclick = async () => {
+    const title = document.getElementById('emag-title').value.trim();
+    const issueNumber = document.getElementById('emag-issue').value.trim();
+    const client = document.getElementById('emag-client').value.trim();
+    const notes = document.getElementById('emag-notes').value.trim();
+    const expVal = document.getElementById('emag-expiry').value;
+    const scanVal = document.getElementById('emag-max-scans').value;
+
+    if (!title) { toast('Please enter a magazine title', 'err'); return; }
+    if (editingTargets.length === 0) { toast('A magazine must have at least 1 target page', 'err'); return; }
+
+    for (let i = 0; i < editingTargets.length; i++) {
+      const t = editingTargets[i];
+      const hasImg = t.imageBase64 || t.imageUrl || t.image_url || t.image_path;
+      const hasOverlay = t.overlayBase64 || t.overlay?.url || t.overlay?.path || t.overlay_url || t.overlay_path;
+      if (!hasImg) {
+        toast(`Page ${i + 1} is missing a Target Image`, 'err');
+        return;
+      }
+      if (!hasOverlay) {
+        toast(`Page ${i + 1} is missing an Overlay media file`, 'err');
+        return;
+      }
+    }
+
+    const expiresAt = (editExpMode === 'time' || editExpMode === 'both') && expVal ? new Date(expVal + 'T23:59:59').toISOString() : null;
+    const maxScans = (editExpMode === 'scans' || editExpMode === 'both') && scanVal ? Number(scanVal) : null;
+
+    const payload = {
+      title,
+      issueNumber,
+      client,
+      notes,
+      expiresAt,
+      maxScans,
+      targets: editingTargets
+    };
+
+    const progressBanner = document.getElementById('emag-progress-banner');
+    const saveBtn = document.getElementById('save-edit-mag-btn');
+
+    try {
+      saveBtn.disabled = true;
+      progressBanner.style.display = 'flex';
+      await updateMagazine(id, payload);
+      closeEditMagModal();
+      toast('Magazine and target pages updated successfully!', 'success');
+      await loadDetail(id);
+    } catch (err) {
+      toast('Update failed: ' + err.message, 'err');
+    } finally {
+      saveBtn.disabled = false;
+      progressBanner.style.display = 'none';
+    }
+  };
 
   async function loadDetail(magId) {
     try {
@@ -277,6 +592,8 @@
         document.getElementById('detail-grid').style.display = 'none';
         return;
       }
+
+      currentMag = m;
 
       document.getElementById('p-title').textContent = m.title || 'Untitled Magazine';
       document.getElementById('p-client').textContent = m.client || '—';
@@ -325,7 +642,10 @@
       // Render single magazine mini-chart
       if (typeof Chart !== 'undefined' && document.getElementById('singleMagCostChart')) {
         const chartCtx = document.getElementById('singleMagCostChart').getContext('2d');
-        new Chart(chartCtx, {
+        if (window._singleMagCostChart) {
+          window._singleMagCostChart.destroy();
+        }
+        window._singleMagCostChart = new Chart(chartCtx, {
           type: 'bar',
           data: {
             labels: ['Delivery Cost', 'Storage Cost', 'Total Incurred'],
@@ -348,7 +668,7 @@
         });
       }
 
-      // Estimate R2 footprint: ~1.5MB original + ~3MB overlay + ~0.2MB mind per target
+      // Estimate R2 footprint
       const totalMB = Math.max(1, Math.round(targets.length * 4.7 + 3.5));
       document.getElementById('m-footprint').textContent = `~${totalMB} MB (${(totalMB / 1024).toFixed(3)} GB stored)`;
       const monthlyStorage = (totalMB / 1024) * 0.015;

@@ -4,10 +4,8 @@
 
 import express from 'express';
 import { PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
-import { supabase, getR2, R2_BUCKET, r2Url, prepareTarget, createMuxAsset } from '../lib/clients.js';
+import { supabase, getR2, R2_BUCKET, r2Url, prepareTarget, createMuxAsset, deleteMuxAsset } from '../lib/clients.js';
 import { cacheBust } from './ar.js';
-
-
 
 /**
  * Normalize a DB row for API consumers.
@@ -157,36 +155,116 @@ export function registerProjectsRoutes(app, { requireAuth }) {
     }
   });
 
-  app.put('/api/projects/:id', requireAuth, async (req, res) => {
-    const { id } = req.params;
-    const { name, client, notes, expiresAt, maxScans } = req.body;
-    const updates = {};
-    if (name !== undefined) updates.name = name;
-    if (client !== undefined) updates.client = client;
-    if (notes !== undefined) updates.notes = notes;
-    if (expiresAt !== undefined) updates.expires_at = expiresAt;
+  app.put('/api/projects/:id', express.json({ limit: '150mb' }), requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name, client, notes, expiresAt, maxScans, imageBase64, imagePath, videoBase64, videoPath } = req.body;
 
-    if (maxScans !== undefined) {
-      const { data: existing } = await supabase.from('projects').select('target_data').eq('id', id).single();
-      const td = (typeof existing?.target_data === 'object' && existing?.target_data) ? { ...existing.target_data } : {};
-      td._max_scans = maxScans ? Number(maxScans) : null;
+      const { data: existing, error: getErr } = await supabase
+        .from('projects').select('*').eq('id', id).single();
+      if (getErr || !existing) return res.status(404).json({ error: 'Project not found' });
+
+      const updates = {};
+      if (name !== undefined) updates.name = name;
+      if (client !== undefined) updates.client = client;
+      if (notes !== undefined) updates.notes = notes;
+      if (expiresAt !== undefined) updates.expires_at = expiresAt || null;
+
+      let td = (typeof existing.target_data === 'object' && existing.target_data) ? { ...existing.target_data } : {};
+
+      if (maxScans !== undefined) {
+        td._max_scans = maxScans ? Number(maxScans) : null;
+      }
+
+      const r2 = getR2();
+
+      // 1. If Target Image was replaced
+      if (imageBase64 || imagePath) {
+        const resolvedImagePath = imagePath || `${id}/original.jpg`;
+        if (imageBase64 && r2) {
+          const buf = Buffer.from(imageBase64.split(',')[1] || imageBase64, 'base64');
+          await r2.send(new PutObjectCommand({
+            Bucket: R2_BUCKET, Key: resolvedImagePath, Body: buf, ContentType: 'image/jpeg'
+          }));
+        }
+
+        const imgUrl = r2Url(resolvedImagePath);
+        const imgFetch = await fetch(imgUrl);
+        if (!imgFetch.ok) throw new Error('Cannot fetch replacement image from R2: ' + imgFetch.statusText);
+        const imgBuffer = Buffer.from(await imgFetch.arrayBuffer());
+
+        const newTargetData = await prepareTarget(imgBuffer, id);
+        // Preserve views, max_scans and mux metadata
+        newTargetData._views_count = td._views_count || existing.views_count || 0;
+        newTargetData._max_scans = td._max_scans || null;
+        newTargetData.mux_asset_id = td.mux_asset_id || null;
+        newTargetData.mux_playback_id = td.mux_playback_id || null;
+        td = newTargetData;
+        updates.image_path = resolvedImagePath;
+      }
+
+      // 2. If Overlay Video was replaced
+      if (videoBase64 || videoPath) {
+        const resolvedVideoPath = videoPath || `${id}/video.mp4`;
+        if (videoBase64 && r2) {
+          const buf = Buffer.from(videoBase64.split(',')[1] || videoBase64, 'base64');
+          await r2.send(new PutObjectCommand({
+            Bucket: R2_BUCKET, Key: resolvedVideoPath, Body: buf, ContentType: 'video/mp4'
+          }));
+        }
+
+        // Clean up old Mux asset to prevent orphan storage charges
+        if (td.mux_asset_id) {
+          await deleteMuxAsset(td.mux_asset_id);
+          td.mux_asset_id = null;
+          td.mux_playback_id = null;
+        }
+
+        try {
+          const videoPublicUrl = resolvedVideoPath.startsWith('http') ? resolvedVideoPath : r2Url(resolvedVideoPath);
+          const muxResult = await createMuxAsset(videoPublicUrl);
+          if (muxResult) {
+            td.mux_asset_id = muxResult.assetId;
+            td.mux_playback_id = muxResult.playbackId;
+          }
+        } catch (muxErr) {
+          console.warn('Mux re-ingestion warning:', muxErr.message);
+        }
+
+        updates.video_path = resolvedVideoPath;
+      }
+
       updates.target_data = td;
+
+      const { data, error } = await supabase
+        .from('projects').update(updates).eq('id', id).select().single();
+      if (error) return res.status(500).json({ error: error.message });
+
+      cacheBust(id); // Invalidate AR viewer project cache so next scan gets fresh data
+      res.json(formatProject(data));
+    } catch (err) {
+      console.error('Update project error:', err);
+      res.status(500).json({ error: err.message });
     }
-
-    const { data, error } = await supabase
-      .from('projects').update(updates).eq('id', id).select().single();
-    if (error) return res.status(500).json({ error: error.message });
-    cacheBust(id); // Invalidate AR viewer project cache so next scan gets fresh data
-    res.json(formatProject(data));
-
   });
 
   app.delete('/api/projects/:id', requireAuth, async (req, res) => {
-    const { id } = req.params;
-    const { error } = await supabase.from('projects').delete().eq('id', id);
-    if (error) return res.status(500).json({ error: error.message });
-    await purgeProjectFiles(id);
-    res.json({ success: true });
+    try {
+      const { id } = req.params;
+      const { data: existing } = await supabase.from('projects').select('target_data').eq('id', id).single();
+      const td = (typeof existing?.target_data === 'object' && existing?.target_data) ? existing.target_data : {};
+      if (td.mux_asset_id) {
+        await deleteMuxAsset(td.mux_asset_id);
+      }
+
+      const { error } = await supabase.from('projects').delete().eq('id', id);
+      if (error) return res.status(500).json({ error: error.message });
+      await purgeProjectFiles(id);
+      res.json({ success: true });
+    } catch (err) {
+      console.error('Delete project error:', err);
+      res.status(500).json({ error: err.message });
+    }
   });
 }
 
