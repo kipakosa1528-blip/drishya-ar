@@ -2,7 +2,7 @@
 
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { getR2, R2_BUCKET, r2Url, ADMIN_EMAIL } from '../lib/clients.js';
+import { supabase, getR2, R2_BUCKET, r2Url, ADMIN_EMAIL } from '../lib/clients.js';
 import { rateLimit } from '../lib/security.js';
 
 // Keys are locked to <uuid>/(original.jpg|luminance.jpg|video.mp4) or
