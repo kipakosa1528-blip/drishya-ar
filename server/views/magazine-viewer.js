@@ -182,49 +182,13 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
     window.XR8 ? onxrloaded() : window.addEventListener('xrloaded', onxrloaded);
   </script>
 
-  <script>
-    if (typeof AFRAME !== 'undefined') {
-      AFRAME.registerComponent('fit-model', {
-        schema: {
-          targetSize: { default: 0.70 },
-          hoverZ: { default: 0.35 }
-        },
-        init: function() {
-          this.el.addEventListener('model-loaded', () => {
-            var obj = this.el.getObject3D('mesh') || this.el.object3D;
-            if (!obj) return;
-            var bbox = new THREE.Box3().setFromObject(obj);
-            var size = bbox.getSize(new THREE.Vector3());
-            var maxDim = Math.max(size.x, size.y, size.z);
-            if (maxDim > 0) {
-              var s = this.data.targetSize / maxDim;
-              this.el.object3D.scale.set(s, s, s);
-              this.el.object3D.position.set(0, 0, this.data.hoverZ);
-            }
-          });
-        }
-      });
-
-      AFRAME.registerComponent('spin-axis', {
-        schema: { speed: { default: 28 } },
-        tick: function(t, dt) {
-          if (this.el.object3D) {
-            this.el.object3D.rotation.y += (this.data.speed * dt * Math.PI) / 180000;
-          }
-        }
-      });
-    }
-  </script>
-
   <a-scene xrextras-loading xrextras-runtime-error
     renderer="colorManagement:true;alpha:true;antialias:true"
     xrweb="allowedDevices: any; disableWorldTracking: true; disableDefaultEnvironment: true">
     
     <a-assets>
       ${targetsConfig.map((t, idx) => {
-        if (t.overlayType === '3d') {
-          return `<a-asset-item id="ov-model-${idx}" src="${esc(t.overlayUrl)}"></a-asset-item>`;
-        } else if (t.overlayType === 'image') {
+        if (t.overlayType === 'image') {
           return `<img id="ov-img-${idx}" src="${esc(t.overlayUrl)}" crossorigin="anonymous" />`;
         } else {
           return `<video id="ov-vid-${idx}" src="${esc(t.overlayUrl)}" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous" muted autoplay></video>`;
@@ -236,14 +200,6 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
 
     <!-- Multi-target named tracking entities with pixel-perfect plane sizing -->
     ${targetsConfig.map((t, idx) => {
-      if (t.overlayType === '3d') {
-        return `
-    <xrextras-named-image-target name="${esc(t.targetName)}">
-      <a-entity id="mag-model-container-${idx}" position="0 0 0.35" rotation="90 0 0">
-        <a-entity id="mag-model-${idx}" gltf-model="#ov-model-${idx}" fit-model="targetSize: 0.65" spin-axis visible="false"></a-entity>
-      </a-entity>
-    </xrextras-named-image-target>`;
-      }
       const isImg = t.overlayType === 'image';
       const matSrc = isImg ? `#ov-img-${idx}` : `#ov-vid-${idx}`;
 
