@@ -290,6 +290,16 @@
                 <span class="badge badge-gold" id="model-meta-badge" style="font-size:11px">Auto-Spin: ON</span>
               </div>
               <div id="model-canvas-box" style="height:260px;background:radial-gradient(circle at center, #111827 0%, #030712 100%);border-radius:8px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;position:relative"></div>
+              
+              <!-- Auto-Rotate AR Settings Toggle -->
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:8px 12px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px">
+                <div style="font-size:12px;color:var(--text);font-weight:600">Revolve / Auto-Rotate in AR:</div>
+                <div style="display:flex;gap:4px">
+                  <button type="button" class="btn btn-sm btn-primary" id="btn-spin-on" onclick="setAutoSpin(true)" style="padding:2px 10px;font-size:11px">ON</button>
+                  <button type="button" class="btn btn-sm btn-default" id="btn-spin-off" onclick="setAutoSpin(false)" style="padding:2px 10px;font-size:11px">OFF</button>
+                </div>
+              </div>
+
               <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
                 <span style="font-size:11px;color:var(--muted)">Drag to orbit • Scroll to zoom</span>
                 <label for="model-input" class="btn btn-sm btn-default" style="cursor:pointer;margin:0">Change 3D Model</label>
@@ -947,6 +957,20 @@
     openModelViewer(mUrl, f.name);
   });
 
+  window.modelAutoSpin = true;
+  window.setAutoSpin = function(enabled) {
+    window.modelAutoSpin = enabled;
+    const btnOn = document.getElementById('btn-spin-on');
+    const btnOff = document.getElementById('btn-spin-off');
+    const badge = document.getElementById('model-meta-badge');
+    if (btnOn) { btnOn.className = enabled ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-default'; }
+    if (btnOff) { btnOff.className = !enabled ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-default'; }
+    if (badge) {
+      badge.textContent = enabled ? 'Auto-Spin: ON' : 'Auto-Spin: OFF';
+      badge.className = enabled ? 'badge badge-gold' : 'badge';
+    }
+  };
+
   let modelScene, modelCamera, modelRenderer, modelControls, modelObj;
   function openModelViewer(url, name) {
     const wrap = document.getElementById('model-preview-wrap');
@@ -964,15 +988,21 @@
     modelRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     modelRenderer.setSize(width, height);
     modelRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    modelRenderer.outputEncoding = THREE.sRGBEncoding;
+    modelRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+    modelRenderer.toneMappingExposure = 1.2;
     box.appendChild(modelRenderer.domElement);
 
     modelControls = new THREE.OrbitControls(modelCamera, modelRenderer.domElement);
     modelControls.enableDamping = true;
 
-    modelScene.add(new THREE.AmbientLight(0xffffff, 1.5));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
-    dirLight.position.set(5, 5, 5);
-    modelScene.add(dirLight);
+    modelScene.add(new THREE.AmbientLight(0xffffff, 2.0));
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 2.5);
+    dirLight1.position.set(5, 5, 5);
+    modelScene.add(dirLight1);
+    const dirLight2 = new THREE.DirectionalLight(0xffffff, 1.5);
+    dirLight2.position.set(-5, -2, -5);
+    modelScene.add(dirLight2);
 
     if (typeof THREE.GLTFLoader !== 'undefined') {
       const loader = new THREE.GLTFLoader();
@@ -995,7 +1025,7 @@
     function render3D() {
       if (wrap.style.display !== 'none') {
         requestAnimationFrame(render3D);
-        if (modelObj) modelObj.rotation.y += 0.008;
+        if (modelObj && window.modelAutoSpin) modelObj.rotation.y += 0.008;
         modelControls.update();
         modelRenderer.render(modelScene, modelCamera);
       }

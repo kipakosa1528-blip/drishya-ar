@@ -84,6 +84,15 @@ test.describe('3D Model (.glb) Overlay Lifecycle & AR Viewer', () => {
     const isVidActive = await page.evaluate(() => document.getElementById('btn-mode-vid').classList.contains('active'));
     expect(isVidActive).toBe(true);
     expect(pageErrors.length).toBe(0);
+
+    // Switch to 3D and upload earth.glb
+    await page.click('#btn-mode-3d');
+    await page.setInputFiles('#model-input', 'C:/Users/Saugat Shakya/Downloads/earth.glb');
+    await page.waitForTimeout(3000);
+    await page.screenshot({ path: 'C:/Users/Saugat Shakya/.gemini/antigravity/brain/b1058997-007d-4c63-b7ba-3b07234be53c/create_html_earth_preview.png' });
+
+    const modelNameText = await page.textContent('#model-name');
+    console.log('Model Name Text in create.html:', modelNameText);
   });
 
 });

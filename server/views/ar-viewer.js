@@ -54,6 +54,28 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
   <script defer src="/external/xrextras.js" crossorigin="anonymous"></script>
   <script>
     if (typeof AFRAME !== 'undefined') {
+      AFRAME.registerComponent('fit-model', {
+        schema: {
+          targetSize: { default: 0.70 },
+          hoverZ: { default: 0.35 }
+        },
+        init: function() {
+          this.el.addEventListener('model-loaded', () => {
+            var obj = this.el.getObject3D('mesh') || this.el.object3D;
+            if (!obj) return;
+            var bbox = new THREE.Box3().setFromObject(obj);
+            var size = bbox.getSize(new THREE.Vector3());
+            var maxDim = Math.max(size.x, size.y, size.z);
+            if (maxDim > 0) {
+              var s = this.data.targetSize / maxDim;
+              this.el.object3D.scale.set(s, s, s);
+              var center = bbox.getCenter(new THREE.Vector3());
+              this.el.object3D.position.set(0, 0, this.data.hoverZ);
+            }
+          });
+        }
+      });
+
       AFRAME.registerComponent('spin-axis', {
         schema: { speed: { default: 28 } },
         tick: function(t, dt) {
@@ -204,7 +226,7 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
     <a-camera position="0 0 0"></a-camera>
     <xrextras-named-image-target name="target0">
       ${is3D ? `
-      <a-entity id="ar-model" gltf-model="#ar-model-asset" position="0 0 0.5" scale="0.65 0.65 0.65" spin-axis visible="false"></a-entity>
+      <a-entity id="ar-model" gltf-model="#ar-model-asset" fit-model="targetSize: 0.65; hoverZ: 0.35" spin-axis visible="false"></a-entity>
       ` : `
       <a-plane id="ar-plane" width="${Number(planeW)}" height="${Number(planeH)}" position="0 0 0.01" visible="false"
         material="src: #ar-video; transparent: true; alphaTest: 0.01; shader: flat; side: double">

@@ -184,6 +184,27 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
 
   <script>
     if (typeof AFRAME !== 'undefined') {
+      AFRAME.registerComponent('fit-model', {
+        schema: {
+          targetSize: { default: 0.70 },
+          hoverZ: { default: 0.35 }
+        },
+        init: function() {
+          this.el.addEventListener('model-loaded', () => {
+            var obj = this.el.getObject3D('mesh') || this.el.object3D;
+            if (!obj) return;
+            var bbox = new THREE.Box3().setFromObject(obj);
+            var size = bbox.getSize(new THREE.Vector3());
+            var maxDim = Math.max(size.x, size.y, size.z);
+            if (maxDim > 0) {
+              var s = this.data.targetSize / maxDim;
+              this.el.object3D.scale.set(s, s, s);
+              this.el.object3D.position.set(0, 0, this.data.hoverZ);
+            }
+          });
+        }
+      });
+
       AFRAME.registerComponent('spin-axis', {
         schema: { speed: { default: 28 } },
         tick: function(t, dt) {
@@ -218,7 +239,7 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
       if (t.overlayType === '3d') {
         return `
     <xrextras-named-image-target name="${esc(t.targetName)}">
-      <a-entity id="mag-model-${idx}" gltf-model="#ov-model-${idx}" position="0 0 0.5" scale="0.65 0.65 0.65" spin-axis visible="false"></a-entity>
+      <a-entity id="mag-model-${idx}" gltf-model="#ov-model-${idx}" fit-model="targetSize: 0.65; hoverZ: 0.35" spin-axis visible="false"></a-entity>
     </xrextras-named-image-target>`;
       }
       const isImg = t.overlayType === 'image';
