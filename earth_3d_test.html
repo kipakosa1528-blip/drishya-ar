@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Revolving Earth Overlay Test — Kipakosa AR</title>
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <style>
+    body { margin: 0; background: #030712; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow-x: hidden; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .hero-box { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px; align-items: stretch; }
+    .viewer-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; min-height: 520px; position: relative; }
+    #canvas-container, #ar-sim-container { width: 100%; height: 440px; border-radius: 8px; overflow: hidden; position: relative; background: #000; }
+    .badge-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3); }
+    .controls-bar { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    .btn-toggle { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #f8fafc; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+    .btn-toggle.active { background: var(--accent); color: #000; font-weight: 700; border-color: var(--accent); }
+    .frame-target-plane { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 220px; height: 280px; background: rgba(255,255,255,0.05); border: 2px dashed #C9A96E; border-radius: 8px; pointer-events: none; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #C9A96E; font-size: 12px; font-weight: 600; text-align: center; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:16px">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <span class="badge-pill">🌍 3D Model AR Prototype</span>
+          <span style="font-size:12px;color:#94a3b8">Blender ➔ GLB ➔ Three.js / MindAR</span>
+        </div>
+        <h1 style="font-size:24px;font-weight:800;margin:0">3D Revolving Earth on Living Photo Frame</h1>
+      </div>
+      <div>
+        <a href="projects.html" class="btn btn-default" style="font-size:13px">← Back to Studio</a>
+      </div>
+    </div>
+
+    <div class="hero-box">
+      <!-- 1. Full PBR 3D Earth Viewer -->
+      <div class="viewer-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-weight:700;font-size:15px;color:#38bdf8">1. High-Detail PBR 3D Model (Orbit &amp; Inspect)</span>
+          <span id="fps-counter" style="font-size:11px;color:#94a3b8">60 FPS</span>
+        </div>
+        <div id="canvas-container"></div>
+        <div class="controls-bar">
+          <button class="btn-toggle active" id="btn-spin">🔄 Rotation: ON</button>
+          <button class="btn-toggle active" id="btn-clouds">☁️ Clouds: ON</button>
+          <button class="btn-toggle active" id="btn-night">💡 Night Lights: ON</button>
+          <button class="btn-toggle" id="btn-tilt">📐 Axial Tilt (23.5°)</button>
+        </div>
+      </div>
+
+      <!-- 2. Target Frame AR Simulation -->
+      <div class="viewer-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-weight:700;font-size:15px;color:#C9A96E">2. Photo Frame AR Anchored Simulation</span>
+          <span class="badge badge-green" style="font-size:10px">MindAR Tracking Anchor</span>
+        </div>
+        <div id="ar-sim-container">
+          <div class="frame-target-plane" id="target-plane-overlay">
+            <span style="font-size:20px;margin-bottom:4px">🖼️</span>
+            <span>Physical Photo Frame</span>
+            <span style="font-size:10px;color:#94a3b8;margin-top:2px">AR Target Marker (Plane)</span>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#94a3b8;margin-top:12px;line-height:1.5">
+          <strong>How it Works:</strong> MindAR tracks the physical photo frame plane. Instead of projecting a flat 2D video plane, Three.js mounts the revolving 3D Earth sphere with depth, floating out of the frame into 3D space!
+        </div>
+      </div>
+    </div>
+
+    <!-- Technical Analysis Table -->
+    <div class="panel" style="margin-top:24px;padding:20px">
+      <div class="panel-title" style="margin-bottom:14px">Technical Feasibility &amp; Asset Breakdown</div>
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.06)">
+          <td style="color:#94a3b8;padding:10px 0;width:220px">Source Model</td>
+          <td style="font-family:monospace;color:#f8fafc">C:\Users\Saugat Shakya\Downloads\59-earth\earth 2.blend</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.06)">
+          <td style="color:#94a3b8;padding:10px 0">Web Runtime Format</td>
+          <td><span class="badge badge-blue">.GLB (GLTF Binary)</span> — Converted and optimized for WebGL / MindAR.</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.06)">
+          <td style="color:#94a3b8;padding:10px 0">PBR Texture Channels</td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span class="badge badge-gold">Albedo (Day map)</span>
+              <span class="badge badge-gold">Bump (Topography)</span>
+              <span class="badge badge-gold">Ocean Mask (Specularity)</span>
+              <span class="badge badge-gold">Night Lights (Emissive)</span>
+              <span class="badge badge-gold">Clouds Alpha Mask</span>
+            </div>
+          </td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.06)">
+          <td style="color:#94a3b8;padding:10px 0">Animation Mechanism</td>
+          <td>Self-revolving on polar axis via Three.js render loop (<code style="color:#C9A96E">earth.rotation.y += 0.005</code>) + independent cloud atmospheric drift.</td>
+        </tr>
+        <tr>
+          <td style="color:#94a3b8;padding:10px 0">MindAR Integration Complexity</td>
+          <td><strong>Low / Moderate:</strong> MindAR has built-in Three.js support. We simply replace the Video Mesh anchor with a GLTF 3D model anchor.</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // ── 1. Main 3D Earth Studio Viewer ──────────────────────────────────────────
+    const container1 = document.getElementById('canvas-container');
+    const width1 = container1.clientWidth || 540;
+    const height1 = container1.clientHeight || 440;
+
+    const scene1 = new THREE.Scene();
+    const camera1 = new THREE.PerspectiveCamera(45, width1 / height1, 0.1, 1000);
+    camera1.position.set(0, 0, 3.2);
+
+    const renderer1 = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer1.setSize(width1, height1);
+    renderer1.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container1.appendChild(renderer1.domElement);
+
+    const controls1 = new THREE.OrbitControls(camera1, renderer1.domElement);
+    controls1.enableDamping = true;
+    controls1.dampingFactor = 0.05;
+    controls1.minDistance = 1.8;
+    controls1.maxDistance = 6.0;
+
+    // Lighting
+    const ambientLight1 = new THREE.AmbientLight(0x333333, 1.2);
+    scene1.add(ambientLight1);
+
+    const sunLight1 = new THREE.DirectionalLight(0xffffff, 2.0);
+    sunLight1.position.set(5, 3, 5);
+    scene1.add(sunLight1);
+
+    // Texture Loader
+    const texLoader = new THREE.TextureLoader();
+    const albedoMap = texLoader.load('assets/3d/textures/earth albedo.jpg');
+    const bumpMap = texLoader.load('assets/3d/textures/earth bump.jpg');
+    const oceanMask = texLoader.load('assets/3d/textures/earth land ocean mask.png');
+    const nightLights = texLoader.load('assets/3d/textures/earth night_lights_modified.png');
+    const cloudsMap = texLoader.load('assets/3d/textures/clouds earth.png');
+
+    // Earth Sphere Mesh
+    const earthGeometry = new THREE.SphereGeometry(1, 64, 64);
+    const earthMaterial = new THREE.MeshStandardMaterial({
+      map: albedoMap,
+      bumpMap: bumpMap,
+      bumpScale: 0.04,
+      roughnessMap: oceanMask,
+      roughness: 0.7,
+      metalness: 0.1,
+      emissiveMap: nightLights,
+      emissive: new THREE.Color(0xffff88),
+      emissiveIntensity: 0.6
+    });
+
+    const earthMesh1 = new THREE.Mesh(earthGeometry, earthMaterial);
+    
+    // Cloud Sphere Layer
+    const cloudGeometry = new THREE.SphereGeometry(1.015, 64, 64);
+    const cloudMaterial = new THREE.MeshStandardMaterial({
+      map: cloudsMap,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending
+    });
+    const cloudMesh1 = new THREE.Mesh(cloudGeometry, cloudMaterial);
+
+    const earthGroup1 = new THREE.Group();
+    earthGroup1.add(earthMesh1);
+    earthGroup1.add(cloudMesh1);
+    scene1.add(earthGroup1);
+
+    // Starfield particles background
+    const starGeo = new THREE.BufferGeometry();
+    const starCount = 800;
+    const starPos = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount * 3; i++) {
+      starPos[i] = (Math.random() - 0.5) * 80;
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.15, transparent: true, opacity: 0.7 });
+    const stars1 = new THREE.Points(starGeo, starMat);
+    scene1.add(stars1);
+
+    // ── 2. Photo Frame AR Simulation Viewer ─────────────────────────────────────
+    const container2 = document.getElementById('ar-sim-container');
+    const width2 = container2.clientWidth || 540;
+    const height2 = container2.clientHeight || 440;
+
+    const scene2 = new THREE.Scene();
+    const camera2 = new THREE.PerspectiveCamera(45, width2 / height2, 0.1, 1000);
+    camera2.position.set(0, 1.2, 3.4);
+    camera2.lookAt(0, 0, 0);
+
+    const renderer2 = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer2.setSize(width2, height2);
+    renderer2.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container2.appendChild(renderer2.domElement);
+
+    const controls2 = new THREE.OrbitControls(camera2, renderer2.domElement);
+    controls2.enableDamping = true;
+    controls2.maxPolarAngle = Math.PI / 2 + 0.1; // Don't go underneath the frame
+
+    // Ambient + Sunlight for AR scene
+    scene2.add(new THREE.AmbientLight(0x444444, 1.5));
+    const arSun = new THREE.DirectionalLight(0xfffaed, 2.2);
+    arSun.position.set(3, 4, 3);
+    scene2.add(arSun);
+
+    // Physical Photo Frame Plane Representation
+    const frameGeo = new THREE.PlaneGeometry(1.6, 2.0);
+    const frameMat = new THREE.MeshStandardMaterial({
+      color: 0x111827,
+      roughness: 0.4,
+      metalness: 0.2,
+      side: THREE.DoubleSide
+    });
+    const frameMesh = new THREE.Mesh(frameGeo, frameMat);
+    frameMesh.rotation.x = -Math.PI / 4; // Tilted back on a desk stand
+    frameMesh.position.set(0, -0.2, 0);
+    scene2.add(frameMesh);
+
+    // Golden frame border
+    const borderGeo = new THREE.EdgesGeometry(frameGeo);
+    const borderMat = new THREE.LineBasicMaterial({ color: 0xC9A96E, linewidth: 3 });
+    const borderLine = new THREE.LineSegments(borderGeo, borderMat);
+    frameMesh.add(borderLine);
+
+    // Target image marker simulated inside frame
+    const markerGeo = new THREE.PlaneGeometry(1.4, 1.8);
+    const markerMat = new THREE.MeshBasicMaterial({
+      color: 0x1e293b,
+      transparent: true,
+      opacity: 0.8
+    });
+    const markerMesh = new THREE.Mesh(markerGeo, markerMat);
+    markerMesh.position.z = 0.01;
+    frameMesh.add(markerMesh);
+
+    // Floating 3D Earth hovering in front of frame
+    const earthGroup2 = new THREE.Group();
+    const earthMesh2 = new THREE.Mesh(earthGeometry, earthMaterial);
+    const cloudMesh2 = new THREE.Mesh(cloudGeometry, cloudMaterial);
+    earthGroup2.add(earthMesh2);
+    earthGroup2.add(cloudMesh2);
+    earthGroup2.scale.set(0.65, 0.65, 0.65);
+    earthGroup2.position.set(0, 0.2, 0.6); // Hovering 0.6 units in front of the frame!
+    frameMesh.add(earthGroup2);
+
+    // ── Animation Loop ──────────────────────────────────────────────────────────
+    let spinEnabled = true;
+    let cloudsEnabled = true;
+    let nightLightsEnabled = true;
+    let tiltEnabled = false;
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (spinEnabled) {
+        earthMesh1.rotation.y += 0.005;
+        earthMesh2.rotation.y += 0.005;
+      }
+
+      if (cloudsEnabled) {
+        cloudMesh1.rotation.y += 0.0075;
+        cloudMesh2.rotation.y += 0.0075;
+      }
+
+      controls1.update();
+      controls2.update();
+
+      renderer1.render(scene1, camera1);
+      renderer2.render(scene2, camera2);
+    }
+
+    animate();
+
+    // ── Interactive Controls ──────────────────────────────────────────────────
+    document.getElementById('btn-spin').onclick = function() {
+      spinEnabled = !spinEnabled;
+      this.classList.toggle('active', spinEnabled);
+      this.textContent = spinEnabled ? '🔄 Rotation: ON' : '⏸️ Rotation: OFF';
+    };
+
+    document.getElementById('btn-clouds').onclick = function() {
+      cloudsEnabled = !cloudsEnabled;
+      cloudMesh1.visible = cloudsEnabled;
+      cloudMesh2.visible = cloudsEnabled;
+      this.classList.toggle('active', cloudsEnabled);
+      this.textContent = cloudsEnabled ? '☁️ Clouds: ON' : '☁️ Clouds: OFF';
+    };
+
+    document.getElementById('btn-night').onclick = function() {
+      nightLightsEnabled = !nightLightsEnabled;
+      earthMaterial.emissiveIntensity = nightLightsEnabled ? 0.6 : 0.0;
+      this.classList.toggle('active', nightLightsEnabled);
+      this.textContent = nightLightsEnabled ? '💡 Night Lights: ON' : '💡 Night Lights: OFF';
+    };
+
+    document.getElementById('btn-tilt').onclick = function() {
+      tiltEnabled = !tiltEnabled;
+      const tiltAngle = tiltEnabled ? (23.5 * Math.PI / 180) : 0;
+      earthGroup1.rotation.z = tiltAngle;
+      earthGroup2.rotation.z = tiltAngle;
+      this.classList.toggle('active', tiltEnabled);
+      this.textContent = tiltEnabled ? '📐 Axial Tilt: 23.5° (Active)' : '📐 Axial Tilt: 0°';
+    };
+
+    window.addEventListener('resize', () => {
+      const w1 = container1.clientWidth;
+      const h1 = container1.clientHeight;
+      camera1.aspect = w1 / h1;
+      camera1.updateProjectionMatrix();
+      renderer1.setSize(w1, h1);
+
+      const w2 = container2.clientWidth;
+      const h2 = container2.clientHeight;
+      camera2.aspect = w2 / h2;
+      camera2.updateProjectionMatrix();
+      renderer2.setSize(w2, h2);
+    });
+  </script>
+</body>
+</html>

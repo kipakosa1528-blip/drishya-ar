@@ -94,8 +94,9 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
         const pageNum = t.pageNumber || t.page_number || i + 1;
         const targetName = t.targetName || t.target_name || `target${i}`;
         let imagePath = t.imagePath || t.image_path || `magazines/${id}/targets/${i}/original.jpg`;
-        let overlayPath = t.overlayPath || t.overlay_path || t.videoPath || t.video_path || `magazines/${id}/targets/${i}/overlay.mp4`;
-        const overlayType = (t.overlayType || t.overlay_type || 'video') === 'image' ? 'image' : 'video';
+        const rawOverlayType = t.overlayType || t.overlay_type || t.overlay?.type || 'video';
+        const overlayType = rawOverlayType === '3d' ? '3d' : (rawOverlayType === 'image' ? 'image' : 'video');
+        let overlayPath = t.overlayPath || t.overlay_path || t.videoPath || t.video_path || (overlayType === '3d' ? `magazines/${id}/targets/${i}/model.glb` : (overlayType === 'image' ? `magazines/${id}/targets/${i}/overlay.jpg` : `magazines/${id}/targets/${i}/overlay.mp4`));
 
         // Upload base64 target image if provided
         if (t.imageBase64 && r2) {
@@ -115,7 +116,7 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
             Bucket: R2_BUCKET,
             Key: overlayPath,
             Body: buf,
-            ContentType: overlayType === 'image' ? 'image/jpeg' : 'video/mp4'
+            ContentType: overlayType === '3d' ? 'model/gltf-binary' : (overlayType === 'image' ? 'image/jpeg' : 'video/mp4')
           }));
         }
 
@@ -254,8 +255,9 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
           const pageNum = t.pageNumber || t.page_number || i + 1;
           const targetName = t.targetName || t.target_name || `target${i}`;
           let imagePath = t.imagePath || t.image_path || `magazines/${id}/targets/${i}/original.jpg`;
-          let overlayPath = t.overlayPath || t.overlay_path || t.videoPath || t.video_path || `magazines/${id}/targets/${i}/overlay.mp4`;
-          const overlayType = (t.overlayType || t.overlay_type || t.overlay?.type || 'video') === 'image' ? 'image' : 'video';
+          const rawOverlayType = t.overlayType || t.overlay_type || t.overlay?.type || 'video';
+          const overlayType = rawOverlayType === '3d' ? '3d' : (rawOverlayType === 'image' ? 'image' : 'video');
+          let overlayPath = t.overlayPath || t.overlay_path || t.videoPath || t.video_path || (overlayType === '3d' ? `magazines/${id}/targets/${i}/model.glb` : (overlayType === 'image' ? `magazines/${id}/targets/${i}/overlay.jpg` : `magazines/${id}/targets/${i}/overlay.mp4`));
 
           const prevTarget = existingTargets[i] || null;
 
@@ -294,7 +296,7 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
               Bucket: R2_BUCKET,
               Key: overlayPath,
               Body: buf,
-              ContentType: overlayType === 'image' ? 'image/jpeg' : 'video/mp4'
+              ContentType: overlayType === '3d' ? 'model/gltf-binary' : (overlayType === 'image' ? 'image/jpeg' : 'video/mp4')
             }));
 
             // If replacing previous video overlay, delete old Mux asset to avoid orphan storage

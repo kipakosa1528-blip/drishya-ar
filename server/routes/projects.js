@@ -27,6 +27,10 @@ function formatProject(row) {
   const viewsCount = row.views_count || td._views_count || 0;
   const maxScans = row.max_scans || td._max_scans || null;
   const lastScannedAt = row.last_scanned_at || td._last_scanned_at || null;
+  const overlayType = td.overlay_type || (row.video_path ? 'video' : 'image');
+  const modelPath = td.model_path || row.model_path || '';
+  const modelUrl = modelPath ? (modelPath.startsWith('http') ? modelPath : r2Url(modelPath)) : (td.model_url || '');
+
   return {
     id: row.id,
     name: row.name,
@@ -38,6 +42,12 @@ function formatProject(row) {
     expires_at: row.expires_at,
     maxScans,
     max_scans: maxScans,
+    overlayType,
+    overlay_type: overlayType,
+    modelPath,
+    model_path: modelPath,
+    modelUrl,
+    model_url: modelUrl,
     imagePath,
     image_path: imagePath,
     videoPath,
@@ -93,11 +103,12 @@ export function registerProjectsRoutes(app, { requireAuth }) {
   // Large body parser only for this route (base64 media fallback uploads)
   app.post('/api/projects', express.json({ limit: '150mb' }), requireAuth, async (req, res) => {
     try {
-      const { id, name, client, notes, expiresAt, maxScans, imagePath, videoPath, imageBase64, videoBase64 } = req.body;
+      const { id, name, client, notes, expiresAt, maxScans, overlayType, imagePath, videoPath, modelPath, imageBase64, videoBase64, modelBase64 } = req.body;
       if (!id || !name) return res.status(400).json({ error: 'Missing required fields' });
 
       let resolvedImagePath = imagePath || `${id}/original.jpg`;
-      let resolvedVideoPath = videoPath || `${id}/video.mp4`;
+      let resolvedVideoPath = (overlayType === '3d' ? null : (videoPath || `${id}/video.mp4`));
+      let resolvedModelPath = modelPath || (overlayType === '3d' ? `${id}/model.glb` : null);
       const r2 = getR2();
 
       // Local dev fallback if base64 sent
@@ -108,10 +119,17 @@ export function registerProjectsRoutes(app, { requireAuth }) {
         }));
       }
 
-      if (videoBase64 && r2) {
+      if (videoBase64 && r2 && overlayType !== '3d') {
         const buf = Buffer.from(videoBase64.split(',')[1] || videoBase64, 'base64');
         await r2.send(new PutObjectCommand({
           Bucket: R2_BUCKET, Key: resolvedVideoPath, Body: buf, ContentType: 'video/mp4'
+        }));
+      }
+
+      if (modelBase64 && r2) {
+        const buf = Buffer.from(modelBase64.split(',')[1] || modelBase64, 'base64');
+        await r2.send(new PutObjectCommand({
+          Bucket: R2_BUCKET, Key: resolvedModelPath, Body: buf, ContentType: 'model/gltf-binary'
         }));
       }
 
@@ -126,16 +144,23 @@ export function registerProjectsRoutes(app, { requireAuth }) {
         targetData._max_scans = Number(maxScans);
       }
 
-      // Ingest video into Mux for sub-200ms global edge streaming
-      try {
-        const videoPublicUrl = resolvedVideoPath.startsWith('http') ? resolvedVideoPath : r2Url(resolvedVideoPath);
-        const muxResult = await createMuxAsset(videoPublicUrl);
-        if (muxResult) {
-          targetData.mux_asset_id = muxResult.assetId;
-          targetData.mux_playback_id = muxResult.playbackId;
+      if (overlayType === '3d' || resolvedModelPath) {
+        targetData.overlay_type = '3d';
+        targetData.model_path = resolvedModelPath;
+        targetData.model_url = r2Url(resolvedModelPath);
+      } else if (resolvedVideoPath) {
+        targetData.overlay_type = 'video';
+        // Ingest video into Mux for sub-200ms global edge streaming
+        try {
+          const videoPublicUrl = resolvedVideoPath.startsWith('http') ? resolvedVideoPath : r2Url(resolvedVideoPath);
+          const muxResult = await createMuxAsset(videoPublicUrl);
+          if (muxResult) {
+            targetData.mux_asset_id = muxResult.assetId;
+            targetData.mux_playback_id = muxResult.playbackId;
+          }
+        } catch (muxErr) {
+          console.warn('Mux ingestion non-fatal warning:', muxErr.message);
         }
-      } catch (muxErr) {
-        console.warn('Mux ingestion non-fatal warning:', muxErr.message);
       }
 
       // Save metadata to Supabase DB
@@ -158,7 +183,7 @@ export function registerProjectsRoutes(app, { requireAuth }) {
   app.put('/api/projects/:id', express.json({ limit: '150mb' }), requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const { name, client, notes, expiresAt, maxScans, imageBase64, imagePath, videoBase64, videoPath } = req.body;
+      const { name, client, notes, expiresAt, maxScans, overlayType, imageBase64, imagePath, videoBase64, videoPath, modelBase64, modelPath } = req.body;
 
       const { data: existing, error: getErr } = await supabase
         .from('projects').select('*').eq('id', id).single();
@@ -174,6 +199,10 @@ export function registerProjectsRoutes(app, { requireAuth }) {
 
       if (maxScans !== undefined) {
         td._max_scans = maxScans ? Number(maxScans) : null;
+      }
+
+      if (overlayType !== undefined) {
+        td.overlay_type = overlayType;
       }
 
       const r2 = getR2();
@@ -194,16 +223,33 @@ export function registerProjectsRoutes(app, { requireAuth }) {
         const imgBuffer = Buffer.from(await imgFetch.arrayBuffer());
 
         const newTargetData = await prepareTarget(imgBuffer, id);
-        // Preserve views, max_scans and mux metadata
+        // Preserve views, max_scans, overlay type and mux metadata
         newTargetData._views_count = td._views_count || existing.views_count || 0;
         newTargetData._max_scans = td._max_scans || null;
+        newTargetData.overlay_type = td.overlay_type || 'video';
+        newTargetData.model_path = td.model_path || null;
+        newTargetData.model_url = td.model_url || null;
         newTargetData.mux_asset_id = td.mux_asset_id || null;
         newTargetData.mux_playback_id = td.mux_playback_id || null;
         td = newTargetData;
         updates.image_path = resolvedImagePath;
       }
 
-      // 2. If Overlay Video was replaced
+      // 2. If 3D Model was replaced
+      if (modelBase64 || modelPath) {
+        const resolvedModelPath = modelPath || `${id}/model.glb`;
+        if (modelBase64 && r2) {
+          const buf = Buffer.from(modelBase64.split(',')[1] || modelBase64, 'base64');
+          await r2.send(new PutObjectCommand({
+            Bucket: R2_BUCKET, Key: resolvedModelPath, Body: buf, ContentType: 'model/gltf-binary'
+          }));
+        }
+        td.overlay_type = '3d';
+        td.model_path = resolvedModelPath;
+        td.model_url = r2Url(resolvedModelPath);
+      }
+
+      // 3. If Overlay Video was replaced
       if (videoBase64 || videoPath) {
         const resolvedVideoPath = videoPath || `${id}/video.mp4`;
         if (videoBase64 && r2) {
@@ -231,6 +277,7 @@ export function registerProjectsRoutes(app, { requireAuth }) {
           console.warn('Mux re-ingestion warning:', muxErr.message);
         }
 
+        td.overlay_type = 'video';
         updates.video_path = resolvedVideoPath;
       }
 

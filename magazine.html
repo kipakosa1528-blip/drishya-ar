@@ -418,21 +418,24 @@
               ${t.overlayBase64 ? '<span class="badge badge-gold" style="font-size:9px">✨ New Media</span>' : '<span class="badge badge-blue" style="font-size:9px">Live Overlay</span>'}
             </div>
             <div style="height:170px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:radial-gradient(circle at center, #111827 0%, #030712 100%);overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:8px">
-              ${overlayType === 'video' 
-                ? (overlayPreview ? `<video src="${overlayPreview}" style="max-width:100%;max-height:100%;object-fit:contain;display:block" controls playsinline></video>` : '<span style="font-size:11px;color:var(--muted)">No video overlay</span>')
-                : (overlayPreview ? `<img src="${overlayPreview}" style="max-width:100%;max-height:100%;object-fit:contain;display:block" />` : '<span style="font-size:11px;color:var(--muted)">No image overlay</span>')}
+              ${overlayType === '3d'
+                ? (overlayPreview ? `<span style="font-size:12px;color:var(--accent);font-weight:700">🪐 3D GLB Model Ready</span>` : '<span style="font-size:11px;color:var(--muted)">No 3D Model</span>')
+                : (overlayType === 'video' 
+                  ? (overlayPreview ? `<video src="${overlayPreview}" style="max-width:100%;max-height:100%;object-fit:contain;display:block" controls playsinline></video>` : '<span style="font-size:11px;color:var(--muted)">No video overlay</span>')
+                  : (overlayPreview ? `<img src="${overlayPreview}" style="max-width:100%;max-height:100%;object-fit:contain;display:block" />` : '<span style="font-size:11px;color:var(--muted)">No image overlay</span>'))}
             </div>
             <div style="font-size:10px;color:var(--text-secondary);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-              ${t.overlayName ? `Selected: ${t.overlayName}` : (overlayType === 'video' ? 'Uncropped video player' : 'Uncropped image overlay')}
+              ${t.overlayName ? `Selected: ${t.overlayName}` : (overlayType === '3d' ? 'Interactive 3D Model (.glb)' : (overlayType === 'video' ? 'Uncropped video player' : 'Uncropped image overlay'))}
             </div>
             <div style="display:flex;gap:6px;margin-top:auto">
               <label class="btn btn-sm btn-default" style="flex:1;text-align:center;cursor:pointer;font-size:11px">
                 <span>🔄 ${overlayPreview ? 'Replace Media' : 'Upload Media'}</span>
-                <input type="file" accept="${overlayType === 'video' ? 'video/mp4,video/quicktime' : 'image/jpeg,image/png'}" class="row-overlay-input" data-idx="${idx}" style="display:none" />
+                <input type="file" accept="${overlayType === '3d' ? '.glb,.gltf' : (overlayType === 'video' ? 'video/mp4,video/quicktime' : 'image/jpeg,image/png')}" class="row-overlay-input" data-idx="${idx}" style="display:none" />
               </label>
-              <select class="form-control row-type-select" data-idx="${idx}" style="width:85px;font-size:11px;padding:2px 4px;height:28px">
+              <select class="form-control row-type-select" data-idx="${idx}" style="width:95px;font-size:11px;padding:2px 4px;height:28px">
                 <option value="video" ${overlayType === 'video' ? 'selected' : ''}>🎬 Video</option>
                 <option value="image" ${overlayType === 'image' ? 'selected' : ''}>🖼️ Image</option>
+                <option value="3d" ${overlayType === '3d' ? 'selected' : ''}>🪐 3D Model</option>
               </select>
             </div>
           </div>

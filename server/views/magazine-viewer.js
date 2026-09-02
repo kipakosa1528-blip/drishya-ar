@@ -182,13 +182,28 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
     window.XR8 ? onxrloaded() : window.addEventListener('xrloaded', onxrloaded);
   </script>
 
+  <script>
+    if (typeof AFRAME !== 'undefined') {
+      AFRAME.registerComponent('spin-axis', {
+        schema: { speed: { default: 28 } },
+        tick: function(t, dt) {
+          if (this.el.object3D) {
+            this.el.object3D.rotation.y += (this.data.speed * dt * Math.PI) / 180000;
+          }
+        }
+      });
+    }
+  </script>
+
   <a-scene xrextras-loading xrextras-runtime-error
     renderer="colorManagement:true;alpha:true;antialias:true"
     xrweb="allowedDevices: any; disableWorldTracking: true; disableDefaultEnvironment: true">
     
     <a-assets>
       ${targetsConfig.map((t, idx) => {
-        if (t.overlayType === 'image') {
+        if (t.overlayType === '3d') {
+          return `<a-asset-item id="ov-model-${idx}" src="${esc(t.overlayUrl)}"></a-asset-item>`;
+        } else if (t.overlayType === 'image') {
           return `<img id="ov-img-${idx}" src="${esc(t.overlayUrl)}" crossorigin="anonymous" />`;
         } else {
           return `<video id="ov-vid-${idx}" src="${esc(t.overlayUrl)}" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous" muted autoplay></video>`;
@@ -200,6 +215,12 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
 
     <!-- Multi-target named tracking entities with pixel-perfect plane sizing -->
     ${targetsConfig.map((t, idx) => {
+      if (t.overlayType === '3d') {
+        return `
+    <xrextras-named-image-target name="${esc(t.targetName)}">
+      <a-entity id="mag-model-${idx}" gltf-model="#ov-model-${idx}" position="0 0 0.5" scale="0.65 0.65 0.65" spin-axis visible="false"></a-entity>
+    </xrextras-named-image-target>`;
+      }
       const isImg = t.overlayType === 'image';
       const matSrc = isImg ? `#ov-img-${idx}` : `#ov-vid-${idx}`;
 
@@ -304,11 +325,13 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
       for (var i = 0; i < targetsCount; i++) {
         var tName = targetsConfig[i].targetName;
         var planeEl = document.getElementById("mag-plane-" + i);
+        var modelEl = document.getElementById("mag-model-" + i);
         var vidEl = document.getElementById("ov-vid-" + i);
 
         if (name === tName) {
           activeTargetIdx = i;
           updatePlaneMapping(i);
+          if (modelEl) modelEl.setAttribute('visible', 'true');
           if (planeEl) planeEl.setAttribute('visible', 'true');
           if (vidEl) {
             vidEl.muted = false; // Always unmute with full audio
@@ -328,9 +351,12 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
         var tName = targetsConfig[i].targetName;
         if (name === tName) {
           var planeEl = document.getElementById("mag-plane-" + i);
+          var modelEl = document.getElementById("mag-model-" + i);
           var vidEl = document.getElementById("ov-vid-" + i);
+          if (modelEl) modelEl.setAttribute('visible', 'false');
           if (planeEl) planeEl.setAttribute('visible', 'false');
           if (vidEl) vidEl.pause();
+          if (activeTargetIdx === i) activeTargetIdx = null;
         }
       }
       if (scanOverlay) scanOverlay.classList.remove('hidden');

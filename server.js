@@ -58,7 +58,7 @@ for (const dir of ['assets', 'css', 'js', 'external']) {
 for (const page of [
   'landing.html', 'index.html', 'admin.html', 'create.html',
   'dashboard.html', 'projects.html', 'project.html', 'ar.html',
-  'createMagzine.html', 'magnizes.html', 'magazine.html',
+  'createMagzine.html', 'magnizes.html', 'magazine.html', 'earth_3d_test.html'
 ]) {
   app.get(`/${page}`, (req, res) => {
     res.setHeader('Cache-Control', 'public, max-age=60');

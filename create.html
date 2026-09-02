@@ -8,9 +8,14 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
   <script>
     window.imageFile = null;
     window.videoFile = null;
+    window.modelFile = null;
+    window.overlayType = 'video';
     window.currentStep = 1;
     window.expMode = 'time';
 
@@ -36,7 +41,11 @@
         if (!window.imageFile) { alert('Please upload a target image'); return; }
       }
       if (from === 3) {
-        if (!window.videoFile) { alert('Please upload a video'); return; }
+        if (window.overlayType === '3d') {
+          if (!window.modelFile) { alert('Please upload a 3D model (.glb)'); return; }
+        } else {
+          if (!window.videoFile) { alert('Please upload a video'); return; }
+        }
       }
       if (from === 4) {
         const mode = window.expMode || 'time';
@@ -220,19 +229,57 @@
       </div>
     </div>
 
-    <!-- Step 3: Video -->
+    <!-- Step 3: Overlay (Video or 3D Model) -->
     <div class="step-body" id="sb-3">
-      <div class="panel" style="max-width:560px">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
-          Upload the video that plays overlaid on the photo in AR.
-        </p>
+      <div class="panel" style="max-width:580px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <p style="font-size:13px;color:var(--muted);margin:0">
+            Choose what type of AR overlay plays when the physical photo is scanned:
+          </p>
+        </div>
 
-        <!-- Video Upload Zone -->
-        <div class="upload-zone" id="vid-zone" onclick="document.getElementById('vid-input').click()">
-          <input type="file" id="vid-input" accept="video/*" />
-          <div class="upload-icon">🎬</div>
-          <div class="upload-label" id="vid-label">Choose a video or drop it here</div>
-          <div class="file-name" id="vid-name"></div>
+        <!-- Overlay Type Selector -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+          <button type="button" class="btn btn-default exp-mode-btn active" id="btn-mode-vid" onclick="setOverlayType('video')">🎬 Video Overlay</button>
+          <button type="button" class="btn btn-default exp-mode-btn" id="btn-mode-3d" onclick="setOverlayType('3d')">🪐 3D Model (.glb)</button>
+        </div>
+
+        <!-- Video Overlay Section -->
+        <div id="video-overlay-section">
+          <!-- Video Upload Zone -->
+          <div class="upload-zone" id="vid-zone" onclick="document.getElementById('vid-input').click()">
+            <input type="file" id="vid-input" accept="video/*" />
+            <div class="upload-icon">🎬</div>
+            <div class="upload-label" id="vid-label">Choose a video or drop it here</div>
+            <div class="file-name" id="vid-name"></div>
+          </div>
+        </div>
+
+        <!-- 3D Model Overlay Section -->
+        <div id="model-overlay-section" style="display:none">
+          <!-- 3D Model Upload Zone -->
+          <div class="upload-zone" id="model-zone" onclick="document.getElementById('model-input').click()">
+            <input type="file" id="model-input" accept=".glb,.gltf" style="display:none" />
+            <div class="upload-icon">🪐</div>
+            <div class="upload-label" id="model-label">Choose a 3D model (.glb) or drop it here</div>
+            <div class="file-name" id="model-name"></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">Standard .GLB format with embedded PBR textures and animations</div>
+          </div>
+
+          <!-- Interactive 3D Model Canvas Viewport -->
+          <div id="model-preview-wrap" style="display:none;margin-top:14px">
+            <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <span style="font-size:13px;font-weight:700;color:var(--text)">🪐 3D Model Preview</span>
+                <span class="badge badge-gold" id="model-meta-badge" style="font-size:11px">Auto-Spin: ON</span>
+              </div>
+              <div id="model-canvas-box" style="height:260px;background:radial-gradient(circle at center, #111827 0%, #030712 100%);border-radius:8px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;position:relative"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+                <span style="font-size:11px;color:var(--muted)">Drag to orbit • Scroll to zoom</span>
+                <button type="button" class="btn btn-sm btn-default" onclick="document.getElementById('model-input').click()">Change 3D Model</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Interactive Video Framing Studio -->
@@ -874,6 +921,72 @@
     openVideoStudio(vUrl);
   });
 
+  setupFile('model-input', 'model-zone', 'model-label', 'model-name', (f) => {
+    if (f.size > 100 * 1024 * 1024) {
+      toast(`3D model too large (${(f.size/1024/1024).toFixed(0)}MB). Max is 100MB.`, 'err');
+      return;
+    }
+    window.modelFile = f;
+    const mUrl = URL.createObjectURL(f);
+    openModelViewer(mUrl, f.name);
+  });
+
+  let modelScene, modelCamera, modelRenderer, modelControls, modelObj;
+  function openModelViewer(url, name) {
+    const wrap = document.getElementById('model-preview-wrap');
+    const box = document.getElementById('model-canvas-box');
+    wrap.style.display = 'block';
+    box.innerHTML = '';
+
+    const width = box.clientWidth || 500;
+    const height = box.clientHeight || 260;
+
+    modelScene = new THREE.Scene();
+    modelCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    modelCamera.position.set(0, 0, 3);
+
+    modelRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    modelRenderer.setSize(width, height);
+    modelRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    box.appendChild(modelRenderer.domElement);
+
+    modelControls = new THREE.OrbitControls(modelCamera, modelRenderer.domElement);
+    modelControls.enableDamping = true;
+
+    modelScene.add(new THREE.AmbientLight(0xffffff, 1.5));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    dirLight.position.set(5, 5, 5);
+    modelScene.add(dirLight);
+
+    if (typeof THREE.GLTFLoader !== 'undefined') {
+      const loader = new THREE.GLTFLoader();
+      loader.load(url, (gltf) => {
+        modelObj = gltf.scene;
+        const bbox = new THREE.Box3().setFromObject(modelObj);
+        const size = bbox.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        if (maxDim > 0) {
+          const scale = 1.6 / maxDim;
+          modelObj.scale.set(scale, scale, scale);
+        }
+        modelScene.add(modelObj);
+        toast('3D Model loaded and previewing!', 'success');
+      }, undefined, (err) => {
+        toast('Preview notice: ' + err.message, 'info');
+      });
+    }
+
+    function render3D() {
+      if (wrap.style.display !== 'none') {
+        requestAnimationFrame(render3D);
+        if (modelObj) modelObj.rotation.y += 0.008;
+        modelControls.update();
+        modelRenderer.render(modelScene, modelCamera);
+      }
+    }
+    render3D();
+  }
+
   function setupFile(inputId, zoneId, labelId, nameId, onFile) {
     const input = document.getElementById(inputId);
     const zone  = document.getElementById(zoneId);
@@ -895,7 +1008,7 @@
     document.getElementById('r-name').textContent   = document.getElementById('f-name').value.trim();
     document.getElementById('r-client').textContent = document.getElementById('f-client').value.trim() || '—';
     document.getElementById('r-img').textContent    = window.imageFile?.name || '';
-    document.getElementById('r-vid').textContent    = window.videoFile?.name || '';
+    document.getElementById('r-vid').textContent    = window.overlayType === '3d' ? (window.modelFile ? `🪐 3D Model: ${window.modelFile.name}` : '') : (window.videoFile?.name || '');
     
     const mode = window.expMode || 'time';
     const expVal = document.getElementById('f-expiry').value;
@@ -917,7 +1030,8 @@
   };
 
   async function uploadToR2(file, key) {
-    const presignResp = await fetch(`/api/presign?key=${encodeURIComponent(key)}&type=${encodeURIComponent(file.type)}`, {
+    const contentType = file.type || (key.endsWith('.glb') ? 'model/gltf-binary' : 'application/octet-stream');
+    const presignResp = await fetch(`/api/presign?key=${encodeURIComponent(key)}&type=${encodeURIComponent(contentType)}`, {
       headers: await authHeaders(),
     });
     if (!presignResp.ok) throw new Error('Failed to get presigned upload URL for ' + key);
@@ -925,7 +1039,7 @@
 
     const putResp = await fetch(presignUrl, {
       method: 'PUT',
-      headers: { 'Content-Type': file.type },
+      headers: { 'Content-Type': contentType },
       body: file,
     });
     if (!putResp.ok) throw new Error(`R2 upload failed for ${key}: ${putResp.status}`);
@@ -943,7 +1057,7 @@
 
     try {
       const id = crypto.randomUUID();
-      let imagePath, videoPath;
+      let imagePath, videoPath, modelPath;
 
       if (hasR2) {
         // ── Upload Image to Cloudflare R2 ─────────────────────────────────────
@@ -953,12 +1067,21 @@
         await uploadToR2(window.imageFile, imgKey);
         imagePath = imgKey;
 
-        // ── Upload Video to Cloudflare R2 ─────────────────────────────────────
-        addLog('Uploading video to Cloudflare R2...');
-        bar.style.width = '55%'; pct.textContent = '55%';
-        const videoKey = `${id}/video.mp4`;
-        await uploadToR2(window.videoFile, videoKey);
-        videoPath = videoKey;
+        if (window.overlayType === '3d') {
+          // ── Upload 3D Model to Cloudflare R2 ─────────────────────────────────
+          addLog('Uploading 3D model (.glb) to Cloudflare R2...');
+          bar.style.width = '55%'; pct.textContent = '55%';
+          const modelKey = `${id}/model.glb`;
+          await uploadToR2(window.modelFile, modelKey);
+          modelPath = modelKey;
+        } else {
+          // ── Upload Video to Cloudflare R2 ─────────────────────────────────────
+          addLog('Uploading video to Cloudflare R2...');
+          bar.style.width = '55%'; pct.textContent = '55%';
+          const videoKey = `${id}/video.mp4`;
+          await uploadToR2(window.videoFile, videoKey);
+          videoPath = videoKey;
+        }
 
         addLog('Files uploaded to R2! Preparing AR target...');
         bar.style.width = '75%'; pct.textContent = '75%';
@@ -973,25 +1096,29 @@
 
       const body = {
         id,
-        name:      document.getElementById('f-name').value.trim(),
-        client:    document.getElementById('f-client').value.trim(),
-        notes:     document.getElementById('f-notes').value.trim(),
-        expiresAt: (mode === 'time' || mode === 'both') && expDateVal ? new Date(expDateVal + 'T23:59:59').toISOString() : null,
-        maxScans:  (mode === 'scans' || mode === 'both') && maxScansVal ? Number(maxScansVal) : null,
+        name:        document.getElementById('f-name').value.trim(),
+        client:      document.getElementById('f-client').value.trim(),
+        notes:       document.getElementById('f-notes').value.trim(),
+        overlayType: window.overlayType || 'video',
+        expiresAt:   (mode === 'time' || mode === 'both') && expDateVal ? new Date(expDateVal + 'T23:59:59').toISOString() : null,
+        maxScans:    (mode === 'scans' || mode === 'both') && maxScansVal ? Number(maxScansVal) : null,
       };
-
 
       if (imagePath) {
         body.imagePath = imagePath;
-        body.videoPath = videoPath;
+        if (modelPath) body.modelPath = modelPath;
+        if (videoPath) body.videoPath = videoPath;
       } else {
         // base64 fallback for local dev
         const toB64 = f => new Promise((res, rej) => {
           const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f);
         });
-        [body.imageBase64, body.videoBase64] = await Promise.all([
-          toB64(window.imageFile), toB64(window.videoFile)
-        ]);
+        body.imageBase64 = await toB64(window.imageFile);
+        if (window.overlayType === '3d' && window.modelFile) {
+          body.modelBase64 = await toB64(window.modelFile);
+        } else if (window.videoFile) {
+          body.videoBase64 = await toB64(window.videoFile);
+        }
       }
 
       const resp = await fetch('/api/projects', {

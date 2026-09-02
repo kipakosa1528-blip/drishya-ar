@@ -97,9 +97,11 @@ async function handleProjectAr(project, id, res) {
     supabase.from('projects').update({ views_count: currentViews + 1 }).eq('id', id).then(null, () => {});
   });
 
+  const overlayType = td.overlay_type || (project.video_path ? 'video' : (td.model_url ? '3d' : 'image'));
+  const modelUrl = td.model_url || (td.model_path ? (td.model_path.startsWith('http') ? td.model_path : r2Url(td.model_path)) : '');
   const muxPlaybackId = td.mux_playback_id || project.mux_playback_id || null;
   const muxVideoUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}/capped-1080p.mp4` : null;
-  const r2VideoUrl = project.video_path.startsWith('http') ? project.video_path : r2Url(project.video_path);
+  const r2VideoUrl = (project.video_path && project.video_path.startsWith('http')) ? project.video_path : (project.video_path ? r2Url(project.video_path) : '');
   const videoUrl = muxVideoUrl || r2VideoUrl;
   const props = (targetData && targetData.properties) || {};
   const tW = props.width || 640;
@@ -109,7 +111,7 @@ async function handleProjectAr(project, id, res) {
   const planeH = tAspect >= 1 ? Number((1 / tAspect).toFixed(4)) : 1;
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(renderArPage({ name: project.name, videoUrl, muxPlaybackId, r2VideoUrl, targetData, planeW, planeH, tW, tH }));
+  res.send(renderArPage({ name: project.name, overlayType, modelUrl, videoUrl, muxPlaybackId, r2VideoUrl, targetData, planeW, planeH, tW, tH }));
 }
 
 async function handleMagazineAr(id, res) {

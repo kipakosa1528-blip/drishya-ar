@@ -28,7 +28,8 @@ export function renderMessagePage({ icon = '', color = '#38bdf8', title = '', bo
  * @param {number} p.tW target image width in px
  * @param {number} p.tH target image height in px
  */
-export function renderArPage({ name, videoUrl, muxPlaybackId, r2VideoUrl, targetData, planeW, planeH, tW, tH }) {
+export function renderArPage({ name, overlayType = 'video', modelUrl = '', videoUrl = '', muxPlaybackId, r2VideoUrl, targetData, planeW, planeH, tW, tH }) {
+  const is3D = overlayType === '3d' && Boolean(modelUrl);
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -39,17 +40,30 @@ export function renderArPage({ name, videoUrl, muxPlaybackId, r2VideoUrl, target
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=1">
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1">
+  ${!is3D && videoUrl ? `
   <!-- Preconnect to Mux CDN so TCP+TLS is ready before the video element is parsed -->
   <link rel="preconnect" href="https://stream.mux.com" crossorigin>
   <link rel="dns-prefetch" href="https://stream.mux.com">
-  <!-- Preload video at highest priority so buffering starts during HTML parse -->
   <link rel="preload" as="video" href="${esc(videoUrl)}" crossorigin="anonymous">
+  ` : ''}
   <!-- 8frame must be synchronous: it registers <a-scene>/<a-entity> custom elements
        that must be defined before the browser parses the body -->
   <script crossorigin="anonymous" src="/external/8frame-1.5.0.min.js"></script>
   <script src="/external/xr/xr.js" async crossorigin="anonymous" data-preload-chunks="slam"></script>
   <!-- Self-hosted xrextras (was jsDelivr CDN — eliminates external DNS+TLS hop) -->
   <script defer src="/external/xrextras.js" crossorigin="anonymous"></script>
+  <script>
+    if (typeof AFRAME !== 'undefined') {
+      AFRAME.registerComponent('spin-axis', {
+        schema: { speed: { default: 28 } },
+        tick: function(t, dt) {
+          if (this.el.object3D) {
+            this.el.object3D.rotation.y += (this.data.speed * dt * Math.PI) / 180000;
+          }
+        }
+      });
+    }
+  </script>
   <style>
     html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; touch-action:none; background:transparent; }
     .a-enter-vr, .a-enter-vr-button { display:none !important; }
@@ -98,21 +112,21 @@ export function renderArPage({ name, videoUrl, muxPlaybackId, r2VideoUrl, target
       border: 1px solid rgba(255, 255, 255, 0.18);
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
       pointer-events: none;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     #ar-watermark img {
-      width: 20px;
-      height: 20px;
-      border-radius: 4px;
-      display: block;
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
     }
 
     #ar-watermark span {
-      color: #f8fafc;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 700;
-      letter-spacing: -0.01em;
+      letter-spacing: 0.08em;
+      color: #f8fafc;
+      text-transform: uppercase;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     #ar-watermark span span {
@@ -179,21 +193,30 @@ export function renderArPage({ name, videoUrl, muxPlaybackId, r2VideoUrl, target
     renderer="colorManagement:true;alpha:true;antialias:true"
     xrweb="allowedDevices: any; disableWorldTracking: true; disableDefaultEnvironment: true">
     <a-assets>
+      ${is3D ? `
+      <a-asset-item id="ar-model-asset" src="${esc(modelUrl)}"></a-asset-item>
+      ` : `
       <video id="ar-video" src="${esc(videoUrl)}"
         preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous" muted autoplay>
       </video>
+      `}
     </a-assets>
     <a-camera position="0 0 0"></a-camera>
     <xrextras-named-image-target name="target0">
+      ${is3D ? `
+      <a-entity id="ar-model" gltf-model="#ar-model-asset" position="0 0 0.5" scale="0.65 0.65 0.65" spin-axis visible="false"></a-entity>
+      ` : `
       <a-plane id="ar-plane" width="${Number(planeW)}" height="${Number(planeH)}" position="0 0 0.01" visible="false"
         material="src: #ar-video; transparent: true; alphaTest: 0.01; shader: flat; side: double">
       </a-plane>
+      `}
     </xrextras-named-image-target>
   </a-scene>
 
   <script>
     var video = document.getElementById('ar-video');
     var plane = document.getElementById('ar-plane');
+    var model = document.getElementById('ar-model');
 
     function updatePlaneMapping() {
       if (!video || !plane) return;
@@ -239,40 +262,42 @@ export function renderArPage({ name, videoUrl, muxPlaybackId, r2VideoUrl, target
       }
 
       applyTextureTransform();
-      plane.addEventListener('materialtextureloaded', applyTextureTransform, { once: true });
+      if (plane) plane.addEventListener('materialtextureloaded', applyTextureTransform, { once: true });
     }
 
-    if (video.readyState >= 1) {
-      updatePlaneMapping();
-    } else {
-      video.addEventListener('loadedmetadata', updatePlaneMapping);
-    }
-    video.addEventListener('canplay', updatePlaneMapping);
-
-    function revealPlane() {
-      if (video.currentTime > 0 || video.readyState >= 1) {
-        plane.setAttribute('visible', 'true');
+    if (video) {
+      if (video.readyState >= 1) {
         updatePlaneMapping();
+      } else {
+        video.addEventListener('loadedmetadata', updatePlaneMapping);
       }
+      video.addEventListener('canplay', updatePlaneMapping);
+
+      function revealPlane() {
+        if (plane && (video.currentTime > 0 || video.readyState >= 1)) {
+          plane.setAttribute('visible', 'true');
+          updatePlaneMapping();
+        }
+      }
+      video.addEventListener('playing', revealPlane);
+      video.addEventListener('timeupdate', revealPlane);
+      video.addEventListener('loadeddata', revealPlane);
+      video.addEventListener('canplay', revealPlane);
+
+      var r2Fallback = "${esc(r2VideoUrl)}";
+      video.addEventListener('error', function() {
+        if (r2Fallback && video.src !== r2Fallback) {
+          console.warn('Switching to storage fallback:', r2Fallback);
+          video.src = r2Fallback;
+          try { video.load(); } catch(e){}
+          revealPlane();
+        }
+      });
+
+      try {
+        video.load();
+      } catch (e) {}
     }
-    video.addEventListener('playing', revealPlane);
-    video.addEventListener('timeupdate', revealPlane);
-    video.addEventListener('loadeddata', revealPlane);
-    video.addEventListener('canplay', revealPlane);
-
-    var r2Fallback = "${esc(r2VideoUrl)}";
-    video.addEventListener('error', function() {
-      if (r2Fallback && video.src !== r2Fallback) {
-        console.warn('Switching to storage fallback:', r2Fallback);
-        video.src = r2Fallback;
-        try { video.load(); } catch(e){}
-        revealPlane();
-      }
-    });
-
-    try {
-      video.load();
-    } catch (e) {}
 
     // Scan overlay reference
     var scanOverlay = document.getElementById('scan-overlay');
@@ -287,23 +312,37 @@ export function renderArPage({ name, videoUrl, muxPlaybackId, r2VideoUrl, target
       // Hide scanning reticle
       if (scanOverlay) scanOverlay.classList.add('hidden');
 
-      video.muted = false;
-      var p = video.play();
-      if (p && p.catch) {
-        p.catch(function() {
-          video.muted = false;
-          video.play().catch(function(){});
-        });
+      if (model) {
+        model.setAttribute('visible', 'true');
       }
-      plane.setAttribute('visible', 'true');
-      updatePlaneMapping();
+
+      if (video) {
+        video.muted = false;
+        var p = video.play();
+        if (p && p.catch) {
+          p.catch(function() {
+            video.muted = false;
+            video.play().catch(function(){});
+          });
+        }
+        if (plane) plane.setAttribute('visible', 'true');
+      }
     });
 
     sceneEl.addEventListener('xrimagelost', function(ev) {
       if (!ev || !ev.detail || ev.detail.name !== 'target0') return;
-      video.pause();
-      // Bring scanning guide back
+
+      // Show scanning reticle again
       if (scanOverlay) scanOverlay.classList.remove('hidden');
+
+      if (model) {
+        model.setAttribute('visible', 'false');
+      }
+
+      if (video) {
+        video.pause();
+        if (plane) plane.setAttribute('visible', 'false');
+      }
     });
 
     function primeAudio() {

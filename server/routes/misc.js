@@ -5,10 +5,10 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { supabase, getR2, R2_BUCKET, r2Url, ADMIN_EMAIL } from '../lib/clients.js';
 import { rateLimit } from '../lib/security.js';
 
-// Keys are locked to <uuid>/(original.jpg|luminance.jpg|video.mp4) or
-// (magazines/)?<uuid>(/targets/<n>)?/(original.jpg|luminance.jpg|video.mp4|overlay.mp4|overlay.jpg)
+// Keys are locked to <uuid>/(original.jpg|luminance.jpg|video.mp4|model.glb) or
+// (magazines/)?<uuid>(/targets/<n>)?/(original.jpg|luminance.jpg|video.mp4|overlay.mp4|overlay.jpg|model.glb)
 // so a signed URL can never be minted for an arbitrary bucket path.
-const PRESIGN_KEY_RE = /^(magazines\/)?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\/targets\/\d+)?\/(original\.jpg|luminance\.jpg|video\.mp4|overlay\.mp4|overlay\.jpg)$/;
+const PRESIGN_KEY_RE = /^(magazines\/)?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\/targets\/\d+)?\/(original\.jpg|luminance\.jpg|video\.mp4|overlay\.mp4|overlay\.jpg|model\.glb)$/;
 
 export function registerMiscRoutes(app, { requireAuth }) {
   app.get('/api/presign', requireAuth, rateLimit({ max: 1000 }), async (req, res) => {
