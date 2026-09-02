@@ -57,7 +57,7 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
       AFRAME.registerComponent('fit-model', {
         schema: {
           targetSize: { default: 1.0 },
-          hoverZ: { default: 0.0 }
+          hoverGap: { default: 0.04 }
         },
         init: function() {
           this.el.addEventListener('model-loaded', () => {
@@ -76,9 +76,14 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
             if (maxDim > 0) {
               var s = this.data.targetSize / maxDim;
               obj.scale.set(s, s, s);
+              
+              // Center horizontally over photo target
               obj.position.x = -center.x * s;
-              obj.position.y = -center.y * s;
-              obj.position.z = -center.z * s + Number(this.data.hoverZ);
+              obj.position.z = -center.z * s;
+              
+              // Ground bottom of model so it floats completely ON TOP of the photo surface (>= 0)
+              var bottomY = bbox.min.y;
+              obj.position.y = -bottomY * s + Number(this.data.hoverGap);
             }
           });
         }
@@ -235,7 +240,7 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
     <xrextras-named-image-target name="target0">
       ${is3D ? `
       <a-entity id="ar-model-container" position="0 0 0" rotation="90 0 0">
-        <a-entity id="ar-model" gltf-model="#ar-model-asset" fit-model="targetSize: ${Number(planeW) || 1.0}; hoverZ: 0" spin-axis visible="false"></a-entity>
+        <a-entity id="ar-model" gltf-model="#ar-model-asset" fit-model="targetSize: ${Number(planeW) || 1.0}" spin-axis visible="false"></a-entity>
       </a-entity>
       ` : `
       <a-plane id="ar-plane" width="${Number(planeW)}" height="${Number(planeH)}" position="0 0 0.01" visible="false"
