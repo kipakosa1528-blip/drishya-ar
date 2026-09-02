@@ -226,7 +226,9 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
     <a-camera position="0 0 0"></a-camera>
     <xrextras-named-image-target name="target0">
       ${is3D ? `
-      <a-entity id="ar-model" gltf-model="#ar-model-asset" fit-model="targetSize: 0.65; hoverZ: 0.35" spin-axis visible="false"></a-entity>
+      <a-entity id="ar-model-container" position="0 0 0.35" rotation="90 0 0">
+        <a-entity id="ar-model" gltf-model="#ar-model-asset" fit-model="targetSize: 0.65" spin-axis visible="false"></a-entity>
+      </a-entity>
       ` : `
       <a-plane id="ar-plane" width="${Number(planeW)}" height="${Number(planeH)}" position="0 0 0.01" visible="false"
         material="src: #ar-video; transparent: true; alphaTest: 0.01; shader: flat; side: double">

@@ -239,7 +239,9 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
       if (t.overlayType === '3d') {
         return `
     <xrextras-named-image-target name="${esc(t.targetName)}">
-      <a-entity id="mag-model-${idx}" gltf-model="#ov-model-${idx}" fit-model="targetSize: 0.65; hoverZ: 0.35" spin-axis visible="false"></a-entity>
+      <a-entity id="mag-model-container-${idx}" position="0 0 0.35" rotation="90 0 0">
+        <a-entity id="mag-model-${idx}" gltf-model="#ov-model-${idx}" fit-model="targetSize: 0.65" spin-axis visible="false"></a-entity>
+      </a-entity>
     </xrextras-named-image-target>`;
       }
       const isImg = t.overlayType === 'image';
