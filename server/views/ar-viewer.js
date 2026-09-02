@@ -56,21 +56,29 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
     if (typeof AFRAME !== 'undefined') {
       AFRAME.registerComponent('fit-model', {
         schema: {
-          targetSize: { default: 0.70 },
-          hoverZ: { default: 0.35 }
+          targetSize: { default: 1.0 },
+          hoverZ: { default: 0.0 }
         },
         init: function() {
           this.el.addEventListener('model-loaded', () => {
             var obj = this.el.getObject3D('mesh') || this.el.object3D;
             if (!obj) return;
+            
+            obj.position.set(0, 0, 0);
+            obj.scale.set(1, 1, 1);
+            obj.updateMatrixWorld(true);
+
             var bbox = new THREE.Box3().setFromObject(obj);
             var size = bbox.getSize(new THREE.Vector3());
+            var center = bbox.getCenter(new THREE.Vector3());
             var maxDim = Math.max(size.x, size.y, size.z);
+
             if (maxDim > 0) {
               var s = this.data.targetSize / maxDim;
-              this.el.object3D.scale.set(s, s, s);
-              var center = bbox.getCenter(new THREE.Vector3());
-              this.el.object3D.position.set(0, 0, this.data.hoverZ);
+              obj.scale.set(s, s, s);
+              obj.position.x = -center.x * s;
+              obj.position.y = -center.y * s;
+              obj.position.z = -center.z * s + Number(this.data.hoverZ);
             }
           });
         }
@@ -226,8 +234,8 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
     <a-camera position="0 0 0"></a-camera>
     <xrextras-named-image-target name="target0">
       ${is3D ? `
-      <a-entity id="ar-model-container" position="0 0 0.25" rotation="90 0 0">
-        <a-entity id="ar-model" gltf-model="#ar-model-asset" fit-model="targetSize: ${Number(planeW) || 1.0}" spin-axis visible="false"></a-entity>
+      <a-entity id="ar-model-container" position="0 0 0" rotation="90 0 0">
+        <a-entity id="ar-model" gltf-model="#ar-model-asset" fit-model="targetSize: ${Number(planeW) || 1.0}; hoverZ: 0" spin-axis visible="false"></a-entity>
       </a-entity>
       ` : `
       <a-plane id="ar-plane" width="${Number(planeW)}" height="${Number(planeH)}" position="0 0 0.01" visible="false"
