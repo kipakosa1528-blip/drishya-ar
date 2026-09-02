@@ -19,6 +19,22 @@
     window.currentStep = 1;
     window.expMode = 'time';
 
+    window.setOverlayType = function(type) {
+      window.overlayType = type;
+      const btnVid = document.getElementById('btn-mode-vid');
+      const btn3d = document.getElementById('btn-mode-3d');
+      if (btnVid) btnVid.classList.toggle('active', type === 'video');
+      if (btn3d) btn3d.classList.toggle('active', type === '3d');
+      const vidSec = document.getElementById('video-overlay-section');
+      const modelSec = document.getElementById('model-overlay-section');
+      if (vidSec) vidSec.style.display = type === 'video' ? 'block' : 'none';
+      if (modelSec) modelSec.style.display = type === '3d' ? 'block' : 'none';
+      const btnNext2 = document.getElementById('btn-next-2');
+      if (btnNext2) {
+        btnNext2.textContent = type === '3d' ? 'Continue to 3D Model →' : 'Continue to Video →';
+      }
+    };
+
     window.setExpMode = function(mode) {
       window.expMode = mode;
       document.querySelectorAll('.exp-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
@@ -168,12 +184,12 @@
         </p>
 
         <!-- Initial Upload Zone -->
-        <div class="upload-zone" id="img-zone" onclick="document.getElementById('img-input').click()">
-          <input type="file" id="img-input" accept="image/*" />
+        <label class="upload-zone" id="img-zone" for="img-input" style="cursor:pointer;display:block">
+          <input type="file" id="img-input" accept="image/*" style="display:none" />
           <div class="upload-icon">🖼️</div>
           <div class="upload-label" id="img-label">Choose an image or drop it here</div>
           <div class="file-name" id="img-name"></div>
-        </div>
+        </label>
 
         <!-- Interactive Cropper Studio -->
         <div id="crop-studio-wrap" class="crop-studio" style="display:none">
@@ -203,7 +219,7 @@
           </div>
 
           <div class="crop-footer">
-            <button type="button" class="btn btn-sm btn-default" onclick="document.getElementById('img-input').click()">Change Photo</button>
+            <label for="img-input" class="btn btn-sm btn-default" style="cursor:pointer;margin:0">Change Photo</label>
             <button type="button" class="btn btn-sm btn-primary" id="btn-apply-crop" onclick="applyCrop()">✓ Confirm Crop</button>
           </div>
         </div>
@@ -247,24 +263,24 @@
         <!-- Video Overlay Section -->
         <div id="video-overlay-section">
           <!-- Video Upload Zone -->
-          <div class="upload-zone" id="vid-zone" onclick="document.getElementById('vid-input').click()">
-            <input type="file" id="vid-input" accept="video/*" />
+          <label class="upload-zone" id="vid-zone" for="vid-input" style="cursor:pointer;display:block">
+            <input type="file" id="vid-input" accept="video/*" style="display:none" />
             <div class="upload-icon">🎬</div>
             <div class="upload-label" id="vid-label">Choose a video or drop it here</div>
             <div class="file-name" id="vid-name"></div>
-          </div>
+          </label>
         </div>
 
         <!-- 3D Model Overlay Section -->
         <div id="model-overlay-section" style="display:none">
           <!-- 3D Model Upload Zone -->
-          <div class="upload-zone" id="model-zone" onclick="document.getElementById('model-input').click()">
+          <label class="upload-zone" id="model-zone" for="model-input" style="cursor:pointer;display:block">
             <input type="file" id="model-input" accept=".glb,.gltf" style="display:none" />
             <div class="upload-icon">🪐</div>
             <div class="upload-label" id="model-label">Choose a 3D model (.glb) or drop it here</div>
             <div class="file-name" id="model-name"></div>
             <div style="font-size:11px;color:var(--muted);margin-top:4px">Standard .GLB format with embedded PBR textures and animations</div>
-          </div>
+          </label>
 
           <!-- Interactive 3D Model Canvas Viewport -->
           <div id="model-preview-wrap" style="display:none;margin-top:14px">
@@ -276,7 +292,7 @@
               <div id="model-canvas-box" style="height:260px;background:radial-gradient(circle at center, #111827 0%, #030712 100%);border-radius:8px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;position:relative"></div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
                 <span style="font-size:11px;color:var(--muted)">Drag to orbit • Scroll to zoom</span>
-                <button type="button" class="btn btn-sm btn-default" onclick="document.getElementById('model-input').click()">Change 3D Model</button>
+                <label for="model-input" class="btn btn-sm btn-default" style="cursor:pointer;margin:0">Change 3D Model</label>
               </div>
             </div>
           </div>
@@ -345,7 +361,7 @@
           <div class="crop-footer">
             <div style="font-size:12px;color:var(--muted)" id="vid-frame-status">Drag video to pan • Scroll to zoom</div>
             <div style="display:flex;gap:6px">
-              <button type="button" class="btn btn-sm btn-default" onclick="document.getElementById('vid-input').click()">Change Video</button>
+              <label for="vid-input" class="btn btn-sm btn-default" style="cursor:pointer;margin:0">Change Video</label>
               <button type="button" class="btn btn-sm btn-primary" onclick="confirmVideoFraming()">✓ Confirm Video Framing</button>
             </div>
           </div>
@@ -365,7 +381,7 @@
               <div style="font-size:12px;color:var(--muted);margin-top:4px" id="vid-dims-text">1920 × 1080 px</div>
               <div style="margin-top:10px;display:flex;gap:6px">
                 <button type="button" class="btn btn-sm btn-default" style="font-size:12px;padding:3px 8px" onclick="reopenVideoStudio()">✏️ Re-frame / Pan</button>
-                <button type="button" class="btn btn-sm btn-default" style="font-size:12px;padding:3px 8px" onclick="document.getElementById('vid-input').click()">🎬 Change Video</button>
+                <label for="vid-input" class="btn btn-sm btn-default" style="cursor:pointer;font-size:12px;padding:3px 8px;margin:0">🎬 Change Video</label>
               </div>
             </div>
           </div>
