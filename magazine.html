@@ -339,6 +339,7 @@
 </div>
 
 <script type="module">
+  import { requireAuth, initNav, authHeaders } from './js/auth.js';
   import { getMagazine, updateMagazine, deleteMagazine } from './js/db.js';
   import { fmt, statusBadge, isExpired, expType, calcMuxCost, toast } from './js/utils.js';
 

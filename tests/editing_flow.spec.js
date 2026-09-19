@@ -161,14 +161,36 @@ test.describe('Experience Editing & Asset Replacement Flow', () => {
     // Update title
     await page.fill('#emag-title', 'Spring Collection Magazine 2026');
 
-    // Remove page 2
-    await page.click('.del-page-btn[data-idx="1"]');
-    await expect(page.locator('#emag-page-count')).toHaveText('1');
+    // Add page 2 with media file replacements
+    await page.route('**/api/presign*', async (route) => {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ url: 'http://localhost:3000/mock-upload', publicUrl: 'http://localhost:3000/mock-file.jpg' })
+      });
+    });
+    await page.route('**/mock-upload', async (route) => {
+      return route.fulfill({ status: 200, body: 'ok' });
+    });
 
-    // Save changes
+    const dummyImg = Buffer.from('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
+    await page.setInputFiles('.row-img-input[data-idx="1"]', {
+      name: 'page2.jpg',
+      mimeType: 'image/jpeg',
+      buffer: dummyImg
+    });
+    await page.setInputFiles('.row-overlay-input[data-idx="1"]', {
+      name: 'page2_overlay.mp4',
+      mimeType: 'video/mp4',
+      buffer: Buffer.from('dummy-video-content')
+    });
+
+    await page.waitForTimeout(500);
+
+    // Save changes with new files uploaded directly to R2
     await page.click('#save-edit-mag-btn');
 
-    // Verify modal closes and detail page refreshes
+    // Verify modal closes and detail page refreshes without any errors
     await expect(page.locator('#edit-mag-modal')).not.toBeVisible();
     await expect(page.locator('#p-title')).toHaveText('Spring Collection Magazine 2026');
   });
