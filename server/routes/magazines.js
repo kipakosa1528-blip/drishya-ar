@@ -274,8 +274,8 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
 
           let targetData = t.targetData || t.target_data || (prevTarget ? prevTarget.target_data : null);
 
-          // Re-prepare target data if image changed or not yet prepared
-          if (t.imageBase64 || !targetData) {
+          // Re-prepare target data if image changed, requested, or not yet prepared
+          if (t.imageBase64 || t._imageChanged || !targetData) {
             try {
               const imgUrl = r2Url(imagePath);
               const imgFetch = await fetch(imgUrl);
@@ -306,12 +306,16 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
             }
           }
 
-          let muxAssetId = t.overlay?.mux_asset_id || t.mux_asset_id || (t.overlayBase64 ? null : prevTarget?.overlay?.mux_asset_id);
-          let muxPlaybackId = t.overlay?.mux_playback_id || t.mux_playback_id || (t.overlayBase64 ? null : prevTarget?.overlay?.mux_playback_id);
+          if (t._overlayChanged && prevTarget?.overlay?.mux_asset_id) {
+            await deleteMuxAsset(prevTarget.overlay.mux_asset_id);
+          }
+
+          let muxAssetId = t.overlay?.mux_asset_id || t.mux_asset_id || ((t.overlayBase64 || t._overlayChanged) ? null : prevTarget?.overlay?.mux_asset_id);
+          let muxPlaybackId = t.overlay?.mux_playback_id || t.mux_playback_id || ((t.overlayBase64 || t._overlayChanged) ? null : prevTarget?.overlay?.mux_playback_id);
           let overlayUrl = t.overlayUrl || t.overlay_url || t.overlay?.url || '';
 
-          // Ingest into Mux if video overlay is new and not yet ingested
-          if (overlayType === 'video' && (!muxPlaybackId || t.overlayBase64)) {
+          // Ingest into Mux if video overlay is new or changed
+          if (overlayType === 'video' && (!muxPlaybackId || t.overlayBase64 || t._overlayChanged)) {
             try {
               const videoPublicUrl = overlayPath.startsWith('http') ? overlayPath : r2Url(overlayPath);
               const muxResult = await createMuxAsset(videoPublicUrl);

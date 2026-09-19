@@ -540,10 +540,14 @@
     document.getElementById('edit-modal').style.display = 'none';
   }
 
+  let newImgFile = null;
+  let newVidFile = null;
+
   // Image replacement file handler
   document.getElementById('e-img-input').addEventListener('change', (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    newImgFile = file;
     const reader = new FileReader();
     reader.onload = (evt) => {
       newImgBase64 = evt.target.result;
@@ -559,6 +563,7 @@
   document.getElementById('e-vid-input').addEventListener('change', (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    newVidFile = file;
     const reader = new FileReader();
     reader.onload = (evt) => {
       newVidBase64 = evt.target.result;
@@ -569,6 +574,32 @@
     };
     reader.readAsDataURL(file);
   });
+
+  async function uploadToR2(blobOrFile, key, contentType, retries = 3) {
+    const type = contentType || (blobOrFile && blobOrFile.type) || 'application/octet-stream';
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const presignResp = await fetch('/api/presign?key=' + encodeURIComponent(key) + '&type=' + encodeURIComponent(type), {
+          headers: await authHeaders(),
+        });
+        if (!presignResp.ok) {
+          const errData = await presignResp.json().catch(() => ({}));
+          throw new Error(errData.error || ('Presign HTTP ' + presignResp.status));
+        }
+        const { url: presignUrl } = await presignResp.json();
+        const putResp = await fetch(presignUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': type },
+          body: blobOrFile,
+        });
+        if (!putResp.ok) throw new Error('Direct R2 PUT failed (' + putResp.status + ')');
+        return;
+      } catch (err) {
+        if (attempt >= retries) throw err;
+        await new Promise(r => setTimeout(r, attempt * 1000));
+      }
+    }
+  }
 
   document.getElementById('edit-btn').onclick = openEditModal;
   document.getElementById('close-edit-modal').onclick = closeEditModal;
@@ -590,8 +621,6 @@
     const maxScans = (editExpMode === 'scans' || editExpMode === 'both') && scanVal ? Number(scanVal) : null;
 
     const payload = { name, client, notes, expiresAt, maxScans };
-    if (newImgBase64) payload.imageBase64 = newImgBase64;
-    if (newVidBase64) payload.videoBase64 = newVidBase64;
 
     const progressBanner = document.getElementById('e-progress-banner');
     const progressMsg = document.getElementById('e-progress-msg');
@@ -599,12 +628,25 @@
 
     try {
       saveBtn.disabled = true;
-      if (newImgBase64 || newVidBase64) {
+      if (newImgFile || newVidFile) {
         progressBanner.style.display = 'flex';
-        progressMsg.textContent = newImgBase64 && newVidBase64 
-          ? 'Uploading replacement image & video, recompiling MindAR targets and Mux stream...'
-          : (newImgBase64 ? 'Uploading target image & recompiling MindAR markers...' : 'Uploading video overlay & updating Mux stream...');
       }
+
+      if (newImgFile) {
+        if (progressMsg) progressMsg.textContent = 'Uploading replacement target image directly to R2...';
+        const imgKey = `${id}/original.jpg`;
+        await uploadToR2(newImgFile, imgKey, 'image/jpeg');
+        payload.imagePath = imgKey;
+      }
+
+      if (newVidFile) {
+        if (progressMsg) progressMsg.textContent = 'Uploading replacement video overlay directly to R2...';
+        const vidKey = `${id}/video.mp4`;
+        await uploadToR2(newVidFile, vidKey, 'video/mp4');
+        payload.videoPath = vidKey;
+      }
+
+      if (progressMsg) progressMsg.textContent = 'Updating project metadata & generating descriptors...';
 
       const updated = await updateProject(id, payload);
       render(updated);

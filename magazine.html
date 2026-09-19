@@ -415,7 +415,7 @@
           <div style="background:rgba(0,0,0,0.25);padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column">
             <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
               <span>AR Overlay Media</span>
-              ${t.overlayBase64 ? '<span class="badge badge-gold" style="font-size:9px">✨ New Media</span>' : '<span class="badge badge-blue" style="font-size:9px">Live Overlay</span>'}
+              ${(t.overlayFile || t.overlayBase64) ? '<span class="badge badge-gold" style="font-size:9px">✨ New Media</span>' : '<span class="badge badge-blue" style="font-size:9px">Live Overlay</span>'}
             </div>
             <div style="height:170px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:radial-gradient(circle at center, #111827 0%, #030712 100%);overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:8px">
               ${overlayType === 'video' 
@@ -464,10 +464,11 @@
         const idx = Number(inp.dataset.idx);
         const file = e.target.files?.[0];
         if (!file) return;
+        editingTargets[idx].imageFile = file;
+        editingTargets[idx].imageName = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
         const reader = new FileReader();
         reader.onload = (evt) => {
-          editingTargets[idx].imageBase64 = evt.target.result;
-          editingTargets[idx].imageName = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+          editingTargets[idx].imagePreview = evt.target.result;
           renderEditTargetsList();
         };
         reader.readAsDataURL(file);
@@ -479,10 +480,11 @@
         const idx = Number(inp.dataset.idx);
         const file = e.target.files?.[0];
         if (!file) return;
+        editingTargets[idx].overlayFile = file;
+        editingTargets[idx].overlayName = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
         const reader = new FileReader();
         reader.onload = (evt) => {
-          editingTargets[idx].overlayBase64 = evt.target.result;
-          editingTargets[idx].overlayName = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+          editingTargets[idx].overlayPreview = evt.target.result;
           renderEditTargetsList();
         };
         reader.readAsDataURL(file);
@@ -543,6 +545,32 @@
     if (e.target.id === 'edit-mag-modal') closeEditMagModal();
   });
 
+  async function uploadToR2(blobOrFile, key, contentType, retries = 3) {
+    const type = contentType || (blobOrFile && blobOrFile.type) || 'application/octet-stream';
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const presignResp = await fetch('/api/presign?key=' + encodeURIComponent(key) + '&type=' + encodeURIComponent(type), {
+          headers: await authHeaders(),
+        });
+        if (!presignResp.ok) {
+          const errData = await presignResp.json().catch(() => ({}));
+          throw new Error(errData.error || ('Presign HTTP ' + presignResp.status));
+        }
+        const { url: presignUrl } = await presignResp.json();
+        const putResp = await fetch(presignUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': type },
+          body: blobOrFile,
+        });
+        if (!putResp.ok) throw new Error('Direct R2 PUT failed (' + putResp.status + ')');
+        return;
+      } catch (err) {
+        if (attempt >= retries) throw err;
+        await new Promise(r => setTimeout(r, attempt * 1000));
+      }
+    }
+  }
+
   document.getElementById('save-edit-mag-btn').onclick = async () => {
     const title = document.getElementById('emag-title').value.trim();
     const issueNumber = document.getElementById('emag-issue').value.trim();
@@ -556,8 +584,8 @@
 
     for (let i = 0; i < editingTargets.length; i++) {
       const t = editingTargets[i];
-      const hasImg = t.imageBase64 || t.imageUrl || t.image_url || t.image_path;
-      const hasOverlay = t.overlayBase64 || t.overlay?.url || t.overlay?.path || t.overlay_url || t.overlay_path;
+      const hasImg = t.imageFile || t.imagePreview || t.imageBase64 || t.imageUrl || t.image_url || t.image_path;
+      const hasOverlay = t.overlayFile || t.overlayPreview || t.overlayBase64 || t.overlay?.url || t.overlay?.path || t.overlay_url || t.overlay_path;
       if (!hasImg) {
         toast(`Page ${i + 1} is missing a Target Image`, 'err');
         return;
@@ -571,22 +599,85 @@
     const expiresAt = (editExpMode === 'time' || editExpMode === 'both') && expVal ? new Date(expVal + 'T23:59:59').toISOString() : null;
     const maxScans = (editExpMode === 'scans' || editExpMode === 'both') && scanVal ? Number(scanVal) : null;
 
-    const payload = {
-      title,
-      issueNumber,
-      client,
-      notes,
-      expiresAt,
-      maxScans,
-      targets: editingTargets
-    };
-
     const progressBanner = document.getElementById('emag-progress-banner');
+    const progressMsg = document.getElementById('emag-progress-msg');
     const saveBtn = document.getElementById('save-edit-mag-btn');
 
     try {
       saveBtn.disabled = true;
       progressBanner.style.display = 'flex';
+
+      const payloadTargets = [];
+
+      for (let i = 0; i < editingTargets.length; i++) {
+        const t = editingTargets[i];
+        const pageNum = i + 1;
+        const targetName = `target${i}`;
+        let imagePath = t.image_path || t.imagePath || `magazines/${id}/targets/${i}/original.jpg`;
+        const overlayType = t.overlay?.type || t.overlayType || t.overlay_type || 'video';
+        let overlayPath = t.overlay?.path || t.overlay_path || t.overlayPath || `magazines/${id}/targets/${i}/${overlayType === 'video' ? 'overlay.mp4' : 'overlay.jpg'}`;
+
+        let imgChanged = false;
+        if (t.imageFile) {
+          if (progressMsg) progressMsg.textContent = `Uploading Target #${pageNum} image directly to R2...`;
+          await uploadToR2(t.imageFile, imagePath, 'image/jpeg');
+          imgChanged = true;
+        } else if (t.imageBase64 && !t.image_path) {
+          if (progressMsg) progressMsg.textContent = `Uploading Target #${pageNum} image directly to R2...`;
+          const blob = await fetch(t.imageBase64).then(r => r.blob());
+          await uploadToR2(blob, imagePath, 'image/jpeg');
+          imgChanged = true;
+        }
+
+        let overlayChanged = false;
+        if (t.overlayFile) {
+          if (progressMsg) progressMsg.textContent = `Uploading Target #${pageNum} ${overlayType} directly to R2...`;
+          const cType = overlayType === 'video' ? 'video/mp4' : 'image/jpeg';
+          await uploadToR2(t.overlayFile, overlayPath, cType);
+          overlayChanged = true;
+        } else if (t.overlayBase64 && !t.overlay_path) {
+          if (progressMsg) progressMsg.textContent = `Uploading Target #${pageNum} ${overlayType} directly to R2...`;
+          const cType = overlayType === 'video' ? 'video/mp4' : 'image/jpeg';
+          const blob = await fetch(t.overlayBase64).then(r => r.blob());
+          await uploadToR2(blob, overlayPath, cType);
+          overlayChanged = true;
+        }
+
+        payloadTargets.push({
+          id: t.id || `target_${pageNum}`,
+          page_number: pageNum,
+          name: t.name || `Target ${pageNum}`,
+          target_name: targetName,
+          image_path: imagePath,
+          overlay_path: overlayPath,
+          overlayType: overlayType,
+          overlay_type: overlayType,
+          _imageChanged: imgChanged,
+          _overlayChanged: overlayChanged,
+          overlayFraming: t.overlayFraming || t.overlay?.framing || {
+            ratio: 'target',
+            zoom: 1.0,
+            panX: 0,
+            panY: 0,
+            aspectRatio: 2/3,
+            planeW: 1,
+            planeH: 1.5
+          }
+        });
+      }
+
+      if (progressMsg) progressMsg.textContent = 'Updating magazine metadata & compiling descriptors...';
+
+      const payload = {
+        title,
+        issueNumber,
+        client,
+        notes,
+        expiresAt,
+        maxScans,
+        targets: payloadTargets
+      };
+
       await updateMagazine(id, payload);
       closeEditMagModal();
       toast('Magazine and target pages updated successfully!', 'success');
