@@ -19,7 +19,7 @@ export function registerMiscRoutes(app, { requireAuth }) {
     if (!r2)  return res.status(503).json({ error: 'R2 not configured' });
     try {
       const cmd = new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, ContentType: type || 'application/octet-stream' });
-      const url = await getSignedUrl(r2, cmd, { expiresIn: 3600 });
+      const url = await getSignedUrl(r2, cmd, { expiresIn: 600 });
       res.json({ url, publicUrl: r2Url(key) });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -43,7 +43,7 @@ export function registerMiscRoutes(app, { requireAuth }) {
             return { key, error: 'Invalid key' };
           }
           const cmd = new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, ContentType: type || 'application/octet-stream' });
-          const url = await getSignedUrl(r2, cmd, { expiresIn: 3600 });
+          const url = await getSignedUrl(r2, cmd, { expiresIn: 600 });
           return { key, url, publicUrl: r2Url(key) };
         })
       );
