@@ -1,24 +1,10 @@
 {
   "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "server.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": [
-          "assets/**",
-          "external/**",
-          "css/**",
-          "js/**",
-          "*.html",
-          "uploads/.gitkeep"
-        ]
-
-      }
+      "source": "/(.*)",
+      "destination": "http://144.24.110.233/$1"
     }
-  ],
-  "routes": [
-    { "src": "/(.*)", "dest": "/server.js" }
   ],
   "crons": [
     {
