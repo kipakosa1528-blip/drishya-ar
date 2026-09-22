@@ -77,19 +77,22 @@
               <button class="btn btn-default btn-sm" id="dl-target-img" style="width:100%;margin-top:8px">Download Target Image 📥</button>
             </div>
             <div>
-              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Overlay Video</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <div style="font-size:11px;color:var(--muted);text-transform:uppercase">Overlay Video</div>
+                <span id="preview-vid-badge" class="badge" style="display:none;font-size:10px"></span>
+              </div>
               <video id="preview-vid" controls style="width:100%;max-height:220px;background:#000;border-radius:6px;border:1px solid var(--border)"></video>
               <button class="btn btn-default btn-sm" id="dl-video-btn" style="width:100%;margin-top:8px">Download Video 📥</button>
             </div>
           </div>
 
-          <!-- Aspect Ratio Mismatch Alert Banner -->
+          <!-- Aspect Ratio & Framing Status Banner -->
           <div id="aspect-warning-banner" style="display:none;margin-top:16px;padding:12px 16px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:8px">
             <div style="display:flex;align-items:flex-start;gap:12px">
-              <span style="font-size:20px;line-height:1">⚠️</span>
+              <span id="aspect-banner-icon" style="font-size:20px;line-height:1">⚠️</span>
               <div style="flex:1">
                 <div style="font-weight:700;color:#f59e0b;font-size:13px;display:flex;align-items:center;gap:6px">
-                  <span>Aspect Ratio Mismatch Detected</span>
+                  <span id="aspect-banner-title">Aspect Ratio Mismatch Detected</span>
                   <span class="badge" id="aspect-diff-badge" style="font-size:10px;background:rgba(245,158,11,0.25);color:#fbbf24;border:1px solid rgba(245,158,11,0.4)">Mismatch</span>
                 </div>
                 <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;line-height:1.4" id="aspect-warning-desc">
@@ -477,76 +480,85 @@
     const vW = videoNaturalWidth || 0;
     const vH = videoNaturalHeight || 0;
 
-    if (!tW || !tH || !vW || !vH) {
-      if (framing) {
-        banner.style.display = 'block';
-        banner.style.background = 'rgba(16,185,129,0.08)';
-        banner.style.borderColor = 'rgba(16,185,129,0.35)';
-        const desc = document.getElementById('aspect-warning-desc');
-        if (desc) desc.innerHTML = `Custom Video Framing is <strong>Active</strong> (${framing.ratio === 'target' ? 'Match Target Photo' : (framing.ratio === 'original' ? 'Original Ratio' : framing.ratio)} • Zoom: ${Number(framing.zoom || 1).toFixed(1)}x, Pan: ${Math.round(framing.panX || 0)}, ${Math.round(framing.panY || 0)}). Video fits perfectly over the photo in AR.`;
-        const diffBadge = document.getElementById('aspect-diff-badge');
-        if (diffBadge) {
-          diffBadge.textContent = '✓ Framing Active';
-          diffBadge.style.background = 'rgba(16,185,129,0.2)';
-          diffBadge.style.color = '#34d399';
-          diffBadge.style.borderColor = 'rgba(16,185,129,0.4)';
-        }
-        const fixBtn = document.getElementById('btn-fix-aspect');
-        if (fixBtn) {
-          fixBtn.textContent = '📐 Adjust Video Framing →';
-          fixBtn.style.borderColor = 'rgba(16,185,129,0.4)';
-          fixBtn.style.color = '#34d399';
-          fixBtn.style.background = 'rgba(16,185,129,0.1)';
-        }
-      }
-      return;
-    }
+    const bannerIcon = document.getElementById('aspect-banner-icon');
+    const bannerTitle = document.getElementById('aspect-banner-title');
+    const desc = document.getElementById('aspect-warning-desc');
+    const diffBadge = document.getElementById('aspect-diff-badge');
+    const fixBtn = document.getElementById('btn-fix-aspect');
+    const vidBadge = document.getElementById('preview-vid-badge');
 
-    const mismatch = checkAspectMismatch(tW, tH, vW, vH);
     if (framing) {
       banner.style.display = 'block';
-      banner.style.background = 'rgba(16,185,129,0.08)';
+      banner.style.background = 'linear-gradient(135deg,rgba(16,185,129,0.12),rgba(15,23,42,0.9))';
       banner.style.borderColor = 'rgba(16,185,129,0.35)';
-      const desc = document.getElementById('aspect-warning-desc');
-      if (desc) desc.innerHTML = `Custom Video Framing is <strong>Active</strong> (${framing.ratio === 'target' ? 'Match Target Photo' : (framing.ratio === 'original' ? 'Original Ratio' : framing.ratio)} • Zoom: ${Number(framing.zoom || 1).toFixed(1)}x, Pan: ${Math.round(framing.panX || 0)}, ${Math.round(framing.panY || 0)}). Video fits perfectly over the photo in AR.`;
-      const diffBadge = document.getElementById('aspect-diff-badge');
+      
+      if (bannerIcon) bannerIcon.textContent = '📐';
+      if (bannerTitle) {
+        bannerTitle.textContent = 'Custom Video Framing Configured';
+        bannerTitle.style.color = '#34d399';
+      }
+      
+      const ratioLabel = framing.ratio === 'target' ? 'Match Target Photo' : (framing.ratio === 'original' ? 'Original Ratio' : framing.ratio);
+      if (desc) {
+        desc.innerHTML = `Video overlay framing is <strong>active</strong> (${ratioLabel} • Zoom: ${Number(framing.zoom || 1).toFixed(1)}x, Pan: ${Math.round(framing.panX || 0)}, ${Math.round(framing.panY || 0)}). In AR, the video will be framed directly over the photo surface.`;
+      }
       if (diffBadge) {
-        diffBadge.textContent = '✓ Framing Active';
+        diffBadge.textContent = '✓ Ready for AR';
         diffBadge.style.background = 'rgba(16,185,129,0.2)';
         diffBadge.style.color = '#34d399';
         diffBadge.style.borderColor = 'rgba(16,185,129,0.4)';
       }
-      const fixBtn = document.getElementById('btn-fix-aspect');
       if (fixBtn) {
         fixBtn.textContent = '📐 Adjust Video Framing →';
         fixBtn.style.borderColor = 'rgba(16,185,129,0.4)';
         fixBtn.style.color = '#34d399';
         fixBtn.style.background = 'rgba(16,185,129,0.1)';
       }
-    } else if (mismatch) {
+      if (vidBadge) {
+        vidBadge.style.display = 'inline-block';
+        vidBadge.textContent = `✓ Framed (${ratioLabel})`;
+        vidBadge.className = 'badge badge-green';
+      }
+      return;
+    }
+
+    if (!tW || !tH || !vW || !vH) {
+      return;
+    }
+
+    const mismatch = checkAspectMismatch(tW, tH, vW, vH);
+    if (mismatch) {
       banner.style.display = 'block';
       banner.style.background = 'rgba(245,158,11,0.08)';
       banner.style.borderColor = 'rgba(245,158,11,0.3)';
-      const desc = document.getElementById('aspect-warning-desc');
+      if (bannerIcon) bannerIcon.textContent = '⚠️';
+      if (bannerTitle) {
+        bannerTitle.textContent = 'Aspect Ratio Mismatch Detected';
+        bannerTitle.style.color = '#f59e0b';
+      }
       if (desc) {
         desc.innerHTML = `Target Image is <strong>${mismatch.targetLabel} (${mismatch.targetRatio.toFixed(2)})</strong> while Overlay Video is <strong>${mismatch.videoLabel} (${mismatch.videoRatio.toFixed(2)})</strong>. In AR, the video will not naturally fit the physical photo without custom framing.`;
       }
-      const diffBadge = document.getElementById('aspect-diff-badge');
       if (diffBadge) {
         diffBadge.textContent = `${mismatch.diffPercent}% Ratio Mismatch`;
         diffBadge.style.background = 'rgba(245,158,11,0.25)';
         diffBadge.style.color = '#fbbf24';
         diffBadge.style.borderColor = 'rgba(245,158,11,0.4)';
       }
-      const fixBtn = document.getElementById('btn-fix-aspect');
       if (fixBtn) {
         fixBtn.textContent = '📐 Re-frame / Crop Video in Edit Mode →';
         fixBtn.style.borderColor = 'rgba(245,158,11,0.4)';
         fixBtn.style.color = '#fbbf24';
         fixBtn.style.background = 'rgba(245,158,11,0.1)';
       }
+      if (vidBadge) {
+        vidBadge.style.display = 'inline-block';
+        vidBadge.textContent = '⚠️ Mismatch';
+        vidBadge.className = 'badge badge-gold';
+      }
     } else {
       banner.style.display = 'none';
+      if (vidBadge) vidBadge.style.display = 'none';
     }
   }
 
