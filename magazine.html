@@ -1317,20 +1317,26 @@
             };
 
             const imgProbe = new Image();
-            imgProbe.src = imageUrl;
             imgProbe.onload = () => {
               imgW = imgProbe.naturalWidth;
               imgH = imgProbe.naturalHeight;
               checkCardAspect();
             };
+            imgProbe.src = imageUrl;
+            if (imgProbe.complete && imgProbe.naturalWidth) {
+              imgW = imgProbe.naturalWidth;
+              imgH = imgProbe.naturalHeight;
+            }
 
             const vidProbe = document.createElement('video');
-            vidProbe.src = overlayUrl;
             vidProbe.onloadedmetadata = () => {
               vidW = vidProbe.videoWidth;
               vidH = vidProbe.videoHeight;
               checkCardAspect();
             };
+            vidProbe.src = overlayUrl;
+
+            checkCardAspect();
           }
         });
 
