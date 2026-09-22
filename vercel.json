@@ -1,24 +1,19 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": [
-          "assets/**",
-          "external/**",
-          "css/**",
-          "js/**",
-          "server/**",
-          "*.html",
-          "uploads/.gitkeep"
-        ]
-      }
-    }
-  ],
-  "routes": [
-    { "src": "/(.*)", "dest": "/server.js" }
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/ar", "destination": "/api" },
+    { "source": "/magAr", "destination": "/api" },
+    { "source": "/createMagzine", "destination": "/createMagzine.html" },
+    { "source": "/createmagzine", "destination": "/createMagzine.html" },
+    { "source": "/createMagazine", "destination": "/createMagzine.html" },
+    { "source": "/createmagazine", "destination": "/createMagzine.html" },
+    { "source": "/magnizes", "destination": "/magnizes.html" },
+    { "source": "/magazines", "destination": "/magnizes.html" },
+    { "source": "/magazine", "destination": "/magazine.html" },
+    { "source": "/magzine", "destination": "/magazine.html" },
+    { "source": "/landing", "destination": "/landing.html" },
+    { "source": "/", "destination": "/landing.html" }
   ],
   "crons": [
     {
