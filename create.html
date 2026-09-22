@@ -912,6 +912,16 @@
       }
     }
 
+    window.videoFraming = {
+      ratio: vidSelectedRatio,
+      zoom: vidZoom,
+      panX: vidPanX,
+      panY: vidPanY,
+      aspectRatio: vidSelectedRatio === 'target' ? tAspect : (vidSelectedRatio === 'original' ? vAspect : Number(eval(vidSelectedRatio))),
+      planeW: 1,
+      planeH: +(1 / (vidSelectedRatio === 'target' ? tAspect : (vidSelectedRatio === 'original' ? vAspect : Number(eval(vidSelectedRatio))))).toFixed(4)
+    };
+
     document.getElementById('vid-dims-text').textContent = `${player.videoWidth} × ${player.videoHeight} px • Zoom ${vidZoom.toFixed(1)}x`;
 
     document.getElementById('vid-studio-wrap').style.display = 'none';
@@ -1149,6 +1159,21 @@
         expiresAt:   (mode === 'time' || mode === 'both') && expDateVal ? new Date(expDateVal + 'T23:59:59').toISOString() : null,
         maxScans:    (mode === 'scans' || mode === 'both') && maxScansVal ? Number(maxScansVal) : null,
       };
+
+      if (window.overlayType !== '3d') {
+        const tW = targetWidth || 1200;
+        const tH = targetHeight || 1800;
+        const tAspect = tW / tH;
+        body.overlayFraming = window.videoFraming || {
+          ratio: 'target',
+          zoom: 1.0,
+          panX: 0,
+          panY: 0,
+          aspectRatio: tAspect,
+          planeW: 1,
+          planeH: +(1 / tAspect).toFixed(4)
+        };
+      }
 
       if (imagePath) {
         body.imagePath = imagePath;

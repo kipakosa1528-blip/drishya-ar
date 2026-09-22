@@ -1,4 +1,4 @@
-﻿// Kipakosa AR — Magazine Data Types & Normalizers
+// Kipakosa AR — Magazine Data Types & Normalizers
 
 import { r2Url } from './clients.js';
 
@@ -73,6 +73,22 @@ export function formatOverlay(raw = {}) {
   const planeW = aspect >= 1 ? 1 : Number(aspect.toFixed(4));
   const planeH = aspect >= 1 ? Number((1 / aspect).toFixed(4)) : 1;
 
+  const rawFraming = (typeof raw.framing === 'object' && raw.framing) ? raw.framing : (typeof raw.overlayFraming === 'object' && raw.overlayFraming ? raw.overlayFraming : null);
+  const zoom = Number(raw.zoom || rawFraming?.zoom || 1.0);
+  const panX = Number(raw.panX || rawFraming?.panX || 0);
+  const panY = Number(raw.panY || rawFraming?.panY || 0);
+  const ratio = raw.ratio || rawFraming?.ratio || 'target';
+
+  const framing = rawFraming || {
+    ratio,
+    zoom,
+    panX,
+    panY,
+    aspectRatio: aspect,
+    planeW,
+    planeH
+  };
+
   return {
     type,
     path,
@@ -87,6 +103,11 @@ export function formatOverlay(raw = {}) {
     aspect_ratio: aspect,
     planeW,
     planeH,
+    zoom,
+    panX,
+    panY,
+    ratio,
+    framing,
     loop: raw.loop !== false,
     autoplay: raw.autoplay !== false,
     muted: !!raw.muted,
@@ -112,6 +133,7 @@ export function formatMagazineTarget(raw = {}, index = 0) {
 
   const overlayRaw = (typeof raw.overlay === 'object' && raw.overlay) ? raw.overlay : raw;
   const overlay = formatOverlay(overlayRaw);
+  const overlayFraming = raw.overlayFraming || raw.overlay_framing || td?.overlay_framing || overlay.framing || null;
 
   return {
     id,
@@ -131,6 +153,8 @@ export function formatMagazineTarget(raw = {}, index = 0) {
     targetData: td,
     target_data: td,
     overlay,
+    overlayFraming,
+    overlay_framing: overlayFraming,
   };
 }
 

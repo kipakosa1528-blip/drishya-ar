@@ -106,7 +106,7 @@ export function registerProjectsRoutes(app, { requireAuth }) {
   // Large body parser only for this route (base64 media fallback uploads)
   app.post('/api/projects', express.json({ limit: '150mb' }), requireAuth, async (req, res) => {
     try {
-      const { id, name, client, notes, expiresAt, maxScans, overlayType, imagePath, videoPath, modelPath, imageBase64, videoBase64, modelBase64 } = req.body;
+      const { id, name, client, notes, expiresAt, maxScans, overlayType, overlayFraming, imagePath, videoPath, modelPath, imageBase64, videoBase64, modelBase64 } = req.body;
       if (!id || !name) return res.status(400).json({ error: 'Missing required fields' });
 
       let resolvedImagePath = imagePath || `${id}/original.jpg`;
@@ -145,6 +145,11 @@ export function registerProjectsRoutes(app, { requireAuth }) {
       const targetData = await prepareTarget(imgBuffer, id);
       if (maxScans) {
         targetData._max_scans = Number(maxScans);
+      }
+
+      const framing = overlayFraming || req.body.framing;
+      if (framing) {
+        targetData.overlay_framing = framing;
       }
 
       if (overlayType === '3d' || resolvedModelPath) {
