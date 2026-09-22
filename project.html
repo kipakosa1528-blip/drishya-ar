@@ -488,34 +488,11 @@
     const vidBadge = document.getElementById('preview-vid-badge');
 
     if (framing) {
-      banner.style.display = 'block';
-      banner.style.background = 'linear-gradient(135deg,rgba(16,185,129,0.12),rgba(15,23,42,0.9))';
-      banner.style.borderColor = 'rgba(16,185,129,0.35)';
-      
-      if (bannerIcon) bannerIcon.textContent = '📐';
-      if (bannerTitle) {
-        bannerTitle.textContent = 'Custom Video Framing Configured';
-        bannerTitle.style.color = '#34d399';
-      }
-      
-      const ratioLabel = framing.ratio === 'target' ? 'Match Target Photo' : (framing.ratio === 'original' ? 'Original Ratio' : framing.ratio);
-      if (desc) {
-        desc.innerHTML = `Video overlay framing is <strong>active</strong> (${ratioLabel} • Zoom: ${Number(framing.zoom || 1).toFixed(1)}x, Pan: ${Math.round(framing.panX || 0)}, ${Math.round(framing.panY || 0)}). In AR, the video will be framed directly over the photo surface.`;
-      }
-      if (diffBadge) {
-        diffBadge.textContent = '✓ Ready for AR';
-        diffBadge.style.background = 'rgba(16,185,129,0.2)';
-        diffBadge.style.color = '#34d399';
-        diffBadge.style.borderColor = 'rgba(16,185,129,0.4)';
-      }
-      if (fixBtn) {
-        fixBtn.textContent = '📐 Adjust Video Framing →';
-        fixBtn.style.borderColor = 'rgba(16,185,129,0.4)';
-        fixBtn.style.color = '#34d399';
-        fixBtn.style.background = 'rgba(16,185,129,0.1)';
-      }
+      // Framing is resolved and active — hide warning banner completely
+      banner.style.display = 'none';
       if (vidBadge) {
         vidBadge.style.display = 'inline-block';
+        const ratioLabel = framing.ratio === 'target' ? 'Match Target Photo' : (framing.ratio === 'original' ? 'Original Ratio' : framing.ratio);
         vidBadge.textContent = `✓ Framed (${ratioLabel})`;
         vidBadge.className = 'badge badge-green';
       }
@@ -523,6 +500,8 @@
     }
 
     if (!tW || !tH || !vW || !vH) {
+      banner.style.display = 'none';
+      if (vidBadge) vidBadge.style.display = 'none';
       return;
     }
 
@@ -722,6 +701,12 @@
       pVid.onloadedmetadata = onVidReady;
       pVid.onloadeddata = onVidReady;
       pVid.oncanplay = onVidReady;
+      pVid.onerror = () => {
+        const fallback = p.r2VideoUrl || p.r2_video_url;
+        if (fallback && pVid.src !== fallback) {
+          pVid.src = fallback;
+        }
+      };
       if (pVid.src !== p.videoUrl) pVid.src = p.videoUrl;
       if (pVid.videoWidth && pVid.videoHeight) {
         onVidReady();
@@ -734,8 +719,14 @@
           checkAndRenderAspectWarning();
         }
       };
+      vidProbe.onerror = () => {
+        const fallback = p.r2VideoUrl || p.r2_video_url;
+        if (fallback && vidProbe.src !== fallback) {
+          vidProbe.src = fallback;
+        }
+      };
       vidProbe.src = p.videoUrl;
-      document.getElementById('dl-video-btn').onclick = () => downloadMedia(p.videoUrl, `${p.name || 'project'}-video.mp4`);
+      document.getElementById('dl-video-btn').onclick = () => downloadMedia(p.r2VideoUrl || p.videoUrl, `${p.name || 'project'}-video.mp4`);
     } else {
       document.getElementById('dl-video-btn').style.display = 'none';
     }

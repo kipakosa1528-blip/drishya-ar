@@ -1268,29 +1268,15 @@
               if (!warnEl) return;
 
               if (framing) {
-                warnEl.style.display = 'block';
-                warnEl.style.background = 'linear-gradient(135deg,rgba(16,185,129,0.12),rgba(15,23,42,0.9))';
-                warnEl.style.borderColor = 'rgba(16,185,129,0.35)';
-                const descEl = document.getElementById(`mag-aspect-desc-${i}`);
-                if (descEl) {
-                  const ratioLabel = framing.ratio === 'target' ? 'Matched to Target Photo' : (framing.ratio === 'original' ? 'Original Ratio' : framing.ratio);
-                  descEl.innerHTML = `Custom Video Framing is <strong>Active</strong> (${ratioLabel} • Zoom: ${Number(framing.zoom || 1).toFixed(1)}x, Pan: ${Math.round(framing.panX || 0)}, ${Math.round(framing.panY || 0)}). Video fits perfectly over the photo in AR.`;
-                }
-                const diffBadge = document.getElementById(`mag-aspect-diff-${i}`);
-                if (diffBadge) {
-                  diffBadge.textContent = '✓ Framing Configured';
-                  diffBadge.className = 'badge badge-green';
-                }
-                const btn = warnEl.querySelector('.mag-fix-aspect-btn');
-                if (btn) {
-                  btn.textContent = '📐 Adjust Video Framing in Edit Mode →';
-                  btn.style.borderColor = 'rgba(16,185,129,0.5)';
-                  btn.style.color = '#34d399';
-                }
+                warnEl.style.display = 'none';
                 return;
               }
 
-              if (!imgW || !imgH || !vidW || !vidH) return;
+              if (!imgW || !imgH || !vidW || !vidH) {
+                warnEl.style.display = 'none';
+                return;
+              }
+
               const mismatch = checkAspectMismatch(imgW, imgH, vidW, vidH);
               if (mismatch) {
                 warnEl.style.display = 'block';

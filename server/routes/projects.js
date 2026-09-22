@@ -23,7 +23,8 @@ function formatProject(row) {
   const muxAssetId = td.mux_asset_id || row.mux_asset_id || null;
   const muxStreamUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}.m3u8` : null;
   const muxVideoUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}/high.mp4` : null;
-  const videoUrl = muxVideoUrl || (videoPath ? (videoPath.startsWith('http') ? videoPath : r2Url(videoPath)) : '');
+  const r2VideoUrl = videoPath ? (videoPath.startsWith('http') ? videoPath : r2Url(videoPath)) : '';
+  const videoUrl = r2VideoUrl || muxVideoUrl || '';
   const viewsCount = row.views_count || td._views_count || 0;
   const maxScans = row.max_scans || td._max_scans || null;
   const lastScannedAt = row.last_scanned_at || td._last_scanned_at || null;
@@ -54,6 +55,8 @@ function formatProject(row) {
     video_path: videoPath,
     imageUrl,
     videoUrl,
+    r2VideoUrl,
+    r2_video_url: r2VideoUrl,
     muxPlaybackId,
     mux_playback_id: muxPlaybackId,
     muxAssetId,
