@@ -453,10 +453,10 @@
 
   let currentProject = null;
   let editExpMode = 'time';
-  let targetNaturalWidth = 640;
-  let targetNaturalHeight = 640;
-  let videoNaturalWidth = 640;
-  let videoNaturalHeight = 640;
+  let targetNaturalWidth = 0;
+  let targetNaturalHeight = 0;
+  let videoNaturalWidth = 0;
+  let videoNaturalHeight = 0;
   let currentFraming = null;
 
   function checkAndRenderAspectWarning() {
@@ -470,10 +470,14 @@
       return;
     }
 
-    const tW = targetNaturalWidth || currentProject?.target_data?.metadata?.width || currentProject?.targetData?.metadata?.width || 640;
-    const tH = targetNaturalHeight || currentProject?.target_data?.metadata?.height || currentProject?.targetData?.metadata?.height || 640;
-    const vW = videoNaturalWidth || 640;
-    const vH = videoNaturalHeight || 640;
+    const tW = targetNaturalWidth || currentProject?.target_data?.properties?.width || currentProject?.target_data?.metadata?.width || 0;
+    const tH = targetNaturalHeight || currentProject?.target_data?.properties?.height || currentProject?.target_data?.metadata?.height || 0;
+    const vW = videoNaturalWidth || 0;
+    const vH = videoNaturalHeight || 0;
+
+    if (!tW || !tH || !vW || !vH) {
+      return;
+    }
 
     const mismatch = checkAspectMismatch(tW, tH, vW, vH);
     if (mismatch) {
@@ -608,10 +612,21 @@
 
     if (p.imageUrl) {
       const pImg = document.getElementById('preview-img');
-      pImg.src = p.imageUrl;
-      pImg.onload = () => {
-        targetNaturalWidth = pImg.naturalWidth || p.target_data?.metadata?.width || 640;
-        targetNaturalHeight = pImg.naturalHeight || p.target_data?.metadata?.height || 640;
+      const onImgReady = () => {
+        targetNaturalWidth = pImg.naturalWidth || p.target_data?.properties?.width || p.target_data?.metadata?.width || 0;
+        targetNaturalHeight = pImg.naturalHeight || p.target_data?.properties?.height || p.target_data?.metadata?.height || 0;
+        checkAndRenderAspectWarning();
+      };
+      pImg.onload = onImgReady;
+      if (pImg.src !== p.imageUrl) pImg.src = p.imageUrl;
+      if (pImg.complete && pImg.naturalWidth) {
+        onImgReady();
+      }
+      const imgProbe = new Image();
+      imgProbe.src = p.imageUrl;
+      imgProbe.onload = () => {
+        targetNaturalWidth = imgProbe.naturalWidth;
+        targetNaturalHeight = imgProbe.naturalHeight;
         checkAndRenderAspectWarning();
       };
       document.getElementById('dl-target-img').onclick = () => downloadMedia(p.imageUrl, `${p.name || 'project'}-target.jpg`);
@@ -621,11 +636,28 @@
 
     if (p.videoUrl) {
       const pVid = document.getElementById('preview-vid');
-      pVid.src = p.videoUrl;
-      pVid.onloadedmetadata = () => {
-        videoNaturalWidth = pVid.videoWidth || 640;
-        videoNaturalHeight = pVid.videoHeight || 640;
-        checkAndRenderAspectWarning();
+      const onVidReady = () => {
+        if (pVid.videoWidth && pVid.videoHeight) {
+          videoNaturalWidth = pVid.videoWidth;
+          videoNaturalHeight = pVid.videoHeight;
+          checkAndRenderAspectWarning();
+        }
+      };
+      pVid.onloadedmetadata = onVidReady;
+      pVid.onloadeddata = onVidReady;
+      pVid.oncanplay = onVidReady;
+      if (pVid.src !== p.videoUrl) pVid.src = p.videoUrl;
+      if (pVid.videoWidth) {
+        onVidReady();
+      }
+      const vidProbe = document.createElement('video');
+      vidProbe.src = p.videoUrl;
+      vidProbe.onloadedmetadata = () => {
+        if (vidProbe.videoWidth && vidProbe.videoHeight) {
+          videoNaturalWidth = vidProbe.videoWidth;
+          videoNaturalHeight = vidProbe.videoHeight;
+          checkAndRenderAspectWarning();
+        }
       };
       document.getElementById('dl-video-btn').onclick = () => downloadMedia(p.videoUrl, `${p.name || 'project'}-video.mp4`);
     } else {

@@ -1,9 +1,9 @@
 {
   "version": 2,
-  "rewrites": [
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "http://144.24.110.233/$1"
+      "src": "/(.*)",
+      "dest": "http://144.24.110.233/$1"
     }
   ],
   "crons": [
