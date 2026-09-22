@@ -200,6 +200,86 @@
       </div>
     </div>
 
+    <!-- Video Framing Studio Modal for Magazine Edit -->
+    <div id="emag-vid-studio-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(2,4,8,0.92);backdrop-filter:blur(10px);z-index:10000;align-items:center;justify-content:center;padding:16px">
+      <div class="panel" style="max-width:620px;width:100%;max-height:92vh;overflow-y:auto;padding:0;border:1px solid rgba(56,189,248,0.3);box-shadow:0 24px 70px rgba(0,0,0,0.9)">
+        <div style="padding:16px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-weight:700;font-size:15px;color:#f8fafc" id="emag-vid-modal-title">Frame Video Overlay (Page 1)</div>
+            <div style="font-size:12px;color:var(--muted)">Pan, zoom, and fit the video over the physical target photo</div>
+          </div>
+          <button type="button" class="btn btn-sm btn-default" id="emag-close-vid-studio">✕</button>
+        </div>
+        
+        <div class="crop-toolbar" style="padding:10px 16px;background:rgba(255,255,255,0.03);display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+          <div class="ratio-pills" id="emag-vid-modal-pills" style="display:flex;flex-wrap:wrap;gap:4px">
+            <span class="ratio-pill active" data-vratio="target">🎯 Match Target Photo</span>
+            <span class="ratio-pill" data-vratio="1/1.4142">A4 / A3 (Portrait)</span>
+            <span class="ratio-pill" data-vratio="1.4142">A4 / A3 (Landscape)</span>
+            <span class="ratio-pill" data-vratio="2/3">4:6 (2:3)</span>
+            <span class="ratio-pill" data-vratio="3/2">6:4 (3:2)</span>
+            <span class="ratio-pill" data-vratio="5/7">5:7</span>
+            <span class="ratio-pill" data-vratio="4/5">8:10 (4:5)</span>
+            <span class="ratio-pill" data-vratio="1">1:1</span>
+            <span class="ratio-pill" data-vratio="9/16">9:16 Reel</span>
+            <span class="ratio-pill" data-vratio="16/9">16:9 HD</span>
+            <span class="ratio-pill" data-vratio="original">Original Video</span>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:4px">
+            <button type="button" class="btn btn-sm btn-default" id="emag-btn-zoom-in" title="Zoom In">🔍+</button>
+            <button type="button" class="btn btn-sm btn-default" id="emag-btn-zoom-out" title="Zoom Out">🔍-</button>
+            <button type="button" class="btn btn-sm btn-default" id="emag-btn-reset-framing">Reset</button>
+          </div>
+        </div>
+
+        <!-- Viewport -->
+        <div style="background:#020408;padding:16px;min-height:300px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative">
+          <div id="emag-vid-frame-box" style="position:relative;overflow:hidden;border:2px solid var(--accent);border-radius:8px;box-shadow:0 0 25px rgba(59,130,246,0.35);cursor:grab;touch-action:none">
+            <video id="emag-vid-frame-player" loop playsinline muted autoplay style="position:absolute;pointer-events:none;display:block"></video>
+            
+            <!-- Rule of thirds -->
+            <div style="position:absolute;inset:0;border:1px dashed rgba(255,255,255,0.35);pointer-events:none;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr">
+              <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+              <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+              <div style="border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+              <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+              <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+              <div style="border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+              <div style="border-right:1px solid rgba(255,255,255,0.15)"></div>
+              <div style="border-right:1px solid rgba(255,255,255,0.15)"></div>
+              <div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sliders -->
+        <div style="padding:10px 16px;background:rgba(255,255,255,0.03);border-top:1px solid rgba(255,255,255,0.1);display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:12px;color:var(--muted)">
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:140px">
+            <span>🔍 Zoom:</span>
+            <input type="range" id="emag-vid-zoom-slider" min="1" max="3" step="0.02" value="1" style="flex:1;accent-color:var(--accent)" />
+            <span id="emag-vid-zoom-text" style="min-width:28px">1.0x</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:140px">
+            <span>↔ Pan X:</span>
+            <input type="range" id="emag-vid-panx-slider" min="-100" max="100" step="1" value="0" style="flex:1;accent-color:var(--accent)" />
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:140px">
+            <span>↕ Pan Y:</span>
+            <input type="range" id="emag-vid-pany-slider" min="-100" max="100" step="1" value="0" style="flex:1;accent-color:var(--accent)" />
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.1)">
+          <div style="font-size:12px;color:var(--muted)" id="emag-vid-modal-status">Drag video to pan • Scroll to zoom</div>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn btn-sm btn-default" id="emag-cancel-vid-framing">Cancel</button>
+            <button type="button" class="btn btn-sm btn-primary" id="emag-confirm-vid-framing">✓ Apply Framing</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="not-found" class="panel" style="display:none;text-align:center;padding:40px">
       <div style="font-size:18px;font-weight:600;margin-bottom:8px">Magazine Not Found</div>
       <p style="color:var(--text-secondary);margin-bottom:16px">This multi-target magazine may have been deleted or the link is incorrect.</p>
@@ -341,7 +421,7 @@
 <script type="module">
   import { requireAuth, initNav, authHeaders } from './js/auth.js';
   import { getMagazine, updateMagazine, deleteMagazine } from './js/db.js';
-  import { fmt, statusBadge, isExpired, expType, calcMuxCost, toast } from './js/utils.js';
+  import { fmt, statusBadge, isExpired, expType, calcMuxCost, toast, getRatioLabel, checkAspectMismatch } from './js/utils.js';
 
   const params = new URLSearchParams(location.search);
   const id = params.get('id');
@@ -370,6 +450,316 @@
     btn.addEventListener('click', () => setEditExpMode(btn.dataset.mode));
   });
 
+  // ── Video Framing Studio for Magazine Edit ────────────────────────────────
+  let emagVidStudioIdx = null;
+  let emagVidModalSelectedRatio = 'target';
+  let emagVidModalZoom = 1.0;
+  let emagVidModalPanX = 0;
+  let emagVidModalPanY = 0;
+  let emagVidTargetW = 640;
+  let emagVidTargetH = 640;
+  let emagVidVideoW = 640;
+  let emagVidVideoH = 640;
+  let emagVidIsDragging = false;
+  let emagVidDragStartX = 0;
+  let emagVidDragStartY = 0;
+  let emagVidStartPanX = 0;
+  let emagVidStartPanY = 0;
+
+  function openEmagVidStudioModal(targetIdx) {
+    emagVidStudioIdx = targetIdx;
+    const t = editingTargets[targetIdx];
+    if (!t) return;
+
+    const modal = document.getElementById('emag-vid-studio-modal');
+    modal.style.display = 'flex';
+
+    document.getElementById('emag-vid-modal-title').textContent = `Frame Video Overlay (Page ${targetIdx + 1})`;
+
+    const videoSrc = t.overlayPreview || t.overlayBase64 || t.overlay?.url || t.overlay_url || '';
+    if (!videoSrc) {
+      toast('Please select or upload a video for Page ' + (targetIdx + 1) + ' first', 'info');
+      modal.style.display = 'none';
+      return;
+    }
+
+    const player = document.getElementById('emag-vid-frame-player');
+    player.src = videoSrc;
+    player.load();
+    player.play().catch(() => {});
+
+    // Target image aspect ratio probe
+    const imgSrc = t.imagePreview || t.imageBase64 || t.imageUrl || t.image_url || '';
+    if (imgSrc) {
+      const imgProbe = new Image();
+      imgProbe.src = imgSrc;
+      imgProbe.onload = () => {
+        emagVidTargetW = imgProbe.naturalWidth || 640;
+        emagVidTargetH = imgProbe.naturalHeight || 640;
+        updateEmagModalVidFrameBox();
+      };
+    } else {
+      emagVidTargetW = t.target_data?.properties?.width || 640;
+      emagVidTargetH = t.target_data?.properties?.height || 640;
+    }
+
+    const existingFraming = t.overlayFraming || t.overlay?.framing;
+    if (existingFraming) {
+      emagVidModalSelectedRatio = existingFraming.ratio || 'target';
+      emagVidModalZoom = existingFraming.zoom || 1.0;
+      emagVidModalPanX = existingFraming.panX || 0;
+      emagVidModalPanY = existingFraming.panY || 0;
+    } else {
+      emagVidModalSelectedRatio = 'target';
+      emagVidModalZoom = 1.0;
+      emagVidModalPanX = 0;
+      emagVidModalPanY = 0;
+    }
+
+    document.querySelectorAll('#emag-vid-modal-pills .ratio-pill').forEach(p => {
+      p.classList.toggle('active', p.dataset.vratio === emagVidModalSelectedRatio);
+    });
+
+    const zS = document.getElementById('emag-vid-zoom-slider'); if (zS) zS.value = emagVidModalZoom;
+    const xS = document.getElementById('emag-vid-panx-slider'); if (xS) xS.value = emagVidModalPanX;
+    const yS = document.getElementById('emag-vid-pany-slider'); if (yS) yS.value = emagVidModalPanY;
+    const zT = document.getElementById('emag-vid-zoom-text'); if (zT) zT.textContent = `${emagVidModalZoom.toFixed(1)}x`;
+
+    player.onloadedmetadata = () => {
+      emagVidVideoW = player.videoWidth || 640;
+      emagVidVideoH = player.videoHeight || 640;
+      updateEmagModalVidFrameBox();
+      initEmagModalVidInteractions();
+    };
+  }
+
+  function closeEmagVidStudioModal() {
+    document.getElementById('emag-vid-studio-modal').style.display = 'none';
+    const player = document.getElementById('emag-vid-frame-player');
+    if (player) player.pause();
+  }
+
+  document.getElementById('emag-close-vid-studio')?.addEventListener('click', closeEmagVidStudioModal);
+  document.getElementById('emag-cancel-vid-framing')?.addEventListener('click', closeEmagVidStudioModal);
+
+  function setEmagModalVideoRatio(ratio, el) {
+    emagVidModalSelectedRatio = ratio;
+    document.querySelectorAll('#emag-vid-modal-pills .ratio-pill').forEach(p => p.classList.remove('active'));
+    if (el) el.classList.add('active');
+    updateEmagModalVidFrameBox();
+  }
+
+  document.querySelectorAll('#emag-vid-modal-pills .ratio-pill').forEach(pill => {
+    pill.addEventListener('click', () => setEmagModalVideoRatio(pill.dataset.vratio, pill));
+  });
+
+  function updateEmagModalVidFrameBox() {
+    const player = document.getElementById('emag-vid-frame-player');
+    const box = document.getElementById('emag-vid-frame-box');
+    const status = document.getElementById('emag-vid-modal-status');
+    if (!player || !player.videoWidth || !box) return;
+
+    const tW = emagVidTargetW || 640;
+    const tH = emagVidTargetH || 640;
+
+    let targetR;
+    if (emagVidModalSelectedRatio === 'target') {
+      targetR = tW / tH;
+      if (status) status.textContent = `Framed to Target Photo (${getRatioLabel(tW, tH)}) • Drag to pan`;
+    } else if (emagVidModalSelectedRatio === 'original') {
+      targetR = player.videoWidth / player.videoHeight;
+      if (status) status.textContent = `Original Video (${getRatioLabel(player.videoWidth, player.videoHeight)}) • Drag to pan`;
+    } else {
+      targetR = Number(eval(emagVidModalSelectedRatio));
+      if (status) status.textContent = `Framed to Custom Aspect Ratio • Drag to pan`;
+    }
+
+    const maxH = 280;
+    const maxW = 420;
+    let boxW, boxH;
+
+    if (targetR >= 1) {
+      boxW = Math.min(maxW, Math.round(maxH * targetR));
+      boxH = Math.round(boxW / targetR);
+    } else {
+      boxH = Math.min(maxH, Math.round(maxW / targetR));
+      boxW = Math.round(boxH * targetR);
+    }
+
+    box.style.width = `${boxW}px`;
+    box.style.height = `${boxH}px`;
+
+    renderEmagModalVidPlayerTransform();
+  }
+
+  function renderEmagModalVidPlayerTransform() {
+    const player = document.getElementById('emag-vid-frame-player');
+    const box = document.getElementById('emag-vid-frame-box');
+    if (!player || !player.videoWidth || !box) return;
+
+    const boxW = box.offsetWidth || parseInt(box.style.width, 10);
+    const boxH = box.offsetHeight || parseInt(box.style.height, 10);
+    if (!boxW || !boxH) return;
+
+    const vAspect = player.videoWidth / player.videoHeight;
+    const boxAspect = boxW / boxH;
+
+    let baseW, baseH;
+    if (vAspect >= boxAspect) {
+      baseH = boxH;
+      baseW = baseH * vAspect;
+    } else {
+      baseW = boxW;
+      baseH = baseW / vAspect;
+    }
+
+    const scaledW = baseW * emagVidModalZoom;
+    const scaledH = baseH * emagVidModalZoom;
+
+    const maxShiftX = Math.max(0, (scaledW - boxW) / 2);
+    const maxShiftY = Math.max(0, (scaledH - boxH) / 2);
+
+    const shiftX = (emagVidModalPanX / 100) * maxShiftX;
+    const shiftY = (emagVidModalPanY / 100) * maxShiftY;
+
+    const left = (boxW - scaledW) / 2 + shiftX;
+    const top = (boxH - scaledH) / 2 + shiftY;
+
+    player.style.width = `${scaledW}px`;
+    player.style.height = `${scaledH}px`;
+    player.style.left = `${left}px`;
+    player.style.top = `${top}px`;
+  }
+
+  function setEmagModalVidZoom(val) {
+    emagVidModalZoom = Number(val);
+    const zT = document.getElementById('emag-vid-zoom-text');
+    if (zT) zT.textContent = `${emagVidModalZoom.toFixed(1)}x`;
+    renderEmagModalVidPlayerTransform();
+  }
+
+  function adjustEmagModalVidZoom(delta) {
+    emagVidModalZoom = Math.min(3.0, Math.max(1.0, emagVidModalZoom + delta));
+    const slider = document.getElementById('emag-vid-zoom-slider');
+    if (slider) slider.value = emagVidModalZoom;
+    setEmagModalVidZoom(emagVidModalZoom);
+  }
+
+  function setEmagModalVidPanX(val) {
+    emagVidModalPanX = Number(val);
+    renderEmagModalVidPlayerTransform();
+  }
+
+  function setEmagModalVidPanY(val) {
+    emagVidModalPanY = Number(val);
+    renderEmagModalVidPlayerTransform();
+  }
+
+  function resetEmagModalVidFraming() {
+    emagVidModalZoom = 1.0;
+    emagVidModalPanX = 0;
+    emagVidModalPanY = 0;
+    const zS = document.getElementById('emag-vid-zoom-slider'); if (zS) zS.value = 1;
+    const xS = document.getElementById('emag-vid-panx-slider'); if (xS) xS.value = 0;
+    const yS = document.getElementById('emag-vid-pany-slider'); if (yS) yS.value = 0;
+    const zT = document.getElementById('emag-vid-zoom-text'); if (zT) zT.textContent = '1.0x';
+    renderEmagModalVidPlayerTransform();
+  }
+
+  document.getElementById('emag-vid-zoom-slider')?.addEventListener('input', (e) => setEmagModalVidZoom(e.target.value));
+  document.getElementById('emag-vid-panx-slider')?.addEventListener('input', (e) => setEmagModalVidPanX(e.target.value));
+  document.getElementById('emag-vid-pany-slider')?.addEventListener('input', (e) => setEmagModalVidPanY(e.target.value));
+  document.getElementById('emag-btn-zoom-in')?.addEventListener('click', () => adjustEmagModalVidZoom(0.1));
+  document.getElementById('emag-btn-zoom-out')?.addEventListener('click', () => adjustEmagModalVidZoom(-0.1));
+  document.getElementById('emag-btn-reset-framing')?.addEventListener('click', resetEmagModalVidFraming);
+
+  function initEmagModalVidInteractions() {
+    const box = document.getElementById('emag-vid-frame-box');
+    if (!box || box._emagVidInit) return;
+    box._emagVidInit = true;
+
+    box.addEventListener('mousedown', (e) => {
+      emagVidIsDragging = true;
+      emagVidDragStartX = e.clientX;
+      emagVidDragStartY = e.clientY;
+      emagVidStartPanX = emagVidModalPanX;
+      emagVidStartPanY = emagVidModalPanY;
+      box.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!emagVidIsDragging) return;
+      const dx = e.clientX - emagVidDragStartX;
+      const dy = e.clientY - emagVidDragStartY;
+      emagVidModalPanX = Math.min(100, Math.max(-100, emagVidStartPanX + (dx * 0.8)));
+      emagVidModalPanY = Math.min(100, Math.max(-100, emagVidStartPanY + (dy * 0.8)));
+      const xS = document.getElementById('emag-vid-panx-slider'); if (xS) xS.value = emagVidModalPanX;
+      const yS = document.getElementById('emag-vid-pany-slider'); if (yS) yS.value = emagVidModalPanY;
+      renderEmagModalVidPlayerTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (emagVidIsDragging) {
+        emagVidIsDragging = false;
+        if (box) box.style.cursor = 'grab';
+      }
+    });
+
+    box.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        emagVidIsDragging = true;
+        emagVidDragStartX = e.touches[0].clientX;
+        emagVidDragStartY = e.touches[0].clientY;
+        emagVidStartPanX = emagVidModalPanX;
+        emagVidStartPanY = emagVidModalPanY;
+      }
+    }, { passive: true });
+
+    box.addEventListener('touchmove', (e) => {
+      if (!emagVidIsDragging || e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - emagVidDragStartX;
+      const dy = e.touches[0].clientY - emagVidDragStartY;
+      emagVidModalPanX = Math.min(100, Math.max(-100, emagVidStartPanX + (dx * 0.8)));
+      emagVidModalPanY = Math.min(100, Math.max(-100, emagVidStartPanY + (dy * 0.8)));
+      const xS = document.getElementById('emag-vid-panx-slider'); if (xS) xS.value = emagVidModalPanX;
+      const yS = document.getElementById('emag-vid-pany-slider'); if (yS) yS.value = emagVidModalPanY;
+      renderEmagModalVidPlayerTransform();
+    }, { passive: true });
+
+    box.addEventListener('touchend', () => { emagVidIsDragging = false; });
+
+    box.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.08 : -0.08;
+      adjustEmagModalVidZoom(delta);
+    }, { passive: false });
+  }
+
+  document.getElementById('emag-confirm-vid-framing')?.addEventListener('click', () => {
+    if (emagVidStudioIdx == null || !editingTargets[emagVidStudioIdx]) return;
+    const tW = emagVidTargetW || 640;
+    const tH = emagVidTargetH || 640;
+    const tAspect = tW / tH;
+
+    const framing = {
+      ratio: emagVidModalSelectedRatio,
+      zoom: emagVidModalZoom,
+      panX: emagVidModalPanX,
+      panY: emagVidModalPanY,
+      aspectRatio: emagVidModalSelectedRatio === 'target' ? tAspect : (emagVidModalSelectedRatio === 'original' ? (emagVidVideoW / emagVidVideoH) : Number(eval(emagVidModalSelectedRatio))),
+      planeW: 1,
+      planeH: +(1 / (emagVidModalSelectedRatio === 'target' ? tAspect : (emagVidModalSelectedRatio === 'original' ? (emagVidVideoW / emagVidVideoH) : Number(eval(emagVidModalSelectedRatio))))).toFixed(4)
+    };
+
+    editingTargets[emagVidStudioIdx].overlayFraming = framing;
+    if (!editingTargets[emagVidStudioIdx].overlay) editingTargets[emagVidStudioIdx].overlay = {};
+    editingTargets[emagVidStudioIdx].overlay.framing = framing;
+
+    closeEmagVidStudioModal();
+    renderEditTargetsList();
+    toast(`Page ${emagVidStudioIdx + 1} video framing applied!`, 'success');
+  });
+
   function renderEditTargetsList() {
     const listEl = document.getElementById('emag-targets-list');
     document.getElementById('emag-page-count').textContent = editingTargets.length;
@@ -380,8 +770,23 @@
       row.style.cssText = 'background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px';
       
       const overlayType = (t.overlay && t.overlay.type) || t.overlay_type || 'video';
-      const imgPreview = t.imageBase64 || t.imageUrl || t.image_url || '';
-      const overlayPreview = t.overlayBase64 || (t.overlay && t.overlay.url) || t.overlay_url || '';
+      const imgPreview = t.imagePreview || t.imageBase64 || t.imageUrl || t.image_url || '';
+      const overlayPreview = t.overlayPreview || t.overlayBase64 || (t.overlay && t.overlay.url) || t.overlay_url || '';
+      const framing = t.overlayFraming || t.overlay?.framing;
+
+      let overlayBadgeHtml = '<span class="badge badge-blue" style="font-size:9px">Live Overlay</span>';
+      if (t.overlayFile || t.overlayBase64) {
+        overlayBadgeHtml = '<span class="badge badge-gold" style="font-size:9px">✨ New Media</span>';
+      } else if (framing) {
+        overlayBadgeHtml = `<span class="badge badge-green" style="font-size:9px">✓ Framed (${framing.ratio || 'target'})</span>`;
+      }
+
+      let overlayInfoText = overlayType === 'video' ? 'Uncropped video player' : 'Uncropped image overlay';
+      if (t.overlayName) {
+        overlayInfoText = `Selected: ${t.overlayName}`;
+      } else if (framing) {
+        overlayInfoText = `Custom Framed: Zoom ${Number(framing.zoom || 1).toFixed(1)}x, Pan (${Math.round(framing.panX || 0)}, ${Math.round(framing.panY || 0)})`;
+      }
 
       row.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:8px">
@@ -416,7 +821,7 @@
           <div style="background:rgba(0,0,0,0.25);padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column">
             <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
               <span>AR Overlay Media</span>
-              ${(t.overlayFile || t.overlayBase64) ? '<span class="badge badge-gold" style="font-size:9px">✨ New Media</span>' : '<span class="badge badge-blue" style="font-size:9px">Live Overlay</span>'}
+              ${overlayBadgeHtml}
             </div>
             <div style="height:170px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:radial-gradient(circle at center, #111827 0%, #030712 100%);overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:8px">
               ${overlayType === 'video' 
@@ -424,16 +829,17 @@
                 : (overlayPreview ? `<img src="${overlayPreview}" style="max-width:100%;max-height:100%;object-fit:contain;display:block" />` : '<span style="font-size:11px;color:var(--muted)">No image overlay</span>')}
             </div>
             <div style="font-size:10px;color:var(--text-secondary);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-              ${t.overlayName ? `Selected: ${t.overlayName}` : (overlayType === 'video' ? 'Uncropped video player' : 'Uncropped image overlay')}
+              ${overlayInfoText}
             </div>
-            <div style="display:flex;gap:6px;margin-top:auto">
-              <label class="btn btn-sm btn-default" style="flex:1;text-align:center;cursor:pointer;font-size:11px">
-                <span>🔄 ${overlayPreview ? 'Replace Media' : 'Upload Media'}</span>
+            <div style="display:flex;gap:4px;margin-top:auto;flex-wrap:wrap">
+              ${overlayType === 'video' ? `<button type="button" class="btn btn-sm btn-default emag-btn-open-vid-studio" data-idx="${idx}" style="font-size:11px;padding:4px 6px" title="Frame & Crop Video">📐 Re-frame</button>` : ''}
+              <label class="btn btn-sm btn-default" style="flex:1;text-align:center;cursor:pointer;font-size:11px;padding:4px 6px">
+                <span>🔄 ${overlayPreview ? 'Replace' : 'Upload'}</span>
                 <input type="file" accept="${overlayType === 'video' ? 'video/mp4,video/quicktime' : 'image/jpeg,image/png'}" class="row-overlay-input" data-idx="${idx}" style="display:none" />
               </label>
-              <select class="form-control row-type-select" data-idx="${idx}" style="width:85px;font-size:11px;padding:2px 4px;height:28px">
-                <option value="video" ${overlayType === 'video' ? 'selected' : ''}>🎬 Video</option>
-                <option value="image" ${overlayType === 'image' ? 'selected' : ''}>🖼️ Image</option>
+              <select class="form-control row-type-select" data-idx="${idx}" style="width:78px;font-size:11px;padding:2px 4px;height:28px">
+                <option value="video" ${overlayType === 'video' ? 'selected' : ''}>🎬 Vid</option>
+                <option value="image" ${overlayType === 'image' ? 'selected' : ''}>🖼️ Img</option>
               </select>
             </div>
           </div>
@@ -443,6 +849,13 @@
     });
 
     // Wire up events
+    listEl.querySelectorAll('.emag-btn-open-vid-studio').forEach(btn => {
+      btn.onclick = () => {
+        const idx = Number(btn.dataset.idx);
+        openEmagVidStudioModal(idx);
+      };
+    });
+
     listEl.querySelectorAll('.del-page-btn').forEach(b => {
       b.onclick = () => {
         const idx = Number(b.dataset.idx);
@@ -487,6 +900,9 @@
         reader.onload = (evt) => {
           editingTargets[idx].overlayPreview = evt.target.result;
           renderEditTargetsList();
+          if ((editingTargets[idx].overlay?.type || editingTargets[idx].overlay_type || 'video') === 'video') {
+            openEmagVidStudioModal(idx);
+          }
         };
         reader.readAsDataURL(file);
       };
@@ -816,8 +1232,80 @@
                 '</div>' +
                 (overlayUrl ? '<a href="' + overlayUrl + '" download="overlay-' + (i + 1) + '" class="btn btn-default btn-sm" style="width:100%;margin-top:8px;text-align:center;display:block">Download Overlay 📥</a>' : '') +
               '</div>' +
-            '</div>';
+            '</div>' +
+            (overlayType === 'video' ? `
+              <div id="mag-aspect-warn-${i}" style="display:none;margin-top:12px;background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(15,23,42,0.9));border:1px solid rgba(245,158,11,0.35);border-radius:8px;padding:10px 14px">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+                  <div style="display:flex;align-items:flex-start;gap:8px">
+                    <span style="font-size:16px;line-height:1.2">⚠️</span>
+                    <div>
+                      <div style="font-size:12px;font-weight:700;color:#fbbf24;display:flex;align-items:center;gap:6px">
+                        <span>Aspect Ratio Mismatch Detected</span>
+                        <span class="badge badge-gold" id="mag-aspect-diff-${i}" style="font-size:9px;padding:1px 6px">Ratio Mismatch</span>
+                      </div>
+                      <div id="mag-aspect-desc-${i}" style="font-size:11px;color:#cbd5e1;margin-top:2px;line-height:1.4">
+                        Target image aspect ratio does not match overlay video aspect ratio.
+                      </div>
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-default mag-fix-aspect-btn" data-idx="${i}" style="border-color:rgba(245,158,11,0.5);color:#fbbf24;font-size:11px;padding:4px 10px;margin-left:auto">
+                    📐 Re-frame / Crop Video in Edit Mode →
+                  </button>
+                </div>
+              </div>` : '');
+
           container.appendChild(card);
+
+          if (overlayType === 'video' && imageUrl && overlayUrl) {
+            let imgW = t.target_data?.properties?.width || 0;
+            let imgH = t.target_data?.properties?.height || 0;
+            let vidW = 0;
+            let vidH = 0;
+
+            const checkCardAspect = () => {
+              if (!imgW || !imgH || !vidW || !vidH) return;
+              const mismatch = checkAspectMismatch(imgW, imgH, vidW, vidH);
+              const warnEl = document.getElementById(`mag-aspect-warn-${i}`);
+              if (!warnEl) return;
+              if (mismatch) {
+                warnEl.style.display = 'block';
+                const descEl = document.getElementById(`mag-aspect-desc-${i}`);
+                if (descEl) {
+                  descEl.innerHTML = `Page target is <strong>${mismatch.targetLabel} (${mismatch.targetRatio.toFixed(2)})</strong> while Overlay Video is <strong>${mismatch.videoLabel} (${mismatch.videoRatio.toFixed(2)})</strong>. In AR, the video will not naturally fit the physical photo without custom framing.`;
+                }
+                const diffBadge = document.getElementById(`mag-aspect-diff-${i}`);
+                if (diffBadge) diffBadge.textContent = `${mismatch.diffPercent}% Ratio Mismatch`;
+              } else {
+                warnEl.style.display = 'none';
+              }
+            };
+
+            const imgProbe = new Image();
+            imgProbe.src = imageUrl;
+            imgProbe.onload = () => {
+              imgW = imgProbe.naturalWidth;
+              imgH = imgProbe.naturalHeight;
+              checkCardAspect();
+            };
+
+            const vidProbe = document.createElement('video');
+            vidProbe.src = overlayUrl;
+            vidProbe.onloadedmetadata = () => {
+              vidW = vidProbe.videoWidth;
+              vidH = vidProbe.videoHeight;
+              checkCardAspect();
+            };
+          }
+        });
+
+        container.querySelectorAll('.mag-fix-aspect-btn').forEach(btn => {
+          btn.onclick = () => {
+            const idx = Number(btn.dataset.idx);
+            openEditMagModal();
+            setTimeout(() => {
+              openEmagVidStudioModal(idx);
+            }, 150);
+          };
         });
       }
 

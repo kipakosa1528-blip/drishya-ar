@@ -183,7 +183,7 @@ export function registerProjectsRoutes(app, { requireAuth }) {
   app.put('/api/projects/:id', express.json({ limit: '150mb' }), requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const { name, client, notes, expiresAt, maxScans, overlayType, imageBase64, imagePath, videoBase64, videoPath, modelBase64, modelPath } = req.body;
+      const { name, client, notes, expiresAt, maxScans, overlayType, overlayFraming, imageBase64, imagePath, videoBase64, videoPath, modelBase64, modelPath } = req.body;
 
       const { data: existing, error: getErr } = await supabase
         .from('projects').select('*').eq('id', id).single();
@@ -203,6 +203,14 @@ export function registerProjectsRoutes(app, { requireAuth }) {
 
       if (overlayType !== undefined) {
         td.overlay_type = overlayType;
+      }
+
+      if (overlayFraming !== undefined) {
+        td.overlay_framing = overlayFraming;
+        if (!td.properties) td.properties = {};
+        if (overlayFraming && overlayFraming.aspectRatio) {
+          td.properties.aspectRatio = overlayFraming.aspectRatio;
+        }
       }
 
       const r2 = getR2();

@@ -413,3 +413,43 @@ export async function downloadMedia(urlOrBlob, filename = 'target-image.jpg') {
   }
 }
 
+/**
+ * Returns a human-friendly ratio name for given dimensions.
+ */
+export function getRatioLabel(w, h) {
+  if (!w || !h) return '—';
+  const r = w / h;
+  if (Math.abs(r - 2/3) < 0.05) return '4:6 Portrait (2:3)';
+  if (Math.abs(r - 3/2) < 0.05) return '6:4 Landscape (3:2)';
+  if (Math.abs(r - 1/1.4142) < 0.04) return 'A4 / A3 / A5 (Portrait)';
+  if (Math.abs(r - 1.4142) < 0.04) return 'A4 / A3 / A5 (Landscape)';
+  if (Math.abs(r - 5/7) < 0.05) return '5:7 Portrait';
+  if (Math.abs(r - 7/5) < 0.05) return '7:5 Landscape';
+  if (Math.abs(r - 4/5) < 0.05) return '8:10 Portrait (4:5)';
+  if (Math.abs(r - 5/4) < 0.05) return '10:8 Landscape (5:4)';
+  if (Math.abs(r - 1) < 0.05) return '1:1 Square';
+  if (Math.abs(r - 9/16) < 0.05) return '9:16 Story / Reel';
+  if (Math.abs(r - 16/9) < 0.05) return '16:9 Landscape HD';
+  return `${w} : ${h}`;
+}
+
+/**
+ * Checks if target image and overlay video aspect ratios mismatch.
+ * Returns null if no mismatch, or an object with details if mismatched.
+ */
+export function checkAspectMismatch(targetW, targetH, videoW, videoH, tolerance = 0.04) {
+  if (!targetW || !targetH || !videoW || !videoH) return null;
+  const tRatio = targetW / targetH;
+  const vRatio = videoW / videoH;
+  const diff = Math.abs(tRatio - vRatio) / tRatio;
+  if (diff <= tolerance) return null;
+  return {
+    isMismatch: true,
+    targetRatio: tRatio,
+    videoRatio: vRatio,
+    targetLabel: getRatioLabel(targetW, targetH),
+    videoLabel: getRatioLabel(videoW, videoH),
+    diffPercent: Math.round(diff * 100),
+  };
+}
+
