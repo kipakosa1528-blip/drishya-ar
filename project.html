@@ -78,11 +78,25 @@
             </div>
             <div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                <div style="font-size:11px;color:var(--muted);text-transform:uppercase">Overlay Video</div>
+                <div id="overlay-label" style="font-size:11px;color:var(--muted);text-transform:uppercase">Overlay Video</div>
                 <span id="preview-vid-badge" class="badge" style="display:none;font-size:10px"></span>
               </div>
-              <video id="preview-vid" controls style="width:100%;max-height:220px;background:#000;border-radius:6px;border:1px solid var(--border)"></video>
-              <button class="btn btn-default btn-sm" id="dl-video-btn" style="width:100%;margin-top:8px">Download Video 📥</button>
+              
+              <!-- Video Preview Box -->
+              <div id="preview-vid-box">
+                <video id="preview-vid" controls style="width:100%;max-height:220px;background:#000;border-radius:6px;border:1px solid var(--border)"></video>
+                <button class="btn btn-default btn-sm" id="dl-video-btn" style="width:100%;margin-top:8px">Download Video 📥</button>
+              </div>
+
+              <!-- 3D Model Box -->
+              <div id="preview-3d-box" style="display:none;flex-direction:column">
+                <div style="height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at center, #111827 0%, #030712 100%);border-radius:6px;border:1px solid rgba(56,189,248,0.3);text-align:center;padding:16px">
+                  <span style="font-size:44px;line-height:1;margin-bottom:8px">🪐</span>
+                  <div style="font-weight:700;font-size:14px;color:#f8fafc">3D Model Overlay (.glb)</div>
+                  <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">Interactive 3D model renders in real-time over the photo</div>
+                </div>
+                <button class="btn btn-default btn-sm" id="dl-model-btn" style="width:100%;margin-top:8px">Download 3D Model (.glb) 📥</button>
+              </div>
             </div>
           </div>
 
@@ -434,7 +448,8 @@
     var img = document.getElementById('preview-img');
     if (img && p.imageUrl) img.src = p.imageUrl;
     var vid = document.getElementById('preview-vid');
-    if (vid && p.videoUrl) vid.src = p.videoUrl;
+    var vidSrc = p.r2VideoUrl || p.r2_video_url || p.videoUrl;
+    if (vid && vidSrc) vid.src = vidSrc;
 
     if (p.notes) {
       var nr = document.getElementById('notes-row');
@@ -689,7 +704,29 @@
       document.getElementById('dl-target-img').style.display = 'none';
     }
 
-    if (p.videoUrl) {
+    const overlayType = (p.target_data?.overlay_type) || (p.targetData?.overlay_type) || (p.overlayType) || (p.overlay_type) || (p.modelUrl ? '3d' : (p.videoUrl ? 'video' : 'none'));
+    const overlayLabel = document.getElementById('overlay-label');
+    const vidBox = document.getElementById('preview-vid-box');
+    const modelBox = document.getElementById('preview-3d-box');
+
+    if (overlayType === '3d' || p.modelUrl) {
+      if (overlayLabel) overlayLabel.textContent = '3D Model Overlay (.glb)';
+      if (vidBox) vidBox.style.display = 'none';
+      if (modelBox) {
+        modelBox.style.display = 'flex';
+        document.getElementById('dl-model-btn').onclick = () => downloadMedia(p.modelUrl, `${p.name || 'project'}-model.glb`);
+      }
+      const vidBadge = document.getElementById('preview-vid-badge');
+      if (vidBadge) {
+        vidBadge.style.display = 'inline-block';
+        vidBadge.textContent = '🪐 3D GLB';
+        vidBadge.className = 'badge badge-gold';
+      }
+    } else if (p.videoUrl || p.r2VideoUrl || p.r2_video_url || p.videoPath || p.video_path) {
+      const videoSrc = p.r2VideoUrl || p.r2_video_url || p.videoUrl;
+      if (overlayLabel) overlayLabel.textContent = 'Overlay Video';
+      if (vidBox) vidBox.style.display = 'block';
+      if (modelBox) modelBox.style.display = 'none';
       const pVid = document.getElementById('preview-vid');
       const onVidReady = () => {
         if (pVid.videoWidth && pVid.videoHeight) {
@@ -707,7 +744,7 @@
           pVid.src = fallback;
         }
       };
-      if (pVid.src !== p.videoUrl) pVid.src = p.videoUrl;
+      if (videoSrc && pVid.src !== videoSrc) pVid.src = videoSrc;
       if (pVid.videoWidth && pVid.videoHeight) {
         onVidReady();
       }
@@ -725,10 +762,11 @@
           vidProbe.src = fallback;
         }
       };
-      vidProbe.src = p.videoUrl;
-      document.getElementById('dl-video-btn').onclick = () => downloadMedia(p.r2VideoUrl || p.videoUrl, `${p.name || 'project'}-video.mp4`);
+      if (videoSrc) vidProbe.src = videoSrc;
+      document.getElementById('dl-video-btn').onclick = () => downloadMedia(p.r2VideoUrl || p.r2_video_url || p.videoUrl, `${p.name || 'project'}-video.mp4`);
     } else {
-      document.getElementById('dl-video-btn').style.display = 'none';
+      if (vidBox) vidBox.style.display = 'none';
+      if (modelBox) modelBox.style.display = 'none';
     }
 
     checkAndRenderAspectWarning();
@@ -806,7 +844,13 @@
 
     // Set current preview thumbnails
     document.getElementById('e-img-preview').src = currentProject.imageUrl || '';
-    document.getElementById('e-vid-preview').src = currentProject.videoUrl || '';
+    const vidPreviewEl = document.getElementById('e-vid-preview');
+    const initialVidSrc = currentProject.r2VideoUrl || currentProject.r2_video_url || currentProject.videoUrl || '';
+    vidPreviewEl.onerror = () => {
+      const fallback = currentProject.r2VideoUrl || currentProject.r2_video_url;
+      if (fallback && vidPreviewEl.src !== fallback) vidPreviewEl.src = fallback;
+    };
+    vidPreviewEl.src = initialVidSrc;
 
     document.getElementById('edit-modal').style.display = 'flex';
   }
@@ -880,6 +924,14 @@
     modal.style.display = 'flex';
 
     const player = document.getElementById('e-vid-frame-player');
+    player.onerror = () => {
+      const fallback = currentProject?.r2VideoUrl || currentProject?.r2_video_url;
+      if (fallback && player.src !== fallback) {
+        player.src = fallback;
+        player.load();
+        player.play().catch(() => {});
+      }
+    };
     player.src = videoSrc;
     player.load();
     player.play().catch(() => {});
@@ -916,7 +968,7 @@
   }
 
   document.getElementById('e-btn-open-vid-studio')?.addEventListener('click', () => {
-    openVidStudioModal(newVidBase64 || currentProject?.videoUrl || '');
+    openVidStudioModal(newVidBase64 || currentProject?.r2VideoUrl || currentProject?.r2_video_url || currentProject?.videoUrl || '');
   });
 
   document.getElementById('e-close-vid-studio')?.addEventListener('click', closeVidStudioModal);

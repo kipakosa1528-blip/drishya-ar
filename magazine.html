@@ -1207,13 +1207,30 @@
         targets.forEach((t, i) => {
           const card = document.createElement('div');
           card.className = 'target-detail-card';
-          const overlayType = (t.overlay && t.overlay.type) || t.overlay_type || 'video';
-          const overlayUrl = (t.overlay && t.overlay.url) || t.overlay_url || '';
+          const overlayType = (t.overlay && t.overlay.type) || t.overlay_type || (t.model_path || t.modelUrl || t.model_url ? '3d' : 'video');
+          const overlayUrl = (t.overlay && t.overlay.url) || t.overlay_url || t.modelUrl || t.model_url || '';
           const imageUrl = t.imageUrl || t.image_url || '';
+
+          const badgeHtml = overlayType === '3d' 
+            ? '<span class="badge badge-gold">🪐 3D Model</span>' 
+            : (overlayType === 'video' ? '<span class="badge badge-blue">🎬 Video Overlay</span>' : '<span class="badge badge-green">🖼️ Image Overlay</span>');
+
+          let previewMediaHtml = '';
+          let downloadBtnHtml = '';
+          if (overlayType === '3d') {
+            previewMediaHtml = '<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at center, #111827 0%, #030712 100%);padding:12px;text-align:center"><span style="font-size:32px">🪐</span><span style="font-size:12px;font-weight:700;color:#f8fafc;margin-top:4px">3D Model (.glb)</span></div>';
+            if (overlayUrl) downloadBtnHtml = '<a href="' + overlayUrl + '" download="model-' + (i + 1) + '.glb" class="btn btn-default btn-sm" style="width:100%;margin-top:8px;text-align:center;display:block">Download 3D Model (.glb) 📥</a>';
+          } else if (overlayType === 'video') {
+            previewMediaHtml = overlayUrl ? '<video src="' + overlayUrl + '" controls loop playsinline style="width:100%;height:100%"></video>' : '<span style="color:var(--muted);font-size:12px">No Video</span>';
+            if (overlayUrl) downloadBtnHtml = '<a href="' + overlayUrl + '" download="overlay-' + (i + 1) + '.mp4" class="btn btn-default btn-sm" style="width:100%;margin-top:8px;text-align:center;display:block">Download Video 📥</a>';
+          } else {
+            previewMediaHtml = overlayUrl ? '<img src="' + overlayUrl + '" />' : '<span style="color:var(--muted);font-size:12px">No Overlay</span>';
+            if (overlayUrl) downloadBtnHtml = '<a href="' + overlayUrl + '" download="overlay-' + (i + 1) + '.jpg" class="btn btn-default btn-sm" style="width:100%;margin-top:8px;text-align:center;display:block">Download Overlay 📥</a>';
+          }
 
           card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center">' +
               '<span style="font-weight:700;font-size:14px;color:#f8fafc">' + (t.name || ('Target #' + (i + 1))) + '</span>' +
-              '<span class="badge ' + (overlayType === 'video' ? 'badge-blue' : 'badge-green') + '">' + (overlayType === 'video' ? '🎬 Video Overlay' : '🖼️ Image Overlay') + '</span>' +
+              badgeHtml +
             '</div>' +
             '<div class="target-detail-row">' +
               '<div>' +
@@ -1224,13 +1241,11 @@
                 (imageUrl ? '<a href="' + imageUrl + '" download="target-' + (i + 1) + '.jpg" class="btn btn-default btn-sm" style="width:100%;margin-top:8px;text-align:center;display:block">Download Target Image 📥</a>' : '') +
               '</div>' +
               '<div>' +
-                '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">AR ' + (overlayType === 'video' ? 'Video' : 'Image') + ' Overlay</div>' +
+                '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">AR ' + (overlayType === '3d' ? '3D Model' : (overlayType === 'video' ? 'Video' : 'Image')) + ' Overlay</div>' +
                 '<div class="preview-box">' +
-                  (overlayType === 'video' 
-                    ? '<video src="' + overlayUrl + '" controls loop playsinline style="width:100%;height:100%"></video>' 
-                    : (overlayUrl ? '<img src="' + overlayUrl + '" />' : '<span style="color:var(--muted);font-size:12px">No Overlay</span>')) +
+                  previewMediaHtml +
                 '</div>' +
-                (overlayUrl ? '<a href="' + overlayUrl + '" download="overlay-' + (i + 1) + '" class="btn btn-default btn-sm" style="width:100%;margin-top:8px;text-align:center;display:block">Download Overlay 📥</a>' : '') +
+                downloadBtnHtml +
               '</div>' +
             '</div>' +
             (overlayType === 'video' ? `

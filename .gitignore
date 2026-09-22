@@ -26,3 +26,5 @@ hive/
 
 assets/3d/
 
+.vercel
+.env*
