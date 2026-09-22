@@ -186,6 +186,9 @@ test.describe('Experience Editing & Asset Replacement Flow', () => {
     });
 
     await page.waitForTimeout(500);
+    if (await page.locator('#emag-vid-studio-modal').isVisible()) {
+      await page.click('#emag-confirm-vid-framing');
+    }
 
     // Save changes with new files uploaded directly to R2
     await page.click('#save-edit-mag-btn');

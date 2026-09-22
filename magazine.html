@@ -1263,18 +1263,54 @@
             let vidH = 0;
 
             const checkCardAspect = () => {
-              if (!imgW || !imgH || !vidW || !vidH) return;
-              const mismatch = checkAspectMismatch(imgW, imgH, vidW, vidH);
+              const framing = t.overlay?.framing || t.overlayFraming || t.overlay_framing || t.target_data?.overlay_framing;
               const warnEl = document.getElementById(`mag-aspect-warn-${i}`);
               if (!warnEl) return;
+
+              if (framing) {
+                warnEl.style.display = 'block';
+                warnEl.style.background = 'linear-gradient(135deg,rgba(16,185,129,0.12),rgba(15,23,42,0.9))';
+                warnEl.style.borderColor = 'rgba(16,185,129,0.35)';
+                const descEl = document.getElementById(`mag-aspect-desc-${i}`);
+                if (descEl) {
+                  const ratioLabel = framing.ratio === 'target' ? 'Matched to Target Photo' : (framing.ratio === 'original' ? 'Original Ratio' : framing.ratio);
+                  descEl.innerHTML = `Custom Video Framing is <strong>Active</strong> (${ratioLabel} • Zoom: ${Number(framing.zoom || 1).toFixed(1)}x, Pan: ${Math.round(framing.panX || 0)}, ${Math.round(framing.panY || 0)}). Video fits perfectly over the photo in AR.`;
+                }
+                const diffBadge = document.getElementById(`mag-aspect-diff-${i}`);
+                if (diffBadge) {
+                  diffBadge.textContent = '✓ Framing Configured';
+                  diffBadge.className = 'badge badge-green';
+                }
+                const btn = warnEl.querySelector('.mag-fix-aspect-btn');
+                if (btn) {
+                  btn.textContent = '📐 Adjust Video Framing in Edit Mode →';
+                  btn.style.borderColor = 'rgba(16,185,129,0.5)';
+                  btn.style.color = '#34d399';
+                }
+                return;
+              }
+
+              if (!imgW || !imgH || !vidW || !vidH) return;
+              const mismatch = checkAspectMismatch(imgW, imgH, vidW, vidH);
               if (mismatch) {
                 warnEl.style.display = 'block';
+                warnEl.style.background = 'linear-gradient(135deg,rgba(245,158,11,0.12),rgba(15,23,42,0.9))';
+                warnEl.style.borderColor = 'rgba(245,158,11,0.35)';
                 const descEl = document.getElementById(`mag-aspect-desc-${i}`);
                 if (descEl) {
                   descEl.innerHTML = `Page target is <strong>${mismatch.targetLabel} (${mismatch.targetRatio.toFixed(2)})</strong> while Overlay Video is <strong>${mismatch.videoLabel} (${mismatch.videoRatio.toFixed(2)})</strong>. In AR, the video will not naturally fit the physical photo without custom framing.`;
                 }
                 const diffBadge = document.getElementById(`mag-aspect-diff-${i}`);
-                if (diffBadge) diffBadge.textContent = `${mismatch.diffPercent}% Ratio Mismatch`;
+                if (diffBadge) {
+                  diffBadge.textContent = `${mismatch.diffPercent}% Ratio Mismatch`;
+                  diffBadge.className = 'badge badge-gold';
+                }
+                const btn = warnEl.querySelector('.mag-fix-aspect-btn');
+                if (btn) {
+                  btn.textContent = '📐 Re-frame / Crop Video in Edit Mode →';
+                  btn.style.borderColor = 'rgba(245,158,11,0.5)';
+                  btn.style.color = '#fbbf24';
+                }
               } else {
                 warnEl.style.display = 'none';
               }

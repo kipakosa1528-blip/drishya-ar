@@ -36,6 +36,7 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
       planeH,
       overlayType: ov.type || 'video',
       overlayUrl: ov.url || t.image_url,
+      framing: ov.framing || t.overlayFraming || t.overlay_framing || td.overlay_framing || {},
       r2Fallback: t.image_url
     };
   });
@@ -247,14 +248,27 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
         plane.setAttribute('height', 1);
       }
 
-      var repX = 1, repY = 1, offX = 0, offY = 0;
+      var framing = target.framing || (target.overlay && target.overlay.framing) || {};
+      var zoom = Math.max(1.0, Number(framing.zoom) || 1.0);
+      var panX = Number(framing.panX) || 0;
+      var panY = Number(framing.panY) || 0;
+
+      var repX = 1, repY = 1;
       if (vAspect > tAspect) {
-        repX = Number((tAspect / vAspect).toFixed(4));
-        offX = Number(((1 - repX) / 2).toFixed(4));
+        repX = Number((tAspect / vAspect).toFixed(6));
       } else if (vAspect < tAspect) {
-        repY = Number((vAspect / tAspect).toFixed(4));
-        offY = Number(((1 - repY) / 2).toFixed(4));
+        repY = Number((vAspect / tAspect).toFixed(6));
       }
+
+      repX = repX / zoom;
+      repY = repY / zoom;
+
+      var maxOffX = Math.max(0, 1 - repX);
+      var maxOffY = Math.max(0, 1 - repY);
+      var offX = (maxOffX / 2) + (panX / 100) * (maxOffX / 2);
+      var offY = (maxOffY / 2) - (panY / 100) * (maxOffY / 2);
+      offX = Math.max(0, Math.min(maxOffX, offX));
+      offY = Math.max(0, Math.min(maxOffY, offY));
 
       function applyTextureTransform() {
         try {

@@ -273,14 +273,27 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
         plane.setAttribute('height', 1);
       }
 
-      var repX = 1, repY = 1, offX = 0, offY = 0;
+      var framing = (targetData && (targetData.overlay_framing || targetData.framing)) || {};
+      var zoom = Math.max(1.0, Number(framing.zoom) || 1.0);
+      var panX = Number(framing.panX) || 0;
+      var panY = Number(framing.panY) || 0;
+
+      var repX = 1, repY = 1;
       if (vAspect > tAspect) {
-        repX = Number((tAspect / vAspect).toFixed(4));
-        offX = Number(((1 - repX) / 2).toFixed(4));
+        repX = Number((tAspect / vAspect).toFixed(6));
       } else if (vAspect < tAspect) {
-        repY = Number((vAspect / tAspect).toFixed(4));
-        offY = Number(((1 - repY) / 2).toFixed(4));
+        repY = Number((vAspect / tAspect).toFixed(6));
       }
+
+      repX = repX / zoom;
+      repY = repY / zoom;
+
+      var maxOffX = Math.max(0, 1 - repX);
+      var maxOffY = Math.max(0, 1 - repY);
+      var offX = (maxOffX / 2) + (panX / 100) * (maxOffX / 2);
+      var offY = (maxOffY / 2) - (panY / 100) * (maxOffY / 2);
+      offX = Math.max(0, Math.min(maxOffX, offX));
+      offY = Math.max(0, Math.min(maxOffY, offY));
 
       // Safe Three.js direct material texture update - zero A-Frame parser errors
       function applyTextureTransform() {
