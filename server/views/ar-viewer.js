@@ -28,7 +28,7 @@ export function renderMessagePage({ icon = '', color = '#38bdf8', title = '', bo
  * @param {number} p.tW target image width in px
  * @param {number} p.tH target image height in px
  */
-export function renderArPage({ name, overlayType = 'video', modelUrl = '', videoUrl = '', muxPlaybackId, r2VideoUrl, targetData, planeW, planeH, tW, tH }) {
+export function renderArPage({ name, overlayType = 'video', modelUrl = '', videoUrl = '', muxPlaybackId, r2VideoUrl, targetData, planeW, planeH, tW, tH, debug = false }) {
   const is3D = overlayType === '3d' && Boolean(modelUrl);
   return `<!DOCTYPE html>
 <html>
@@ -243,17 +243,48 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
         <a-entity id="ar-model" gltf-model="#ar-model-asset" fit-model="targetSize: ${Number(planeW) || 1.0}" spin-axis visible="false"></a-entity>
       </a-entity>
       ` : `
-      <a-plane id="ar-plane" width="${Number(planeW)}" height="${Number(planeH)}" position="0 0 0.01" visible="false"
+      <a-plane id="ar-plane" width="${Number(planeW)}" height="${Number(planeH)}" position="0 0 0.001" visible="false"
         material="src: #ar-video; transparent: true; alphaTest: 0.01; shader: flat; side: double">
       </a-plane>
       `}
     </xrextras-named-image-target>
   </a-scene>
 
+  ${debug ? `<div id="ar-debug" style="position:fixed;left:8px;top:8px;z-index:99999;max-width:92vw;background:rgba(0,0,0,0.78);color:#7dd3fc;font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;padding:10px 12px;border-radius:8px;border:1px solid rgba(56,189,248,0.4);white-space:pre-wrap;pointer-events:none"></div>` : ''}
+
+
   <script>
     var video = document.getElementById('ar-video');
     var plane = document.getElementById('ar-plane');
     var model = document.getElementById('ar-model');
+
+    var DEBUG = !!document.getElementById('ar-debug');
+    var debugEl = document.getElementById('ar-debug');
+    if (DEBUG && debugEl) debugEl.style.display = 'block';
+    var targetGeom = null;   // live target geometry reported by 8th Wall
+    var lastInfo = {};
+
+    // Never let the overlay bleed past the print: shave a hair off the plane.
+    var PLANE_INSET = 0.995;
+
+    function updateDebugHUD() {
+      if (!DEBUG || !debugEl) return;
+      var f = (targetData && (targetData.overlay_framing || targetData.framing)) || {};
+      var p = (targetData && targetData.properties) || {};
+      var lines = [
+        'name: ' + (lastInfo.name || '-') + '  type: ' + (lastInfo.type || '-'),
+        'isRotated engine/props: ' + lastInfo.isRotated + ' / ' + p.isRotated,
+        'scaledW/H: ' + (lastInfo.scaledWidth != null ? lastInfo.scaledWidth : '-') + ' / ' + (lastInfo.scaledHeight != null ? lastInfo.scaledHeight : '-'),
+        'scale: ' + (lastInfo.scale != null ? lastInfo.scale : '-'),
+        'props W/H: ' + (p.width != null ? p.width : '-') + ' / ' + (p.height != null ? p.height : '-'),
+        'plane W/H: ' + plane.getAttribute('width') + ' / ' + plane.getAttribute('height'),
+        'video W/H: ' + (video ? video.videoWidth + ' / ' + video.videoHeight : '-'),
+        'framing: ' + (f.ratio || 'target') + '  zoom ' + (f.zoom || 1) + '  pan ' + (f.panX || 0) + ',' + (f.panY || 0),
+        'target aspect: ' + (targetGeom && targetGeom.scaledHeight ? (targetGeom.scaledWidth / targetGeom.scaledHeight).toFixed(4) : '-')
+      ];
+      debugEl.textContent = lines.join('\\n');
+    }
+
 
     function parseRatio(r) {
       if (r == null) return NaN;
@@ -280,25 +311,35 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
       var framing = (targetData && (targetData.overlay_framing || targetData.framing)) || {};
       var ratio = framing.ratio || 'target';
 
-      // Overlay aspect ratio follows the user's choice (Match Target by default).
-      // It is never silently enforced, so other ratio pills remain meaningful.
-      var frameAspect = tAspect;
-      if (ratio === 'original') {
+      // Aspect ratio follows the user's choice; 'target' uses the live target
+      // geometry reported by 8th Wall so the overlay matches the detected print.
+      var hasGeom = !!(targetGeom && targetGeom.scaledWidth && targetGeom.scaledHeight);
+      var frameAspect;
+      if (ratio === 'target') {
+        frameAspect = hasGeom ? (targetGeom.scaledWidth / targetGeom.scaledHeight) : tAspect;
+      } else if (ratio === 'original') {
         frameAspect = vAspect;
-      } else if (ratio !== 'target') {
+      } else {
         var parsed = parseRatio(ratio);
-        if (isFinite(parsed) && parsed > 0) frameAspect = parsed;
+        frameAspect = (isFinite(parsed) && parsed > 0) ? parsed : tAspect;
       }
       if (!isFinite(frameAspect) || frameAspect <= 0) frameAspect = tAspect;
 
-      // Plane is sized to the chosen overlay aspect ratio
-      if (frameAspect >= 1) {
-        plane.setAttribute('width', 1);
-        plane.setAttribute('height', Number((1 / frameAspect).toFixed(4)));
+      // Plane local size. For 'target' use 8th Wall's own target dimensions
+      // (authoritative); other ratios keep the larger dimension normalised to 1.
+      var baseW, baseH;
+      if (ratio === 'target' && hasGeom) {
+        baseW = targetGeom.scaledWidth;
+        baseH = targetGeom.scaledHeight;
+      } else if (frameAspect >= 1) {
+        baseW = 1;
+        baseH = 1 / frameAspect;
       } else {
-        plane.setAttribute('width', Number(frameAspect.toFixed(4)));
-        plane.setAttribute('height', 1);
+        baseW = frameAspect;
+        baseH = 1;
       }
+      plane.setAttribute('width', Number((baseW * PLANE_INSET).toFixed(5)));
+      plane.setAttribute('height', Number((baseH * PLANE_INSET).toFixed(5)));
 
       var zoom = Math.max(1.0, Number(framing.zoom) || 1.0);
       var panX = Number(framing.panX) || 0;
@@ -355,6 +396,8 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
 
       applyTextureTransform();
       [80, 400, 1200].forEach(function(ms) { setTimeout(applyTextureTransform, ms); });
+
+      updateDebugHUD();
     }
 
     if (plane) plane.addEventListener('materialtextureloaded', updatePlaneMapping);
@@ -398,11 +441,36 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
     var scanOverlay = document.getElementById('scan-overlay');
 
     var sceneEl = document.querySelector('a-scene');
+
+    function captureTargetDetail(detail) {
+      if (!detail || detail.name !== 'target0') return;
+      targetGeom = {
+        scaledWidth: Number(detail.scaledWidth) || 0,
+        scaledHeight: Number(detail.scaledHeight) || 0
+      };
+      lastInfo = {
+        name: detail.name,
+        type: detail.type,
+        isRotated: detail.properties ? detail.properties.isRotated : undefined,
+        scaledWidth: detail.scaledWidth,
+        scaledHeight: detail.scaledHeight,
+        scale: detail.scale
+      };
+      updatePlaneMapping();
+    }
+
+    sceneEl.addEventListener('xrimageupdated', function(ev) {
+      captureTargetDetail(ev && ev.detail);
+    });
+
     sceneEl.addEventListener('xrimagefound', function(ev) {
       if (!ev || !ev.detail || ev.detail.name !== 'target0') return;
 
+      captureTargetDetail(ev.detail);
+
       // Haptic double-buzz — feels like a "lock-on" confirmation
       if (navigator.vibrate) navigator.vibrate([40, 50, 40]);
+
 
       // Hide scanning reticle
       if (scanOverlay) scanOverlay.classList.add('hidden');

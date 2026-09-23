@@ -34,11 +34,15 @@ export function registerArRoute(app) {
     const id = req.query.id || req.query.magId;
     if (!id) return res.status(400).send('<h2>Missing ?id= parameter</h2>');
 
+    // Opt-in diagnostics only: the debug HUD is server-rendered ONLY when this
+    // is true, so normal customer scans never contain it.
+    const debug = req.query.debug === '1';
+
     const isExplicitMag = req.path.startsWith('/magAr') || req.path.startsWith('/magar') || !!req.query.magId;
 
     // If explicit magazine route or param
     if (isExplicitMag) {
-      return handleMagazineAr(id, res);
+      return handleMagazineAr(id, res, debug);
     }
 
     // Try single project first
@@ -54,11 +58,11 @@ export function registerArRoute(app) {
 
     // If found in projects, render single project AR
     if (project && !error) {
-      return handleProjectAr(project, id, res);
+      return handleProjectAr(project, id, res, debug);
     }
 
     // Otherwise check if this ID is a magazine
-    return handleMagazineAr(id, res);
+    return handleMagazineAr(id, res, debug);
   };
 
   app.get('/ar', arHandler);
@@ -66,7 +70,7 @@ export function registerArRoute(app) {
   app.get('/magar', arHandler);
 }
 
-async function handleProjectAr(project, id, res) {
+async function handleProjectAr(project, id, res, debug = false) {
   if (project.expires_at && new Date(project.expires_at) < new Date()) {
     return res.status(403).send(renderMessagePage({
       icon: '⏰',
@@ -111,10 +115,10 @@ async function handleProjectAr(project, id, res) {
   const planeH = tAspect >= 1 ? Number((1 / tAspect).toFixed(4)) : 1;
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(renderArPage({ name: project.name, overlayType, modelUrl, videoUrl, muxPlaybackId, r2VideoUrl, targetData, planeW, planeH, tW, tH }));
+  res.send(renderArPage({ name: project.name, overlayType, modelUrl, videoUrl, muxPlaybackId, r2VideoUrl, targetData, planeW, planeH, tW, tH, debug }));
 }
 
-async function handleMagazineAr(id, res) {
+async function handleMagazineAr(id, res, debug = false) {
   let magazine = cacheGet('mag_' + id);
   if (!magazine) {
     const result = await supabase
@@ -163,5 +167,5 @@ async function handleMagazineAr(id, res) {
   }
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(renderMagazineArPage({ title: magazine.title, magId: magazine.id, targets }));
+  res.send(renderMagazineArPage({ title: magazine.title, magId: magazine.id, targets, debug }));
 }

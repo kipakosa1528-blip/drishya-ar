@@ -10,7 +10,7 @@ import { esc, jsonForScript } from '../lib/security.js';
  * @param {string} p.magId magazine unique ID
  * @param {Array} p.targets array of processed target objects with target_data and overlay
  */
-export function renderMagazineArPage({ title, magId, targets = [] }) {
+export function renderMagazineArPage({ title, magId, targets = [], debug = false }) {
   // Extract all valid 8th Wall descriptors
   const targetDescriptors = targets
     .map(t => t.target_data)
@@ -206,7 +206,7 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
 
       return `
     <xrextras-named-image-target name="${esc(t.targetName)}">
-      <a-plane id="mag-plane-${idx}" width="${t.planeW}" height="${t.planeH}" position="0 0 0.01" visible="false"
+      <a-plane id="mag-plane-${idx}" width="${t.planeW}" height="${t.planeH}" position="0 0 0.001" visible="false"
         material="src: ${matSrc}; transparent: true; alphaTest: 0.01; shader: flat; side: double">
       </a-plane>
     </xrextras-named-image-target>`;
@@ -214,10 +214,34 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
 
   </a-scene>
 
+  ${debug ? `<div id="mag-debug" style="position:fixed;left:8px;top:8px;z-index:99999;max-width:92vw;background:rgba(0,0,0,0.78);color:#7dd3fc;font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;padding:10px 12px;border-radius:8px;border:1px solid rgba(56,189,248,0.4);white-space:pre-wrap;pointer-events:none"></div>` : ''}
+
   <script>
     var targetsCount = targetsConfig.length;
     var scanOverlay = document.getElementById('scan-overlay');
     var activeTargetIdx = null;
+
+    var DEBUG = !!document.getElementById('mag-debug');
+    var debugEl = document.getElementById('mag-debug');
+    var targetGeom = {};   // per-target live geometry reported by 8th Wall
+    var lastInfo = {};
+    var PLANE_INSET = 0.995;
+
+    function updateDebugHUD() {
+      if (!DEBUG || !debugEl || activeTargetIdx === null) return;
+      var t = targetsConfig[activeTargetIdx] || {};
+      var g = targetGeom[activeTargetIdx] || {};
+      var plane = document.getElementById('mag-plane-' + activeTargetIdx);
+      var lines = [
+        'target #' + activeTargetIdx + '  ' + (lastInfo.name || '-') + '  type ' + (lastInfo.type || '-'),
+        'isRotated(engine): ' + lastInfo.isRotated,
+        'scaledW/H: ' + (g.scaledWidth != null ? g.scaledWidth : '-') + ' / ' + (g.scaledHeight != null ? g.scaledHeight : '-'),
+        'scale: ' + (lastInfo.scale != null ? lastInfo.scale : '-'),
+        'props W/H: ' + (t.tW != null ? t.tW : '-') + ' / ' + (t.tH != null ? t.tH : '-'),
+        'plane W/H: ' + (plane ? plane.getAttribute('width') + ' / ' + plane.getAttribute('height') : '-')
+      ];
+      debugEl.textContent = lines.join('\\n');
+    }
 
     function parseRatio(r) {
       if (r == null) return NaN;
@@ -255,24 +279,34 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
       var framing = target.framing || (target.overlay && target.overlay.framing) || {};
       var ratio = framing.ratio || 'target';
 
-      // Overlay aspect ratio follows the user's choice (never silently enforced).
-      var frameAspect = tAspect;
-      if (ratio === 'original') {
+      // 'target' uses 8th Wall's live target geometry so the overlay matches the
+      // detected print; other ratios keep the larger dimension normalised to 1.
+      var geom = targetGeom[i];
+      var hasGeom = !!(geom && geom.scaledWidth && geom.scaledHeight);
+      var frameAspect;
+      if (ratio === 'target') {
+        frameAspect = hasGeom ? (geom.scaledWidth / geom.scaledHeight) : tAspect;
+      } else if (ratio === 'original') {
         frameAspect = vAspect;
-      } else if (ratio !== 'target') {
+      } else {
         var parsed = parseRatio(ratio);
-        if (isFinite(parsed) && parsed > 0) frameAspect = parsed;
+        frameAspect = (isFinite(parsed) && parsed > 0) ? parsed : tAspect;
       }
       if (!isFinite(frameAspect) || frameAspect <= 0) frameAspect = tAspect;
 
-      // Plane is sized to the chosen overlay aspect ratio
-      if (frameAspect >= 1) {
-        plane.setAttribute('width', 1);
-        plane.setAttribute('height', Number((1 / frameAspect).toFixed(4)));
+      var baseW, baseH;
+      if (ratio === 'target' && hasGeom) {
+        baseW = geom.scaledWidth;
+        baseH = geom.scaledHeight;
+      } else if (frameAspect >= 1) {
+        baseW = 1;
+        baseH = 1 / frameAspect;
       } else {
-        plane.setAttribute('width', Number(frameAspect.toFixed(4)));
-        plane.setAttribute('height', 1);
+        baseW = frameAspect;
+        baseH = 1;
       }
+      plane.setAttribute('width', Number((baseW * PLANE_INSET).toFixed(5)));
+      plane.setAttribute('height', Number((baseH * PLANE_INSET).toFixed(5)));
 
       var zoom = Math.max(1.0, Number(framing.zoom) || 1.0);
       var panX = Number(framing.panX) || 0;
@@ -326,6 +360,8 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
 
       applyTextureTransform();
       [80, 400, 1200].forEach(function(ms) { setTimeout(applyTextureTransform, ms); });
+
+      updateDebugHUD();
     }
 
     // Initialize mapping for all targets
@@ -351,10 +387,33 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
       })(k);
     }
 
+    // Capture 8th Wall's live target geometry (authoritative size/rotation)
+    function captureTargetDetail(detail) {
+      if (!detail) return;
+      for (var i = 0; i < targetsCount; i++) {
+        if (targetsConfig[i].targetName === detail.name) {
+          targetGeom[i] = {
+            scaledWidth: Number(detail.scaledWidth) || 0,
+            scaledHeight: Number(detail.scaledHeight) || 0
+          };
+          lastInfo = {
+            name: detail.name,
+            type: detail.type,
+            isRotated: detail.properties ? detail.properties.isRotated : undefined,
+            scale: detail.scale
+          };
+          updatePlaneMapping(i);
+          break;
+        }
+      }
+    }
+    window.addEventListener('xrimageupdated', function(e) { captureTargetDetail(e.detail); });
+
     // Listen for image tracking events across all targets
     window.addEventListener('xrimagefound', function(e) {
       if (scanOverlay) scanOverlay.classList.add('hidden');
       var name = e.detail ? e.detail.name : '';
+      captureTargetDetail(e.detail);
       
       for (var i = 0; i < targetsCount; i++) {
         var tName = targetsConfig[i].targetName;
