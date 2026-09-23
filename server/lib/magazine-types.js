@@ -77,6 +77,7 @@ export function formatOverlay(raw = {}) {
   const zoom = Number(raw.zoom || rawFraming?.zoom || 1.0);
   const panX = Number(raw.panX || rawFraming?.panX || 0);
   const panY = Number(raw.panY || rawFraming?.panY || 0);
+  const fit = Number(raw.fit || rawFraming?.fit || 1.0);
   const ratio = raw.ratio || rawFraming?.ratio || 'target';
 
   const framing = rawFraming || {
@@ -84,6 +85,7 @@ export function formatOverlay(raw = {}) {
     zoom,
     panX,
     panY,
+    fit,
     aspectRatio: aspect,
     planeW,
     planeH
@@ -106,6 +108,7 @@ export function formatOverlay(raw = {}) {
     zoom,
     panX,
     panY,
+    fit,
     ratio,
     framing,
     loop: raw.loop !== false,

@@ -488,9 +488,10 @@ export function resolveFramingAspect(ratio, targetW, targetH, videoW, videoH) {
 /**
  * Build the canonical framing object persisted to the API.
  */
-export function buildFraming({ ratio = 'target', zoom = 1, panX = 0, panY = 0, targetW, targetH, videoW, videoH } = {}) {
+export function buildFraming({ ratio = 'target', zoom = 1, panX = 0, panY = 0, fit = 1, targetW, targetH, videoW, videoH } = {}) {
   const aspect = resolveFramingAspect(ratio, targetW, targetH, videoW, videoH);
   const z = Math.max(1, Number(zoom) || 1);
+  const f = Math.min(1, Math.max(0.5, Number(fit) || 1));
   const planeW = aspect >= 1 ? 1 : Number(aspect.toFixed(4));
   const planeH = aspect >= 1 ? Number((1 / aspect).toFixed(4)) : 1;
   return {
@@ -498,6 +499,7 @@ export function buildFraming({ ratio = 'target', zoom = 1, panX = 0, panY = 0, t
     zoom: z,
     panX: Number(panX) || 0,
     panY: Number(panY) || 0,
+    fit: Number(f.toFixed(4)),
     aspectRatio: Number(aspect.toFixed(6)),
     planeW,
     planeH,

@@ -177,6 +177,7 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
             zoom: framing.zoom || 1.0,
             panX: framing.panX || 0,
             panY: framing.panY || 0,
+            fit: framing.fit != null ? framing.fit : 1.0,
             loop: t.loop !== false,
             autoplay: t.autoplay !== false,
             muted: !!t.muted,
@@ -360,11 +361,13 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
               zoom: framing.zoom || 1.0,
               panX: framing.panX || 0,
               panY: framing.panY || 0,
+              fit: framing.fit != null ? framing.fit : 1.0,
               framing: {
                 ratio: framing.ratio || 'target',
                 zoom: framing.zoom || 1.0,
                 panX: framing.panX || 0,
                 panY: framing.panY || 0,
+                fit: framing.fit != null ? framing.fit : 1.0,
                 aspectRatio: aspect,
                 planeW,
                 planeH
@@ -442,6 +445,7 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
         zoom: Number(framing.zoom) || 1,
         panX: Number(framing.panX) || 0,
         panY: Number(framing.panY) || 0,
+        fit: framing.fit != null ? Number(framing.fit) : 1,
         aspectRatio: aspect,
         planeW,
         planeH,
@@ -451,6 +455,7 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
       overlay.zoom = canonical.zoom;
       overlay.panX = canonical.panX;
       overlay.panY = canonical.panY;
+      overlay.fit = canonical.fit;
       overlay.aspect_ratio = aspect;
       overlay.aspectRatio = aspect;
       overlay.planeW = planeW;

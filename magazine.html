@@ -232,24 +232,27 @@
           </div>
         </div>
 
-        <!-- Viewport -->
-        <div style="background:#020408;padding:16px;min-height:300px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative">
-          <div id="emag-vid-frame-box" style="position:relative;overflow:hidden;border:2px solid var(--accent);border-radius:8px;box-shadow:0 0 25px rgba(59,130,246,0.35);cursor:grab;touch-action:none">
-            <video id="emag-vid-frame-player" loop playsinline muted autoplay style="position:absolute;pointer-events:none;display:block"></video>
-            
-            <!-- Rule of thirds -->
-            <div style="position:absolute;inset:0;border:1px dashed rgba(255,255,255,0.35);pointer-events:none;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr">
-              <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
-              <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
-              <div style="border-bottom:1px solid rgba(255,255,255,0.15)"></div>
-              <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
-              <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
-              <div style="border-bottom:1px solid rgba(255,255,255,0.15)"></div>
-              <div style="border-right:1px solid rgba(255,255,255,0.15)"></div>
-              <div style="border-right:1px solid rgba(255,255,255,0.15)"></div>
-              <div></div>
+        <!-- Viewport: dashed outline = physical page, solid box = overlay -->
+        <div style="background:#020408;padding:16px;min-height:340px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;position:relative;gap:8px">
+          <div id="emag-vid-target-outline" style="position:relative;border:1px dashed rgba(255,255,255,0.45);border-radius:10px;display:flex;align-items:center;justify-content:center">
+            <div id="emag-vid-frame-box" style="position:relative;overflow:hidden;border:2px solid var(--accent);border-radius:8px;box-shadow:0 0 25px rgba(59,130,246,0.35);cursor:grab;touch-action:none;transform-origin:center">
+              <video id="emag-vid-frame-player" loop playsinline muted autoplay style="position:absolute;pointer-events:none;display:block"></video>
+
+              <!-- Rule of thirds -->
+              <div style="position:absolute;inset:0;border:1px dashed rgba(255,255,255,0.35);pointer-events:none;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr">
+                <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+                <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+                <div style="border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+                <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+                <div style="border-right:1px solid rgba(255,255,255,0.15);border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+                <div style="border-bottom:1px solid rgba(255,255,255,0.15)"></div>
+                <div style="border-right:1px solid rgba(255,255,255,0.15)"></div>
+                <div style="border-right:1px solid rgba(255,255,255,0.15)"></div>
+                <div></div>
+              </div>
             </div>
           </div>
+          <div style="font-size:11px;color:var(--muted)">┈ dashed = physical page &nbsp;•&nbsp; ▢ solid = video overlay</div>
         </div>
 
         <!-- Sliders -->
@@ -266,6 +269,11 @@
           <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:140px">
             <span>↕ Pan Y:</span>
             <input type="range" id="emag-vid-pany-slider" min="-100" max="100" step="1" value="0" style="flex:1;accent-color:var(--accent)" />
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:160px">
+            <span>📐 Overlay Fit:</span>
+            <input type="range" id="emag-vid-fit-slider" min="80" max="100" step="1" value="100" style="flex:1;accent-color:var(--accent)" />
+            <span id="emag-vid-fit-text" style="min-width:38px">100%</span>
           </div>
         </div>
 
@@ -456,6 +464,7 @@
   let emagVidModalZoom = 1.0;
   let emagVidModalPanX = 0;
   let emagVidModalPanY = 0;
+  let emagVidModalFit = 1.0;
   let emagVidTargetW = 640;
   let emagVidTargetH = 640;
   let emagVidVideoW = 640;
@@ -509,11 +518,13 @@
       emagVidModalZoom = existingFraming.zoom || 1.0;
       emagVidModalPanX = existingFraming.panX || 0;
       emagVidModalPanY = existingFraming.panY || 0;
+      emagVidModalFit = Number(existingFraming.fit) || 1.0;
     } else {
       emagVidModalSelectedRatio = 'target';
       emagVidModalZoom = 1.0;
       emagVidModalPanX = 0;
       emagVidModalPanY = 0;
+      emagVidModalFit = 1.0;
     }
 
     document.querySelectorAll('#emag-vid-modal-pills .ratio-pill').forEach(p => {
@@ -523,6 +534,8 @@
     const zS = document.getElementById('emag-vid-zoom-slider'); if (zS) zS.value = emagVidModalZoom;
     const xS = document.getElementById('emag-vid-panx-slider'); if (xS) xS.value = emagVidModalPanX;
     const yS = document.getElementById('emag-vid-pany-slider'); if (yS) yS.value = emagVidModalPanY;
+    const fS = document.getElementById('emag-vid-fit-slider'); if (fS) fS.value = Math.round(emagVidModalFit * 100);
+    const fT = document.getElementById('emag-vid-fit-text'); if (fT) fT.textContent = `${Math.round(emagVidModalFit * 100)}%`;
     const zT = document.getElementById('emag-vid-zoom-text'); if (zT) zT.textContent = `${emagVidModalZoom.toFixed(1)}x`;
 
     player.onloadedmetadata = () => {
@@ -576,18 +589,32 @@
 
     const maxH = 280;
     const maxW = 420;
-    let boxW, boxH;
+    const targetAspect = tW / tH;
 
+    // Dashed outline = physical page (target aspect)
+    const outline = document.getElementById('emag-vid-target-outline');
+    let outW, outH;
+    if (targetAspect >= 1) {
+      outW = Math.min(maxW, Math.round(maxH * targetAspect));
+      outH = Math.round(outW / targetAspect);
+    } else {
+      outH = Math.min(maxH, Math.round(maxW / targetAspect));
+      outW = Math.round(outH * targetAspect);
+    }
+    if (outline) { outline.style.width = `${outW}px`; outline.style.height = `${outH}px`; }
+
+    let boxW, boxH;
     if (targetR >= 1) {
-      boxW = Math.min(maxW, Math.round(maxH * targetR));
+      boxW = Math.min(outW, Math.round(outH * targetR));
       boxH = Math.round(boxW / targetR);
     } else {
-      boxH = Math.min(maxH, Math.round(maxW / targetR));
+      boxH = Math.min(outH, Math.round(outW / targetR));
       boxW = Math.round(boxH * targetR);
     }
 
     box.style.width = `${boxW}px`;
     box.style.height = `${boxH}px`;
+    box.style.transform = `scale(${emagVidModalFit})`;
 
     renderEmagModalVidPlayerTransform();
   }
@@ -655,20 +682,32 @@
     renderEmagModalVidPlayerTransform();
   }
 
+  function setEmagModalVidFit(val) {
+    emagVidModalFit = Math.min(1.0, Math.max(0.5, Number(val) / 100));
+    const fT = document.getElementById('emag-vid-fit-text');
+    if (fT) fT.textContent = `${Math.round(emagVidModalFit * 100)}%`;
+    const box = document.getElementById('emag-vid-frame-box');
+    if (box) box.style.transform = `scale(${emagVidModalFit})`;
+  }
+
   function resetEmagModalVidFraming() {
     emagVidModalZoom = 1.0;
     emagVidModalPanX = 0;
     emagVidModalPanY = 0;
+    emagVidModalFit = 1.0;
     const zS = document.getElementById('emag-vid-zoom-slider'); if (zS) zS.value = 1;
     const xS = document.getElementById('emag-vid-panx-slider'); if (xS) xS.value = 0;
     const yS = document.getElementById('emag-vid-pany-slider'); if (yS) yS.value = 0;
+    const fS = document.getElementById('emag-vid-fit-slider'); if (fS) fS.value = 100;
     const zT = document.getElementById('emag-vid-zoom-text'); if (zT) zT.textContent = '1.0x';
+    const fT = document.getElementById('emag-vid-fit-text'); if (fT) fT.textContent = '100%';
     renderEmagModalVidPlayerTransform();
   }
 
   document.getElementById('emag-vid-zoom-slider')?.addEventListener('input', (e) => setEmagModalVidZoom(e.target.value));
   document.getElementById('emag-vid-panx-slider')?.addEventListener('input', (e) => setEmagModalVidPanX(e.target.value));
   document.getElementById('emag-vid-pany-slider')?.addEventListener('input', (e) => setEmagModalVidPanY(e.target.value));
+  document.getElementById('emag-vid-fit-slider')?.addEventListener('input', (e) => setEmagModalVidFit(e.target.value));
   document.getElementById('emag-btn-zoom-in')?.addEventListener('click', () => adjustEmagModalVidZoom(0.1));
   document.getElementById('emag-btn-zoom-out')?.addEventListener('click', () => adjustEmagModalVidZoom(-0.1));
   document.getElementById('emag-btn-reset-framing')?.addEventListener('click', resetEmagModalVidFraming);
@@ -746,6 +785,7 @@
       zoom: emagVidModalZoom,
       panX: emagVidModalPanX,
       panY: emagVidModalPanY,
+      fit: emagVidModalFit,
       targetW: tW,
       targetH: tH,
       videoW: emagVidVideoW,

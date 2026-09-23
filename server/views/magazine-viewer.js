@@ -305,8 +305,9 @@ export function renderMagazineArPage({ title, magId, targets = [], debug = false
         baseW = frameAspect;
         baseH = 1;
       }
-      plane.setAttribute('width', Number((baseW * PLANE_INSET).toFixed(5)));
-      plane.setAttribute('height', Number((baseH * PLANE_INSET).toFixed(5)));
+      var fit = Math.min(1, Math.max(0.5, Number(framing.fit) || 1));
+      plane.setAttribute('width', Number((baseW * PLANE_INSET * fit).toFixed(5)));
+      plane.setAttribute('height', Number((baseH * PLANE_INSET * fit).toFixed(5)));
 
       var zoom = Math.max(1.0, Number(framing.zoom) || 1.0);
       var panX = Number(framing.panX) || 0;

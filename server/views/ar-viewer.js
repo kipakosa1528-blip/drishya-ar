@@ -279,7 +279,7 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
         'props W/H: ' + (p.width != null ? p.width : '-') + ' / ' + (p.height != null ? p.height : '-'),
         'plane W/H: ' + plane.getAttribute('width') + ' / ' + plane.getAttribute('height'),
         'video W/H: ' + (video ? video.videoWidth + ' / ' + video.videoHeight : '-'),
-        'framing: ' + (f.ratio || 'target') + '  zoom ' + (f.zoom || 1) + '  pan ' + (f.panX || 0) + ',' + (f.panY || 0),
+        'framing: ' + (f.ratio || 'target') + '  zoom ' + (f.zoom || 1) + '  pan ' + (f.panX || 0) + ',' + (f.panY || 0) + '  fit ' + (f.fit != null ? f.fit : 1),
         'target aspect: ' + (targetGeom && targetGeom.scaledHeight ? (targetGeom.scaledWidth / targetGeom.scaledHeight).toFixed(4) : '-')
       ];
       debugEl.textContent = lines.join('\\n');
@@ -338,8 +338,9 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
         baseW = frameAspect;
         baseH = 1;
       }
-      plane.setAttribute('width', Number((baseW * PLANE_INSET).toFixed(5)));
-      plane.setAttribute('height', Number((baseH * PLANE_INSET).toFixed(5)));
+      var fit = Math.min(1, Math.max(0.5, Number(framing.fit) || 1));
+      plane.setAttribute('width', Number((baseW * PLANE_INSET * fit).toFixed(5)));
+      plane.setAttribute('height', Number((baseH * PLANE_INSET * fit).toFixed(5)));
 
       var zoom = Math.max(1.0, Number(framing.zoom) || 1.0);
       var panX = Number(framing.panX) || 0;
