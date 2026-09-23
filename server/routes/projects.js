@@ -247,6 +247,14 @@ export function registerProjectsRoutes(app, { requireAuth }) {
         newTargetData.model_url = td.model_url || null;
         newTargetData.mux_asset_id = td.mux_asset_id || null;
         newTargetData.mux_playback_id = td.mux_playback_id || null;
+        // Preserve the user's framing choice across image replacement
+        if (td.overlay_framing !== undefined) {
+          newTargetData.overlay_framing = td.overlay_framing;
+          if (newTargetData.overlay_framing && newTargetData.overlay_framing.aspectRatio) {
+            if (!newTargetData.properties) newTargetData.properties = {};
+            newTargetData.properties.aspectRatio = newTargetData.overlay_framing.aspectRatio;
+          }
+        }
         td = newTargetData;
         updates.image_path = resolvedImagePath;
       }

@@ -28,3 +28,7 @@ assets/3d/
 
 .vercel
 .env*
+
+# VM bootstrap script contains live service keys — never commit
+deploy_vm.sh
+

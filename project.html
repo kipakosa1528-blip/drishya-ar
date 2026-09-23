@@ -82,9 +82,11 @@
                 <span id="preview-vid-badge" class="badge" style="display:none;font-size:10px"></span>
               </div>
               
-              <!-- Video Preview Box -->
+              <!-- Video Preview Box (framed to the target aspect) -->
               <div id="preview-vid-box">
-                <video id="preview-vid" controls style="width:100%;max-height:220px;background:#000;border-radius:6px;border:1px solid var(--border)"></video>
+                <div id="preview-vid-frame" style="position:relative;overflow:hidden;background:#000;border-radius:6px;border:1px solid var(--border);margin:0 auto">
+                  <video id="preview-vid" loop muted autoplay playsinline style="position:absolute;display:block;object-fit:fill"></video>
+                </div>
                 <button class="btn btn-default btn-sm" id="dl-video-btn" style="width:100%;margin-top:8px">Download Video 📥</button>
               </div>
 
@@ -287,8 +289,10 @@
               <span id="e-vid-badge" class="badge badge-blue" style="font-size:10px">Live Asset</span>
             </div>
 
-            <div style="position:relative;height:220px;background:radial-gradient(circle at center, #111827 0%, #030712 100%);border-radius:8px;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px">
-              <video id="e-vid-preview" src="" style="max-width:100%;max-height:100%;object-fit:contain;display:block" controls playsinline></video>
+            <div id="e-vid-preview-stage" style="position:relative;height:220px;background:radial-gradient(circle at center, #111827 0%, #030712 100%);border-radius:8px;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px">
+              <div id="e-vid-preview-frame" style="position:relative;overflow:hidden;background:#000;border-radius:6px">
+                <video id="e-vid-preview" src="" style="position:absolute;display:block;object-fit:fill" loop muted autoplay playsinline></video>
+              </div>
             </div>
 
             <div id="e-vid-info" style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Uncropped video player (Plays over physical photo)</div>
@@ -461,7 +465,7 @@
 <script type="module">
   import { requireAuth, initNav, authHeaders } from './js/auth.js?v=4';
   import { getProject, updateProject, deleteProject } from './js/db.js?v=4';
-  import { fmt, isExpired, statusBadge, arUrl, toast, generateQR, downloadQR, downloadMedia, copyText, calcMuxCost, getRatioLabel, checkAspectMismatch } from './js/utils.js?v=4';
+  import { fmt, isExpired, statusBadge, arUrl, toast, generateQR, downloadQR, downloadMedia, copyText, calcMuxCost, getRatioLabel, checkAspectMismatch, buildFraming, framedMediaStyle, resolveFramingAspect } from './js/utils.js?v=4';
 
   requireAuth(); 
   initNav('projects');
@@ -503,13 +507,45 @@
     const vidBadge = document.getElementById('preview-vid-badge');
 
     if (framing) {
-      // Framing is resolved and active — hide warning banner completely
-      banner.style.display = 'none';
-      if (vidBadge) {
-        vidBadge.style.display = 'inline-block';
-        const ratioLabel = framing.ratio === 'target' ? 'Match Target Photo' : (framing.ratio === 'original' ? 'Original Ratio' : framing.ratio);
-        vidBadge.textContent = `✓ Framed (${ratioLabel})`;
-        vidBadge.className = 'badge badge-green';
+      const ratioLabel = framing.ratio === 'target' ? 'Match Target Photo' : (framing.ratio === 'original' ? 'Original Ratio' : framing.ratio);
+      const matchesTarget = (framing.ratio || 'target') === 'target' ||
+        (tW && tH && framing.aspectRatio && Math.abs(framing.aspectRatio - (tW / tH)) / (tW / tH) <= 0.04);
+
+      if (matchesTarget) {
+        // Matched to the physical photo — hide the warning entirely
+        banner.style.display = 'none';
+        if (vidBadge) {
+          vidBadge.style.display = 'inline-block';
+          vidBadge.textContent = `✓ Framed (${ratioLabel})`;
+          vidBadge.className = 'badge badge-green';
+        }
+      } else {
+        // User intentionally chose another ratio — inform, never force.
+        banner.style.display = 'block';
+        banner.style.background = 'rgba(56,189,248,0.08)';
+        banner.style.borderColor = 'rgba(56,189,248,0.3)';
+        if (bannerIcon) bannerIcon.textContent = 'ℹ️';
+        if (bannerTitle) { bannerTitle.textContent = 'Custom Overlay Ratio'; bannerTitle.style.color = '#38bdf8'; }
+        if (desc) {
+          desc.innerHTML = `Overlay is framed to <strong>${ratioLabel}</strong>. Pick <strong>Match Target Photo</strong> if you want its edges to line up exactly with the printed photo.`;
+        }
+        if (diffBadge) {
+          diffBadge.textContent = '◆ Custom Ratio';
+          diffBadge.style.background = 'rgba(56,189,248,0.2)';
+          diffBadge.style.color = '#38bdf8';
+          diffBadge.style.borderColor = 'rgba(56,189,248,0.4)';
+        }
+        if (fixBtn) {
+          fixBtn.textContent = '📐 Match Target Photo →';
+          fixBtn.style.borderColor = 'rgba(56,189,248,0.4)';
+          fixBtn.style.color = '#38bdf8';
+          fixBtn.style.background = 'rgba(56,189,248,0.1)';
+        }
+        if (vidBadge) {
+          vidBadge.style.display = 'inline-block';
+          vidBadge.textContent = `◆ ${ratioLabel}`;
+          vidBadge.className = 'badge badge-blue';
+        }
       }
       return;
     }
@@ -554,6 +590,75 @@
       banner.style.display = 'none';
       if (vidBadge) vidBadge.style.display = 'none';
     }
+  }
+
+  // Render a video into a frame with the exact AR crop (aspect + zoom + pan).
+  function applyFramedPreview(frameEl, videoEl, framing, tW, tH, vW, vH, maxH) {
+    if (!frameEl || !videoEl || !vW || !vH) return false;
+    const style = framedMediaStyle(framing, tW, tH, vW, vH);
+    const frameAspect = style.frameAspect || (tW / tH) || 1;
+    const stageW = frameEl.parentElement?.clientWidth || frameEl.clientWidth || 300;
+    const limitH = maxH || 220;
+    let w = stageW;
+    let h = w / frameAspect;
+    if (h > limitH) { h = limitH; w = h * frameAspect; }
+    frameEl.style.width = Math.max(40, Math.round(w)) + 'px';
+    frameEl.style.height = Math.max(40, Math.round(h)) + 'px';
+    videoEl.style.position = 'absolute';
+    videoEl.style.left = style.leftPct + '%';
+    videoEl.style.top = style.topPct + '%';
+    videoEl.style.width = style.widthPct + '%';
+    videoEl.style.height = style.heightPct + '%';
+    videoEl.style.maxWidth = 'none';
+    videoEl.style.maxHeight = 'none';
+    videoEl.style.objectFit = 'fill';
+    return true;
+  }
+
+  function resetFramedPreview(frameEl, videoEl, heightPx) {
+    if (!frameEl || !videoEl) return;
+    frameEl.style.width = '100%';
+    frameEl.style.height = heightPx || '100%';
+    videoEl.style.position = 'absolute';
+    videoEl.style.left = '0';
+    videoEl.style.top = '0';
+    videoEl.style.width = '100%';
+    videoEl.style.height = '100%';
+    videoEl.style.maxWidth = '100%';
+    videoEl.style.maxHeight = '100%';
+    videoEl.style.objectFit = 'contain';
+  }
+
+  function updateFramingBadge() {
+    if (!currentFraming) return;
+    const vidBadge = document.getElementById('e-vid-badge');
+    const vidInfo = document.getElementById('e-vid-info');
+    const ratioLabel = currentFraming.ratio === 'target' ? 'Match Target' : (currentFraming.ratio === 'original' ? 'Original' : currentFraming.ratio);
+    if (vidBadge) { vidBadge.textContent = `✓ Framed (${ratioLabel})`; vidBadge.className = 'badge badge-green'; }
+    if (vidInfo) vidInfo.textContent = `Framed: Zoom ${Number(currentFraming.zoom || 1).toFixed(1)}x, Pan (${Math.round(currentFraming.panX || 0)}, ${Math.round(currentFraming.panY || 0)})`;
+  }
+
+  function renderDetailFramedPreview() {
+    const frameEl = document.getElementById('preview-vid-frame');
+    const videoEl = document.getElementById('preview-vid');
+    if (!frameEl || !videoEl) return;
+    const framing = currentProject?.target_data?.overlay_framing || currentProject?.target_data?.framing || null;
+    if (!framing || !videoNaturalWidth || !videoNaturalHeight) {
+      resetFramedPreview(frameEl, videoEl, '220px');
+      return;
+    }
+    applyFramedPreview(frameEl, videoEl, framing, targetNaturalWidth || 0, targetNaturalHeight || 0, videoNaturalWidth, videoNaturalHeight, 220);
+  }
+
+  function renderEditFramedPreview() {
+    const frameEl = document.getElementById('e-vid-preview-frame');
+    const videoEl = document.getElementById('e-vid-preview');
+    if (!frameEl || !videoEl) return;
+    if (!currentFraming || !videoNaturalWidth || !videoNaturalHeight) {
+      resetFramedPreview(frameEl, videoEl, '200px');
+      return;
+    }
+    applyFramedPreview(frameEl, videoEl, currentFraming, targetNaturalWidth || 0, targetNaturalHeight || 0, videoNaturalWidth, videoNaturalHeight, 200);
   }
 
   document.getElementById('btn-fix-aspect')?.addEventListener('click', () => {
@@ -733,6 +838,7 @@
           videoNaturalWidth = pVid.videoWidth;
           videoNaturalHeight = pVid.videoHeight;
           checkAndRenderAspectWarning();
+          renderDetailFramedPreview();
         }
       };
       pVid.onloadedmetadata = onVidReady;
@@ -770,6 +876,7 @@
     }
 
     checkAndRenderAspectWarning();
+    renderDetailFramedPreview();
 
     document.getElementById('detail-grid').style.display = '';
     document.getElementById('not-found').style.display = 'none';
@@ -850,7 +957,16 @@
       const fallback = currentProject.r2VideoUrl || currentProject.r2_video_url;
       if (fallback && vidPreviewEl.src !== fallback) vidPreviewEl.src = fallback;
     };
+    vidPreviewEl.onloadedmetadata = () => {
+      if (vidPreviewEl.videoWidth && vidPreviewEl.videoHeight) {
+        videoNaturalWidth = vidPreviewEl.videoWidth;
+        videoNaturalHeight = vidPreviewEl.videoHeight;
+      }
+      renderEditFramedPreview();
+    };
     vidPreviewEl.src = initialVidSrc;
+    renderEditFramedPreview();
+    requestAnimationFrame(() => renderEditFramedPreview());
 
     document.getElementById('edit-modal').style.display = 'flex';
   }
@@ -893,6 +1009,7 @@
       vidEl.onloadedmetadata = () => {
         videoNaturalWidth = vidEl.videoWidth || 640;
         videoNaturalHeight = vidEl.videoHeight || 640;
+        renderEditFramedPreview();
       };
       document.getElementById('e-vid-badge').textContent = '✨ Replacement Selected';
       document.getElementById('e-vid-badge').className = 'badge badge-gold';
@@ -1002,7 +1119,7 @@
       targetR = player.videoWidth / player.videoHeight;
       status.textContent = `Original Video (${getRatioLabel(player.videoWidth, player.videoHeight)}) • Drag to pan`;
     } else {
-      targetR = Number(eval(vidModalSelectedRatio));
+      targetR = resolveFramingAspect(vidModalSelectedRatio, tW, tH, player.videoWidth, player.videoHeight);
       status.textContent = `Framed to Custom Aspect Ratio • Drag to pan`;
     }
 
@@ -1167,32 +1284,33 @@
     }, { passive: false });
   }
 
-  document.getElementById('e-confirm-vid-framing')?.addEventListener('click', () => {
-    const tW = targetNaturalWidth || currentProject?.target_data?.metadata?.width || 640;
-    const tH = targetNaturalHeight || currentProject?.target_data?.metadata?.height || 640;
-    const tAspect = tW / tH;
+  document.getElementById('e-confirm-vid-framing')?.addEventListener('click', async () => {
+    const tW = targetNaturalWidth || currentProject?.target_data?.properties?.width || currentProject?.target_data?.metadata?.width || 640;
+    const tH = targetNaturalHeight || currentProject?.target_data?.properties?.height || currentProject?.target_data?.metadata?.height || 640;
 
-    currentFraming = {
+    currentFraming = buildFraming({
       ratio: vidModalSelectedRatio,
       zoom: vidModalZoom,
       panX: vidModalPanX,
       panY: vidModalPanY,
-      aspectRatio: vidModalSelectedRatio === 'target' ? tAspect : (vidModalSelectedRatio === 'original' ? (videoNaturalWidth / videoNaturalHeight) : Number(eval(vidModalSelectedRatio)))
-    };
+      targetW: tW,
+      targetH: tH,
+      videoW: videoNaturalWidth,
+      videoH: videoNaturalHeight,
+    });
 
-    const vidBadge = document.getElementById('e-vid-badge');
-    if (vidBadge) {
-      vidBadge.textContent = `✓ Framed (${vidModalSelectedRatio === 'target' ? 'Match Target' : vidModalSelectedRatio})`;
-      vidBadge.className = 'badge badge-green';
-    }
-
-    const vidInfo = document.getElementById('e-vid-info');
-    if (vidInfo) {
-      vidInfo.textContent = `Custom Framed: Zoom ${vidModalZoom.toFixed(1)}x, Pan (${Math.round(vidModalPanX)}, ${Math.round(vidModalPanY)})`;
-    }
-
+    updateFramingBadge();
+    renderEditFramedPreview();
     closeVidStudioModal();
-    toast('Video framing applied!', 'success');
+
+    // Persist immediately so framing can't be lost by closing without "Save Changes".
+    try {
+      const updated = await updateProject(id, { overlayFraming: currentFraming });
+      render(updated);
+      toast('Video framing saved!', 'success');
+    } catch (err) {
+      toast('Framing applied but could not be saved: ' + err.message, 'err');
+    }
   });
 
   async function uploadToR2(blobOrFile, key, contentType, retries = 3) {

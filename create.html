@@ -553,7 +553,7 @@
 
 <script type="module">
   import { requireAuth, initNav, authHeaders } from './js/auth.js?v=4';
-  import { fmt, arUrl, toast, generateQR, downloadQR, downloadMedia, copyText } from './js/utils.js?v=4';
+  import { fmt, arUrl, toast, generateQR, downloadQR, downloadMedia, copyText, buildFraming } from './js/utils.js?v=4';
   import { getLocalProjects, setLocalProjects } from './js/db.js?v=4';
 
 
@@ -912,15 +912,16 @@
       }
     }
 
-    window.videoFraming = {
+    window.videoFraming = buildFraming({
       ratio: vidSelectedRatio,
       zoom: vidZoom,
       panX: vidPanX,
       panY: vidPanY,
-      aspectRatio: vidSelectedRatio === 'target' ? tAspect : (vidSelectedRatio === 'original' ? vAspect : Number(eval(vidSelectedRatio))),
-      planeW: 1,
-      planeH: +(1 / (vidSelectedRatio === 'target' ? tAspect : (vidSelectedRatio === 'original' ? vAspect : Number(eval(vidSelectedRatio))))).toFixed(4)
-    };
+      targetW: targetWidth,
+      targetH: targetHeight,
+      videoW: player.videoWidth,
+      videoH: player.videoHeight,
+    });
 
     document.getElementById('vid-dims-text').textContent = `${player.videoWidth} × ${player.videoHeight} px • Zoom ${vidZoom.toFixed(1)}x`;
 
@@ -1161,18 +1162,11 @@
       };
 
       if (window.overlayType !== '3d') {
-        const tW = targetWidth || 1200;
-        const tH = targetHeight || 1800;
-        const tAspect = tW / tH;
-        body.overlayFraming = window.videoFraming || {
+        body.overlayFraming = window.videoFraming || buildFraming({
           ratio: 'target',
-          zoom: 1.0,
-          panX: 0,
-          panY: 0,
-          aspectRatio: tAspect,
-          planeW: 1,
-          planeH: +(1 / tAspect).toFixed(4)
-        };
+          targetW: targetWidth || 1200,
+          targetH: targetHeight || 1800,
+        });
       }
 
       if (imagePath) {

@@ -414,6 +414,69 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
     }
   });
 
+  // Lightweight framing-only update: persists a single target's overlay framing
+  // without re-uploading media or re-ingesting Mux.
+  app.patch('/api/magazines/:id/targets/:index/framing', express.json({ limit: '1mb' }), requireAuth, async (req, res) => {
+    try {
+      const { id, index } = req.params;
+      const idx = Number(index);
+      const framing = req.body?.overlayFraming || req.body?.framing;
+      if (!Number.isInteger(idx) || idx < 0) return res.status(400).json({ error: 'Invalid target index' });
+      if (!framing || typeof framing !== 'object') return res.status(400).json({ error: 'Missing overlayFraming' });
+
+      const { data: existing, error: getErr } = await supabase
+        .from('magazines').select('targets').eq('id', id).single();
+      if (getErr || !existing) return res.status(404).json({ error: 'Magazine not found' });
+
+      const targets = Array.isArray(existing.targets) ? existing.targets.map(t => ({ ...t })) : [];
+      if (idx >= targets.length) return res.status(404).json({ error: 'Target not found' });
+
+      const target = targets[idx];
+      const overlay = { ...(target.overlay || {}) };
+      const aspect = Number(framing.aspectRatio) || overlay.aspect_ratio || 1;
+      const planeW = framing.planeW != null ? framing.planeW : (aspect >= 1 ? 1 : Number(aspect.toFixed(4)));
+      const planeH = framing.planeH != null ? framing.planeH : (aspect >= 1 ? Number((1 / aspect).toFixed(4)) : 1);
+
+      const canonical = {
+        ratio: framing.ratio || 'target',
+        zoom: Number(framing.zoom) || 1,
+        panX: Number(framing.panX) || 0,
+        panY: Number(framing.panY) || 0,
+        aspectRatio: aspect,
+        planeW,
+        planeH,
+      };
+
+      overlay.framing = canonical;
+      overlay.zoom = canonical.zoom;
+      overlay.panX = canonical.panX;
+      overlay.panY = canonical.panY;
+      overlay.aspect_ratio = aspect;
+      overlay.aspectRatio = aspect;
+      overlay.planeW = planeW;
+      overlay.planeH = planeH;
+      target.overlay = overlay;
+      target.overlayFraming = canonical;
+      target.overlay_framing = canonical;
+      if (target.target_data && typeof target.target_data === 'object') {
+        target.target_data = { ...target.target_data, overlay_framing: canonical };
+      }
+      targets[idx] = target;
+
+      const { data, error } = await supabase
+        .from('magazines')
+        .update({ targets, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) return res.status(500).json({ error: error.message });
+      res.json(formatMagazine(data));
+    } catch (err) {
+      console.error('Update magazine framing error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.delete('/api/magazines/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;

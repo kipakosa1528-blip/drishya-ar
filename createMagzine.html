@@ -544,6 +544,7 @@
   import { createMagazine } from './js/db.js';
   import { authHeaders } from './js/auth.js';
   import { saveMagazineDraft, loadMagazineDraft, clearMagazineDraft } from './js/magazine-draft.js';
+  import { buildFraming } from './js/utils.js';
 
   window.targets = [];
   let activeCroppingTargetIndex = null;
@@ -597,15 +598,7 @@
       overlayFile: null,
       overlayRaw: null,
       overlayBase64: null,
-      overlayFraming: {
-        ratio: 'target',
-        zoom: 1.0,
-        panX: 0,
-        panY: 0,
-        aspectRatio: 2/3,
-        planeW: 1,
-        planeH: 1.5
-      }
+      overlayFraming: buildFraming({ ratio: 'target', targetW: 1200, targetH: 1800 })
     });
     renderTargets();
   }
@@ -1038,25 +1031,17 @@
     const t = window.targets[activeVideoTargetIndex];
     const player = document.getElementById('m-vid-frame-player');
 
-    let finalRatio;
-    if (vidSelectedRatio === 'target') {
-      finalRatio = t.targetRatio || (t.targetWidth / t.targetHeight) || (2/3);
-    } else if (vidSelectedRatio === 'original') {
-      finalRatio = player.videoWidth / player.videoHeight;
-    } else {
-      finalRatio = Number(vidSelectedRatio);
-    }
-
     t.overlayBase64 = t.overlayRaw;
-    t.overlayFraming = {
+    t.overlayFraming = buildFraming({
       ratio: vidSelectedRatio,
       zoom: vidZoom,
       panX: vidPanX,
       panY: vidPanY,
-      aspectRatio: finalRatio,
-      planeW: 1,
-      planeH: +(1 / finalRatio).toFixed(4)
-    };
+      targetW: t.targetWidth,
+      targetH: t.targetHeight,
+      videoW: player.videoWidth,
+      videoH: player.videoHeight,
+    });
 
     closeVideoStudioModal();
     renderTargets();

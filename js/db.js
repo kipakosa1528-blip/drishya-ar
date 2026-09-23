@@ -193,6 +193,20 @@ export async function updateMagazine(id, updates) {
   return await res.json();
 }
 
+// Persist only a single target's overlay framing (no media re-upload / Mux churn)
+export async function updateMagazineTargetFraming(id, index, overlayFraming) {
+  const res = await fetch(`/api/magazines/${id}/targets/${index}/framing`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+    body: JSON.stringify({ overlayFraming })
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const fresh = await res.json();
+  const current = getLocalMagazines() || [];
+  setLocalMagazines([fresh, ...current.filter(m => m.id !== id)]);
+  return fresh;
+}
+
 export async function deleteMagazine(id) {
   const res = await fetch(`/api/magazines/${id}`, {
     method: 'DELETE',

@@ -420,8 +420,8 @@
 
 <script type="module">
   import { requireAuth, initNav, authHeaders } from './js/auth.js';
-  import { getMagazine, updateMagazine, deleteMagazine } from './js/db.js';
-  import { fmt, statusBadge, isExpired, expType, calcMuxCost, toast, getRatioLabel, checkAspectMismatch } from './js/utils.js';
+  import { getMagazine, updateMagazine, updateMagazineTargetFraming, deleteMagazine } from './js/db.js';
+  import { fmt, statusBadge, isExpired, expType, calcMuxCost, toast, getRatioLabel, checkAspectMismatch, buildFraming, resolveFramingAspect } from './js/utils.js';
 
   const params = new URLSearchParams(location.search);
   const id = params.get('id');
@@ -570,7 +570,7 @@
       targetR = player.videoWidth / player.videoHeight;
       if (status) status.textContent = `Original Video (${getRatioLabel(player.videoWidth, player.videoHeight)}) • Drag to pan`;
     } else {
-      targetR = Number(eval(emagVidModalSelectedRatio));
+      targetR = resolveFramingAspect(emagVidModalSelectedRatio, tW, tH, player.videoWidth, player.videoHeight);
       if (status) status.textContent = `Framed to Custom Aspect Ratio • Drag to pan`;
     }
 
@@ -735,30 +735,67 @@
     }, { passive: false });
   }
 
-  document.getElementById('emag-confirm-vid-framing')?.addEventListener('click', () => {
+  document.getElementById('emag-confirm-vid-framing')?.addEventListener('click', async () => {
     if (emagVidStudioIdx == null || !editingTargets[emagVidStudioIdx]) return;
+    const idx = emagVidStudioIdx;
     const tW = emagVidTargetW || 640;
     const tH = emagVidTargetH || 640;
-    const tAspect = tW / tH;
 
-    const framing = {
+    const framing = buildFraming({
       ratio: emagVidModalSelectedRatio,
       zoom: emagVidModalZoom,
       panX: emagVidModalPanX,
       panY: emagVidModalPanY,
-      aspectRatio: emagVidModalSelectedRatio === 'target' ? tAspect : (emagVidModalSelectedRatio === 'original' ? (emagVidVideoW / emagVidVideoH) : Number(eval(emagVidModalSelectedRatio))),
-      planeW: 1,
-      planeH: +(1 / (emagVidModalSelectedRatio === 'target' ? tAspect : (emagVidModalSelectedRatio === 'original' ? (emagVidVideoW / emagVidVideoH) : Number(eval(emagVidModalSelectedRatio))))).toFixed(4)
-    };
+      targetW: tW,
+      targetH: tH,
+      videoW: emagVidVideoW,
+      videoH: emagVidVideoH,
+    });
 
-    editingTargets[emagVidStudioIdx].overlayFraming = framing;
-    if (!editingTargets[emagVidStudioIdx].overlay) editingTargets[emagVidStudioIdx].overlay = {};
-    editingTargets[emagVidStudioIdx].overlay.framing = framing;
+    editingTargets[idx].overlayFraming = framing;
+    if (!editingTargets[idx].overlay) editingTargets[idx].overlay = {};
+    editingTargets[idx].overlay.framing = framing;
 
     closeEmagVidStudioModal();
     renderEditTargetsList();
-    toast(`Page ${emagVidStudioIdx + 1} video framing applied!`, 'success');
+
+    try {
+      await updateMagazineTargetFraming(id, idx, framing);
+      toast(`Page ${idx + 1} video framing applied and saved!`, 'success');
+    } catch (err) {
+      toast('Framing applied but could not be saved: ' + err.message, 'err');
+    }
   });
+
+  // Render an overlay media element framed to the chosen aspect + zoom + pan,
+  // matching the real AR crop. Uses framing.aspectRatio (captured from the real
+  // video during framing) so the preview can crop without knowing video dims yet.
+  function framedOverlayHtml(overlayType, src, framing, tW, tH, containerHeight) {
+    if (!src) return overlayType === 'video'
+      ? '<span style="font-size:11px;color:var(--muted)">No video overlay</span>'
+      : '<span style="font-size:11px;color:var(--muted)">No image overlay</span>';
+
+    const h = containerHeight || 170;
+    if (!framing) {
+      return overlayType === 'video'
+        ? `<video src="${src}" style="max-width:100%;max-height:100%;object-fit:contain;display:block" controls playsinline></video>`
+        : `<img src="${src}" style="max-width:100%;max-height:100%;object-fit:contain;display:block" />`;
+    }
+
+    const frameAspect = Number(framing.aspectRatio) || (tW && tH ? tW / tH : 1);
+    let w = 420;
+    let frameH = w / frameAspect;
+    if (frameH > h) { frameH = h; w = frameH * frameAspect; }
+
+    const zoom = Math.max(1, Number(framing.zoom) || 1);
+    const posX = Math.max(0, Math.min(100, 50 - (Number(framing.panX) || 0) / 2));
+    const posY = Math.max(0, Math.min(100, 50 - (Number(framing.panY) || 0) / 2));
+    const mediaStyle = `width:100%;height:100%;object-fit:cover;object-position:${posX}% ${posY}%;transform:scale(${zoom});transform-origin:center;display:block`;
+    const inner = overlayType === 'video'
+      ? `<video src="${src}" style="${mediaStyle}" muted loop autoplay playsinline></video>`
+      : `<img src="${src}" style="${mediaStyle}" />`;
+    return `<div style="position:relative;width:${Math.round(w)}px;height:${Math.round(frameH)}px;max-width:100%;max-height:100%;overflow:hidden;border-radius:6px;background:#000">${inner}</div>`;
+  }
 
   function renderEditTargetsList() {
     const listEl = document.getElementById('emag-targets-list');
@@ -824,9 +861,7 @@
               ${overlayBadgeHtml}
             </div>
             <div style="height:170px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:radial-gradient(circle at center, #111827 0%, #030712 100%);overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:8px">
-              ${overlayType === 'video' 
-                ? (overlayPreview ? `<video src="${overlayPreview}" style="max-width:100%;max-height:100%;object-fit:contain;display:block" controls playsinline></video>` : '<span style="font-size:11px;color:var(--muted)">No video overlay</span>')
-                : (overlayPreview ? `<img src="${overlayPreview}" style="max-width:100%;max-height:100%;object-fit:contain;display:block" />` : '<span style="font-size:11px;color:var(--muted)">No image overlay</span>')}
+              ${framedOverlayHtml(overlayType, overlayPreview, framing, (t.target_data || t.targetData)?.properties?.width, (t.target_data || t.targetData)?.properties?.height, 170)}
             </div>
             <div style="font-size:10px;color:var(--text-secondary);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
               ${overlayInfoText}
@@ -1071,15 +1106,11 @@
           overlay_type: overlayType,
           _imageChanged: imgChanged,
           _overlayChanged: overlayChanged,
-          overlayFraming: t.overlayFraming || t.overlay?.framing || {
-            ratio: 'target',
-            zoom: 1.0,
-            panX: 0,
-            panY: 0,
-            aspectRatio: 2/3,
-            planeW: 1,
-            planeH: 1.5
-          }
+          // Only persist an explicit framing choice; otherwise keep whatever the
+          // server already has (never force a default that would hide a mismatch).
+          ...((t.overlayFraming || t.overlay?.framing)
+            ? { overlayFraming: t.overlayFraming || t.overlay?.framing }
+            : {})
         });
       }
 
@@ -1210,6 +1241,8 @@
           const overlayType = (t.overlay && t.overlay.type) || t.overlay_type || (t.model_path || t.modelUrl || t.model_url ? '3d' : 'video');
           const overlayUrl = (t.overlay && t.overlay.url) || t.overlay_url || t.modelUrl || t.model_url || '';
           const imageUrl = t.imageUrl || t.image_url || '';
+          const overlayFraming = t.overlayFraming || (t.overlay && t.overlay.framing) || null;
+          const targetProps = (t.target_data || t.targetData || {}).properties || {};
 
           const badgeHtml = overlayType === '3d' 
             ? '<span class="badge badge-gold">🪐 3D Model</span>' 
@@ -1221,10 +1254,10 @@
             previewMediaHtml = '<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at center, #111827 0%, #030712 100%);padding:12px;text-align:center"><span style="font-size:32px">🪐</span><span style="font-size:12px;font-weight:700;color:#f8fafc;margin-top:4px">3D Model (.glb)</span></div>';
             if (overlayUrl) downloadBtnHtml = '<a href="' + overlayUrl + '" download="model-' + (i + 1) + '.glb" class="btn btn-default btn-sm" style="width:100%;margin-top:8px;text-align:center;display:block">Download 3D Model (.glb) 📥</a>';
           } else if (overlayType === 'video') {
-            previewMediaHtml = overlayUrl ? '<video src="' + overlayUrl + '" controls loop playsinline style="width:100%;height:100%"></video>' : '<span style="color:var(--muted);font-size:12px">No Video</span>';
+            previewMediaHtml = overlayUrl ? framedOverlayHtml('video', overlayUrl, overlayFraming, targetProps.width, targetProps.height, 200) : '<span style="color:var(--muted);font-size:12px">No Video</span>';
             if (overlayUrl) downloadBtnHtml = '<a href="' + overlayUrl + '" download="overlay-' + (i + 1) + '.mp4" class="btn btn-default btn-sm" style="width:100%;margin-top:8px;text-align:center;display:block">Download Video 📥</a>';
           } else {
-            previewMediaHtml = overlayUrl ? '<img src="' + overlayUrl + '" />' : '<span style="color:var(--muted);font-size:12px">No Overlay</span>';
+            previewMediaHtml = overlayUrl ? framedOverlayHtml('image', overlayUrl, overlayFraming, targetProps.width, targetProps.height, 200) : '<span style="color:var(--muted);font-size:12px">No Overlay</span>';
             if (overlayUrl) downloadBtnHtml = '<a href="' + overlayUrl + '" download="overlay-' + (i + 1) + '.jpg" class="btn btn-default btn-sm" style="width:100%;margin-top:8px;text-align:center;display:block">Download Overlay 📥</a>';
           }
 
@@ -1255,7 +1288,7 @@
                     <span style="font-size:16px;line-height:1.2">⚠️</span>
                     <div>
                       <div style="font-size:12px;font-weight:700;color:#fbbf24;display:flex;align-items:center;gap:6px">
-                        <span>Aspect Ratio Mismatch Detected</span>
+                        <span class="mag-aspect-title">Aspect Ratio Mismatch Detected</span>
                         <span class="badge badge-gold" id="mag-aspect-diff-${i}" style="font-size:9px;padding:1px 6px">Ratio Mismatch</span>
                       </div>
                       <div id="mag-aspect-desc-${i}" style="font-size:11px;color:#cbd5e1;margin-top:2px;line-height:1.4">
@@ -1283,7 +1316,41 @@
               if (!warnEl) return;
 
               if (framing) {
-                warnEl.style.display = 'none';
+                const ratio = framing.ratio || 'target';
+                const frameAspect = Number(framing.aspectRatio) || 0;
+                const tAspect = (imgW && imgH) ? imgW / imgH : 0;
+                const matchesTarget = ratio === 'target' ||
+                  (tAspect && frameAspect && Math.abs(frameAspect - tAspect) / tAspect <= 0.04);
+
+                if (matchesTarget) {
+                  warnEl.style.display = 'none';
+                  return;
+                }
+
+                // User intentionally chose another ratio — inform, never force.
+                warnEl.style.display = 'block';
+                warnEl.style.background = 'linear-gradient(135deg,rgba(56,189,248,0.12),rgba(15,23,42,0.9))';
+                warnEl.style.borderColor = 'rgba(56,189,248,0.35)';
+                warnEl.querySelector('span').textContent = 'ℹ️';
+                const titleEl = warnEl.querySelector('.mag-aspect-title');
+                if (titleEl) titleEl.textContent = 'Custom Overlay Ratio';
+                const descEl = document.getElementById(`mag-aspect-desc-${i}`);
+                if (descEl) {
+                  descEl.innerHTML = `Overlay is framed to <strong>${ratio === 'original' ? 'Original Ratio' : ratio}</strong>. Pick <strong>Match Target Photo</strong> if you want its edges to line up with the printed page.`;
+                }
+                const diffBadge = document.getElementById(`mag-aspect-diff-${i}`);
+                if (diffBadge) {
+                  diffBadge.textContent = '◆ Custom Ratio';
+                  diffBadge.className = 'badge';
+                  diffBadge.style.background = 'rgba(56,189,248,0.2)';
+                  diffBadge.style.color = '#38bdf8';
+                }
+                const btn = warnEl.querySelector('.mag-fix-aspect-btn');
+                if (btn) {
+                  btn.textContent = '📐 Match Target Photo →';
+                  btn.style.borderColor = 'rgba(56,189,248,0.5)';
+                  btn.style.color = '#38bdf8';
+                }
                 return;
               }
 
@@ -1297,6 +1364,9 @@
                 warnEl.style.display = 'block';
                 warnEl.style.background = 'linear-gradient(135deg,rgba(245,158,11,0.12),rgba(15,23,42,0.9))';
                 warnEl.style.borderColor = 'rgba(245,158,11,0.35)';
+                warnEl.querySelector('span').textContent = '⚠️';
+                const titleEl = warnEl.querySelector('.mag-aspect-title');
+                if (titleEl) { titleEl.textContent = 'Aspect Ratio Mismatch Detected'; titleEl.style.color = '#fbbf24'; }
                 const descEl = document.getElementById(`mag-aspect-desc-${i}`);
                 if (descEl) {
                   descEl.innerHTML = `Page target is <strong>${mismatch.targetLabel} (${mismatch.targetRatio.toFixed(2)})</strong> while Overlay Video is <strong>${mismatch.videoLabel} (${mismatch.videoRatio.toFixed(2)})</strong>. In AR, the video will not naturally fit the physical photo without custom framing.`;
@@ -1305,6 +1375,8 @@
                 if (diffBadge) {
                   diffBadge.textContent = `${mismatch.diffPercent}% Ratio Mismatch`;
                   diffBadge.className = 'badge badge-gold';
+                  diffBadge.style.background = '';
+                  diffBadge.style.color = '';
                 }
                 const btn = warnEl.querySelector('.mag-fix-aspect-btn');
                 if (btn) {

@@ -219,6 +219,19 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
     var scanOverlay = document.getElementById('scan-overlay');
     var activeTargetIdx = null;
 
+    function parseRatio(r) {
+      if (r == null) return NaN;
+      var s = String(r).trim();
+      if (!s || s === 'target' || s === 'original') return NaN;
+      if (s.indexOf('/') !== -1) {
+        var p = s.split('/');
+        var a = parseFloat(p[0]); var b = parseFloat(p[1]);
+        return (isFinite(a) && isFinite(b) && b !== 0) ? a / b : NaN;
+      }
+      var n = parseFloat(s);
+      return isFinite(n) ? n : NaN;
+    }
+
     function updatePlaneMapping(i) {
       var target = targetsConfig[i];
       var plane = document.getElementById('mag-plane-' + i);
@@ -239,25 +252,37 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
 
       var vAspect = (vW && vH) ? (vW / vH) : tAspect;
 
-      // 8th Wall normalized coordinate mapping
-      if (tAspect >= 1) {
+      var framing = target.framing || (target.overlay && target.overlay.framing) || {};
+      var ratio = framing.ratio || 'target';
+
+      // Overlay aspect ratio follows the user's choice (never silently enforced).
+      var frameAspect = tAspect;
+      if (ratio === 'original') {
+        frameAspect = vAspect;
+      } else if (ratio !== 'target') {
+        var parsed = parseRatio(ratio);
+        if (isFinite(parsed) && parsed > 0) frameAspect = parsed;
+      }
+      if (!isFinite(frameAspect) || frameAspect <= 0) frameAspect = tAspect;
+
+      // Plane is sized to the chosen overlay aspect ratio
+      if (frameAspect >= 1) {
         plane.setAttribute('width', 1);
-        plane.setAttribute('height', Number((1 / tAspect).toFixed(4)));
+        plane.setAttribute('height', Number((1 / frameAspect).toFixed(4)));
       } else {
-        plane.setAttribute('width', Number(tAspect.toFixed(4)));
+        plane.setAttribute('width', Number(frameAspect.toFixed(4)));
         plane.setAttribute('height', 1);
       }
 
-      var framing = target.framing || (target.overlay && target.overlay.framing) || {};
       var zoom = Math.max(1.0, Number(framing.zoom) || 1.0);
       var panX = Number(framing.panX) || 0;
       var panY = Number(framing.panY) || 0;
 
       var repX = 1, repY = 1;
-      if (vAspect > tAspect) {
-        repX = Number((tAspect / vAspect).toFixed(6));
-      } else if (vAspect < tAspect) {
-        repY = Number((vAspect / tAspect).toFixed(6));
+      if (vAspect > frameAspect) {
+        repX = frameAspect / vAspect;
+      } else if (vAspect < frameAspect) {
+        repY = vAspect / frameAspect;
       }
 
       repX = repX / zoom;
@@ -265,10 +290,22 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
 
       var maxOffX = Math.max(0, 1 - repX);
       var maxOffY = Math.max(0, 1 - repY);
-      var offX = (maxOffX / 2) + (panX / 100) * (maxOffX / 2);
-      var offY = (maxOffY / 2) - (panY / 100) * (maxOffY / 2);
+      var offX = (maxOffX / 2) - (panX / 100) * (maxOffX / 2);
+      var offY = (maxOffY / 2) + (panY / 100) * (maxOffY / 2);
       offX = Math.max(0, Math.min(maxOffX, offX));
       offY = Math.max(0, Math.min(maxOffY, offY));
+
+      repX = Number(repX.toFixed(6));
+      repY = Number(repY.toFixed(6));
+      offX = Number(offX.toFixed(6));
+      offY = Number(offY.toFixed(6));
+
+      // Primary: drive A-Frame's material component so its texture update path
+      // applies the crop and can't be reset by a later material refresh.
+      try {
+        plane.setAttribute('material', 'repeat', repX + ' ' + repY);
+        plane.setAttribute('material', 'offset', offX + ' ' + offY);
+      } catch (e) {}
 
       function applyTextureTransform() {
         try {
@@ -276,8 +313,10 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
           if (mesh && mesh.material) {
             var mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
             if (mat && mat.map) {
+              mat.map.wrapS = mat.map.wrapT = 1000; // THREE.RepeatWrapping
               mat.map.repeat.set(repX, repY);
               mat.map.offset.set(offX, offY);
+              if (mat.map.matrixAutoUpdate !== false) mat.map.updateMatrix();
               mat.map.needsUpdate = true;
               mat.needsUpdate = true;
             }
@@ -286,13 +325,15 @@ export function renderMagazineArPage({ title, magId, targets = [] }) {
       }
 
       applyTextureTransform();
-      plane.addEventListener('materialtextureloaded', applyTextureTransform, { once: true });
+      [80, 400, 1200].forEach(function(ms) { setTimeout(applyTextureTransform, ms); });
     }
 
     // Initialize mapping for all targets
     for (var k = 0; k < targetsCount; k++) {
       (function(idx) {
         var target = targetsConfig[idx];
+        var planeEl = document.getElementById('mag-plane-' + idx);
+        if (planeEl) planeEl.addEventListener('materialtextureloaded', function() { updatePlaneMapping(idx); });
         if (target.overlayType === 'video') {
           var vid = document.getElementById('ov-vid-' + idx);
           if (vid) {

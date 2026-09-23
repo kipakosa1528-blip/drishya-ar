@@ -453,3 +453,104 @@ export function checkAspectMismatch(targetW, targetH, videoW, videoH, tolerance 
   };
 }
 
+// ── Video framing (shared by create / edit studios, previews and AR) ──────────
+// A framing object is always { ratio, zoom, panX, panY, aspectRatio, planeW, planeH }.
+// `ratio` is 'target' (match the physical photo), 'original' (native video), a
+// custom fraction such as '1/1.4142' or '16/9', or a decimal string like '1'.
+// The overlay aspect ratio is NOT enforced: it follows whatever the user picked.
+
+/** Parse a ratio descriptor into a number. Returns NaN for 'target'/'original'/invalid. */
+export function ratioToNumber(ratio) {
+  if (ratio == null) return NaN;
+  if (typeof ratio === 'number') return Number.isFinite(ratio) ? ratio : NaN;
+  const s = String(ratio).trim();
+  if (!s || s === 'target' || s === 'original') return NaN;
+  if (s.includes('/')) {
+    const [a, b] = s.split('/');
+    const num = parseFloat(a);
+    const den = parseFloat(b);
+    return Number.isFinite(num) && Number.isFinite(den) && den !== 0 ? num / den : NaN;
+  }
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+/** Resolve the overlay aspect ratio for a framing choice. */
+export function resolveFramingAspect(ratio, targetW, targetH, videoW, videoH) {
+  const tAspect = (targetW && targetH) ? (targetW / targetH) : 1;
+  const vAspect = (videoW && videoH) ? (videoW / videoH) : tAspect;
+  if (ratio === 'original') return vAspect;
+  if (ratio == null || ratio === '' || ratio === 'target') return tAspect;
+  const n = ratioToNumber(ratio);
+  return Number.isFinite(n) && n > 0 ? n : tAspect;
+}
+
+/**
+ * Build the canonical framing object persisted to the API.
+ */
+export function buildFraming({ ratio = 'target', zoom = 1, panX = 0, panY = 0, targetW, targetH, videoW, videoH } = {}) {
+  const aspect = resolveFramingAspect(ratio, targetW, targetH, videoW, videoH);
+  const z = Math.max(1, Number(zoom) || 1);
+  const planeW = aspect >= 1 ? 1 : Number(aspect.toFixed(4));
+  const planeH = aspect >= 1 ? Number((1 / aspect).toFixed(4)) : 1;
+  return {
+    ratio,
+    zoom: z,
+    panX: Number(panX) || 0,
+    panY: Number(panY) || 0,
+    aspectRatio: Number(aspect.toFixed(6)),
+    planeW,
+    planeH,
+  };
+}
+
+/**
+ * Normalized texture-crop window for a framing, matching the edit studio's
+ * drag/zoom convention: a positive pan moves the video content right/down.
+ * Returns the texture repeat/offset consumed identically by the AR viewers and
+ * the DOM previews so every surface renders the same crop.
+ */
+export function framingToUV(framing = {}, targetW, targetH, videoW, videoH) {
+  const tAspect = (targetW && targetH) ? (targetW / targetH) : 1;
+  const vAspect = (videoW && videoH) ? (videoW / videoH) : tAspect;
+  const frameAspect = resolveFramingAspect(framing.ratio, targetW, targetH, videoW, videoH);
+
+  let repX = 1;
+  let repY = 1;
+  if (vAspect > frameAspect) repX = frameAspect / vAspect;
+  else if (vAspect < frameAspect) repY = vAspect / frameAspect;
+
+  const zoom = Math.max(1, Number(framing.zoom) || 1);
+  repX = Math.max(0.0001, repX / zoom);
+  repY = Math.max(0.0001, repY / zoom);
+
+  const maxOffX = Math.max(0, 1 - repX);
+  const maxOffY = Math.max(0, 1 - repY);
+  const panX = Number(framing.panX) || 0;
+  const panY = Number(framing.panY) || 0;
+
+  // Positive panX reveals the left of the video (content moves right);
+  // positive panY reveals the top (content moves down) — same as the studio.
+  let offX = (maxOffX / 2) - (panX / 100) * (maxOffX / 2);
+  let offY = (maxOffY / 2) + (panY / 100) * (maxOffY / 2);
+  offX = Math.max(0, Math.min(maxOffX, offX));
+  offY = Math.max(0, Math.min(maxOffY, offY));
+
+  return { repX, repY, offX, offY, frameAspect, tAspect, vAspect };
+}
+
+/**
+ * CSS geometry that renders a <video>/<img> into a framed container with the
+ * exact same crop as framingToUV. Percentages are relative to the container.
+ */
+export function framedMediaStyle(framing, targetW, targetH, videoW, videoH) {
+  const { repX, repY, offX, offY, frameAspect } = framingToUV(framing, targetW, targetH, videoW, videoH);
+  return {
+    frameAspect,
+    widthPct: 100 / repX,
+    heightPct: 100 / repY,
+    leftPct: -(offX / repX) * 100,
+    topPct: -((1 - offY - repY) / repY) * 100,
+  };
+}
+

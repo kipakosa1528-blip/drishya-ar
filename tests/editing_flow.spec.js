@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
 
 test.describe('Experience Editing & Asset Replacement Flow', () => {
 
@@ -196,6 +198,76 @@ test.describe('Experience Editing & Asset Replacement Flow', () => {
     // Verify modal closes and detail page refreshes without any errors
     await expect(page.locator('#edit-mag-modal')).not.toBeVisible();
     await expect(page.locator('#p-title')).toHaveText('Spring Collection Magazine 2026');
+  });
+
+  test('applying video framing auto-persists it to the project', async ({ page }) => {
+    await page.addInitScript(() => {
+      sessionStorage.setItem('kipakosa_config_cache', JSON.stringify({
+        supabaseUrl: 'https://mock.supabase.co',
+        supabaseAnonKey: 'mock',
+        adminEmail: 'admin@kipakosa.app'
+      }));
+      window.supabase = {
+        createClient: () => ({
+          auth: {
+            getSession: async () => ({ data: { session: { access_token: 'mock-token', user: { email: 'admin@kipakosa.app' } } } }),
+            getUser: async () => ({ data: { user: { email: 'admin@kipakosa.app' } } }),
+            onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+            signOut: async () => {}
+          }
+        })
+      };
+    });
+
+    let savedFraming = null;
+    const targetImg = fs.readFileSync(path.join(process.cwd(), 'tests', 'fixtures', 'real_target.jpg'));
+    const targetDataUrl = 'data:image/jpeg;base64,' + targetImg.toString('base64');
+    // real_target.jpg is 1542 x 791
+    const TARGET_ASPECT = 1542 / 791;
+    let project = {
+      id: 'framing-persist-proj',
+      name: 'Framing Persist',
+      client: '',
+      notes: '',
+      expiresAt: null,
+      maxScans: null,
+      imageUrl: targetDataUrl,
+      videoUrl: 'https://test-stream.com/video.mp4',
+      viewsCount: 0,
+      target_data: { overlay_type: 'video', properties: { width: 1542, height: 791 }, metadata: { width: 1542, height: 791 } }
+    };
+
+    await page.addInitScript((p) => {
+      localStorage.setItem('kipakosa_projects_cache', JSON.stringify([p]));
+    }, project);
+
+    await page.route('**/api/projects/framing-persist-proj', async (route) => {
+      if (route.request().method() === 'PUT') {
+        const body = JSON.parse(route.request().postData() || '{}');
+        if (body.overlayFraming) {
+          savedFraming = body.overlayFraming;
+          project = { ...project, target_data: { ...project.target_data, overlay_framing: body.overlayFraming } };
+        }
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(project) });
+    });
+
+    await page.goto('http://localhost:3000/project.html?id=framing-persist-proj');
+    await expect(page.locator('#p-title')).toHaveText('Framing Persist');
+
+    await page.click('#edit-btn');
+    await expect(page.locator('#edit-modal')).toBeVisible();
+
+    await page.click('#e-btn-open-vid-studio');
+    await expect(page.locator('#e-vid-studio-modal')).toBeVisible();
+
+    // Apply the default "Match Target Photo" framing
+    await page.click('#e-confirm-vid-framing');
+
+    await expect.poll(() => savedFraming && savedFraming.ratio).toBe('target');
+    expect(Math.abs(savedFraming.aspectRatio - TARGET_ASPECT)).toBeLessThan(0.02);
+    expect(savedFraming.planeW).toBeGreaterThan(0);
+    expect(savedFraming.planeH).toBeGreaterThan(0);
   });
 
 });
