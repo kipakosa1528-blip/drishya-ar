@@ -162,10 +162,11 @@ export function registerMiscRoutes(app, { requireAuth }) {
 
     const queue = { queued: 0, processing: 0, ready: 0, error: 0, missing: 0, optimized: 0, total: 0, projects: 0, magazineTargets: 0 };
     try {
-      const { data: projs } = await supabase.from('projects').select('target_data');
+      const { data: projs } = await supabase.from('projects').select('video_path,target_data');
       for (const row of projs || []) {
         const td = row.target_data || {};
-        if (td.overlay_type !== 'video') continue;
+        const type = td.overlay_type || (row.video_path ? 'video' : null);
+        if (type !== 'video') continue;
         queue.total++; queue.projects++;
         const st = td.transcode_status || (td.optimized_video_path ? 'ready' : 'missing');
         if (queue[st] != null) queue[st]++;
