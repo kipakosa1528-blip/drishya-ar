@@ -131,6 +131,47 @@
       </div>
     </div>
 
+    <!-- Server Health (Oracle VM: CPU / RAM / Disk) -->
+    <div class="panel" style="margin-top:20px;border:1px solid rgba(56,189,248,0.25);background:linear-gradient(135deg,rgba(56,189,248,0.05),rgba(9,13,22,0.6))">
+      <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>🖥️ Server Health (Oracle VM)</span>
+        <span id="vm-status-badge" class="badge" style="font-size:10px">…</span>
+      </div>
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-top:6px">
+        <div class="stat-card">
+          <div class="stat-lbl">CPU</div>
+          <div class="stat-val" id="vm-cpu">—</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px" id="vm-cpu-sub">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">RAM</div>
+          <div class="stat-val" id="vm-ram">—</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px" id="vm-ram-sub">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">Disk</div>
+          <div class="stat-val" id="vm-disk">—</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px" id="vm-disk-sub">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">Load Avg</div>
+          <div class="stat-val" id="vm-load">—</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">1 / 5 / 15 min</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">Uptime</div>
+          <div class="stat-val" id="vm-uptime">—</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px" id="vm-uptime-sub">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">Transcode Queue</div>
+          <div class="stat-val" id="vm-queue">—</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px" id="vm-queue-sub">—</div>
+        </div>
+      </div>
+      <div style="margin-top:14px;height:120px"><canvas id="vmChart"></canvas></div>
+    </div>
+
     <!-- Interactive Performance & Cost Analytics Studio -->
     <div class="panel" style="margin-top:20px;border:1px solid rgba(255,255,255,0.08);box-shadow:0 10px 30px rgba(0,0,0,0.3)">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;margin-bottom:18px;border-bottom:1px solid var(--border);padding-bottom:14px">
@@ -286,12 +327,112 @@
 </div>
 
 <script type="module">
-  import { requireAuth, initNav } from './js/auth.js?v=4';
+  import { requireAuth, initNav, authHeaders } from './js/auth.js?v=4';
   import { getAllProjects, deleteProject, getAllMagazines, deleteMagazine } from './js/db.js?v=4';
   import { fmt, isExpired, statusBadge, toast, calcMuxCost } from './js/utils.js?v=4';
 
   requireAuth(); 
   initNav('dashboard');
+
+  // ── Server Health (Oracle VM) ────────────────────────────────────────────
+  function fmtBytes(n) {
+    if (n == null || !isFinite(n)) return '—';
+    const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let i = 0, v = Number(n);
+    while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+    return v.toFixed(v >= 10 || i === 0 ? 0 : 1) + ' ' + u[i];
+  }
+  function fmtUptime(sec) {
+    const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60);
+    return d > 0 ? `${d}d ${h}h` : (h > 0 ? `${h}h ${m}m` : `${m}m`);
+  }
+  function pctColor(p) { return p > 85 ? '#ef4444' : (p > 60 ? '#fbbf24' : '#4ade80'); }
+
+  let vmHistory = [];
+  let vmChart = null;
+
+  function renderVmChart() {
+    if (typeof Chart === 'undefined' || !document.getElementById('vmChart')) return;
+    const labels = vmHistory.map((_, i) => i);
+    const cpu = vmHistory.map(h => h.cpu);
+    const ram = vmHistory.map(h => h.ram);
+    if (vmChart) {
+      vmChart.data.labels = labels;
+      vmChart.data.datasets[0].data = cpu;
+      vmChart.data.datasets[1].data = ram;
+      vmChart.update('none');
+      return;
+    }
+    vmChart = new Chart(document.getElementById('vmChart').getContext('2d'), {
+      type: 'line',
+      data: { labels, datasets: [
+        { label: 'CPU %', data: cpu, borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.12)', fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2 },
+        { label: 'RAM %', data: ram, borderColor: '#C9A96E', backgroundColor: 'rgba(201,169,110,0.10)', fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2 }
+      ]},
+      options: { responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: { legend: { labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 10 } } },
+        scales: {
+          x: { display: false },
+          y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => v + '%' } }
+        }
+      }
+    });
+  }
+
+  async function refreshVmStats() {
+    const badge = document.getElementById('vm-status-badge');
+    try {
+      const res = await fetch('/api/vm-stats', { headers: { ...(await authHeaders()) } });
+      if (!res.ok) throw new Error('http ' + res.status);
+      const d = await res.json();
+      const vm = d.vm || {};
+      badge.textContent = d.online ? '● Online' : '● Unreachable';
+      badge.className = 'badge ' + (d.online ? 'badge-green' : 'badge-gold');
+
+      const cpu = Number(vm.cpuPct || 0);
+      const cpuEl = document.getElementById('vm-cpu');
+      cpuEl.textContent = d.online ? cpu + '%' : '—';
+      cpuEl.style.color = d.online ? pctColor(cpu) : '';
+      document.getElementById('vm-cpu-sub').textContent = d.online
+        ? `${vm.cpuCount || '?'} vCPU · ${(vm.cpuModel || '').slice(0, 26)}`
+        : 'VM not responding';
+
+      if (vm.memTotal) {
+        const p = Math.round((vm.memUsed / vm.memTotal) * 100);
+        const el = document.getElementById('vm-ram');
+        el.textContent = p + '%'; el.style.color = pctColor(p);
+        document.getElementById('vm-ram-sub').textContent = `${fmtBytes(vm.memUsed)} / ${fmtBytes(vm.memTotal)}`;
+      } else { document.getElementById('vm-ram').textContent = '—'; document.getElementById('vm-ram-sub').textContent = '—'; }
+
+      if (vm.diskTotal) {
+        const p = Math.round((vm.diskUsed / vm.diskTotal) * 100);
+        const el = document.getElementById('vm-disk');
+        el.textContent = p + '%'; el.style.color = pctColor(p);
+        document.getElementById('vm-disk-sub').textContent = `${fmtBytes(vm.diskUsed)} / ${fmtBytes(vm.diskTotal)}`;
+      } else { document.getElementById('vm-disk').textContent = '—'; document.getElementById('vm-disk-sub').textContent = '—'; }
+
+      document.getElementById('vm-load').textContent = vm.loadAvg ? vm.loadAvg.map(x => x.toFixed(2)).join(' / ') : '—';
+      document.getElementById('vm-uptime').textContent = vm.uptimeSec ? fmtUptime(vm.uptimeSec) : '—';
+      document.getElementById('vm-uptime-sub').textContent = vm.hostname || '';
+
+      const q = d.queue || {};
+      document.getElementById('vm-queue').textContent = `${(q.queued || 0) + (q.processing || 0)} pending`;
+      document.getElementById('vm-queue-sub').textContent = `${q.optimized || 0}/${q.total || 0} videos optimized`;
+
+      vmHistory.push({ cpu, ram: vm.memTotal ? Math.round((vm.memUsed / vm.memTotal) * 100) : 0 });
+      if (vmHistory.length > 40) vmHistory.shift();
+      renderVmChart();
+    } catch (e) {
+      badge.textContent = '● Unreachable';
+      badge.className = 'badge badge-gold';
+      ['vm-cpu', 'vm-ram', 'vm-disk', 'vm-load', 'vm-uptime', 'vm-queue'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.textContent = '—';
+      });
+    }
+  }
+
+  refreshVmStats();
+  setInterval(refreshVmStats, 20000);
 
   let projects = [];
   let magazines = [];
