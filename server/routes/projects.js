@@ -4,7 +4,7 @@
 
 import express from 'express';
 import { PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
-import { supabase, getR2, R2_BUCKET, r2Url, prepareTarget, createMuxAsset, deleteMuxAsset } from '../lib/clients.js';
+import { supabase, getR2, R2_BUCKET, r2Url, prepareTarget, deleteMuxAsset } from '../lib/clients.js';
 import { cacheBust } from './ar.js';
 
 /**
@@ -23,10 +23,14 @@ function formatProject(row) {
   const muxAssetId = td.mux_asset_id || row.mux_asset_id || null;
   const muxStreamUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}.m3u8` : null;
   const muxVideoUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}/capped-1080p.mp4` : null;
+  const optimizedPath = td.optimized_video_path || '';
+  const optimizedVideoUrl = optimizedPath ? (optimizedPath.startsWith('http') ? optimizedPath : r2Url(optimizedPath)) : '';
   const r2VideoUrl = videoPath ? (videoPath.startsWith('http') ? videoPath : r2Url(videoPath)) : '';
-  // Prefer Mux (adaptive/smaller) over the raw R2 original.
-  const videoUrl = muxVideoUrl || r2VideoUrl || '';
-  const muxStatus = muxPlaybackId ? 'ready' : (td.mux_status || (videoPath ? 'missing' : 'none'));
+  // Self-hosted optimized MP4 (VM transcode) is the primary source; Mux and the
+  // raw R2 original are fallbacks.
+  const videoUrl = optimizedVideoUrl || muxVideoUrl || r2VideoUrl || '';
+  const videoBytes = td.video_bytes || null;
+  const transcodeStatus = td.transcode_status || (optimizedVideoUrl ? 'ready' : (videoPath ? 'missing' : 'none'));
   const viewsCount = row.views_count || td._views_count || 0;
   const maxScans = row.max_scans || td._max_scans || null;
   const lastScannedAt = row.last_scanned_at || td._last_scanned_at || null;
@@ -65,10 +69,20 @@ function formatProject(row) {
     mux_asset_id: muxAssetId,
     muxStreamUrl,
     mux_stream_url: muxStreamUrl,
-    muxStatus,
-    mux_status: muxStatus,
+    muxStatus: muxPlaybackId ? 'ready' : (td.mux_status || null),
+    mux_status: muxPlaybackId ? 'ready' : (td.mux_status || null),
     muxError: td.mux_error || null,
     mux_error: td.mux_error || null,
+    optimizedVideoUrl,
+    optimized_video_url: optimizedVideoUrl,
+    optimizedPath,
+    optimized_video_path: optimizedPath,
+    videoBytes,
+    video_bytes: videoBytes,
+    transcodeStatus,
+    transcode_status: transcodeStatus,
+    transcodeError: td.transcode_error || null,
+    transcode_error: td.transcode_error || null,
     viewsCount,
     views_count: viewsCount,
     lastScannedAt,
@@ -164,19 +178,10 @@ export function registerProjectsRoutes(app, { requireAuth }) {
         targetData.model_url = r2Url(resolvedModelPath);
       } else if (resolvedVideoPath) {
         targetData.overlay_type = 'video';
-        // Ingest video into Mux. Failures are recorded (never silent) so the
-        // admin can see that a project is still serving the raw original.
-        const videoPublicUrl = resolvedVideoPath.startsWith('http') ? resolvedVideoPath : r2Url(resolvedVideoPath);
-        const muxResult = await createMuxAsset(videoPublicUrl);
-        if (muxResult && muxResult.playbackId) {
-          targetData.mux_asset_id = muxResult.assetId;
-          targetData.mux_playback_id = muxResult.playbackId;
-          targetData.mux_status = 'ready';
-          delete targetData.mux_error;
-        } else {
-          targetData.mux_status = 'error';
-          targetData.mux_error = (muxResult && muxResult.error) || 'Mux ingestion failed';
-        }
+        // Queue the self-hosted ffmpeg transcode (VM worker) — replaces Mux.
+        targetData.video_path = resolvedVideoPath;
+        targetData.transcode_status = 'queued';
+        targetData.transcode_error = null;
       }
 
       // Save metadata to Supabase DB
@@ -291,30 +296,19 @@ export function registerProjectsRoutes(app, { requireAuth }) {
           }));
         }
 
-        // Clean up old Mux asset to prevent orphan storage charges
+        // Clean up any legacy Mux asset (replaced by self-hosted transcode)
         if (td.mux_asset_id) {
           await deleteMuxAsset(td.mux_asset_id);
           td.mux_asset_id = null;
           td.mux_playback_id = null;
         }
 
-        try {
-          const videoPublicUrl = resolvedVideoPath.startsWith('http') ? resolvedVideoPath : r2Url(resolvedVideoPath);
-          const muxResult = await createMuxAsset(videoPublicUrl);
-          if (muxResult && muxResult.playbackId) {
-            td.mux_asset_id = muxResult.assetId;
-            td.mux_playback_id = muxResult.playbackId;
-            td.mux_status = 'ready';
-            delete td.mux_error;
-          } else {
-            td.mux_status = 'error';
-            td.mux_error = (muxResult && muxResult.error) || 'Mux re-ingestion failed';
-          }
-        } catch (muxErr) {
-          console.warn('Mux re-ingestion warning:', muxErr.message);
-        }
-
         td.overlay_type = 'video';
+        td.video_path = resolvedVideoPath;
+        td.optimized_video_path = null;
+        td.optimized_video_url = null;
+        td.transcode_status = 'queued';
+        td.transcode_error = null;
         updates.video_path = resolvedVideoPath;
       }
 

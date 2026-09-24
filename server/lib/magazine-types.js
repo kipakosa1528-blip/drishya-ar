@@ -61,9 +61,15 @@ export function formatOverlay(raw = {}) {
   const muxAssetId = raw.muxAssetId || raw.mux_asset_id || null;
   const muxStreamUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}.m3u8` : null;
   const muxVideoUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}/capped-1080p.mp4` : null;
+  const optimizedUrl = raw.optimized_video_url || (raw.optimized_video_path
+    ? (raw.optimized_video_path.startsWith('http') ? raw.optimized_video_path : r2Url(raw.optimized_video_path))
+    : '');
 
   let url = raw.url || raw.overlay_url || '';
-  if (muxVideoUrl) {
+  // Self-hosted optimized MP4 (VM transcode) first, then Mux, then the original.
+  if (optimizedUrl) {
+    url = optimizedUrl;
+  } else if (muxVideoUrl) {
     url = muxVideoUrl;
   } else if (!url && path) {
     url = path.startsWith('http') ? path : r2Url(path);
@@ -134,7 +140,11 @@ export function formatMagazineTarget(raw = {}, index = 0) {
   const luminanceUrl = raw.luminanceUrl || raw.luminance_url || (luminancePath ? (luminancePath.startsWith('http') ? luminancePath : r2Url(luminancePath)) : '');
   const td = (typeof raw.targetData === 'object' && raw.targetData) ? raw.targetData : (typeof raw.target_data === 'object' && raw.target_data ? raw.target_data : null);
 
-  const overlayRaw = (typeof raw.overlay === 'object' && raw.overlay) ? raw.overlay : raw;
+  const overlayRaw = { ...((typeof raw.overlay === 'object' && raw.overlay) ? raw.overlay : raw) };
+  if (td && td.optimized_video_path) {
+    overlayRaw.optimized_video_path = td.optimized_video_path;
+    overlayRaw.optimized_video_url = td.optimized_video_url;
+  }
   const overlay = formatOverlay(overlayRaw);
   const overlayFraming = raw.overlayFraming || raw.overlay_framing || td?.overlay_framing || overlay.framing || null;
 

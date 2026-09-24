@@ -105,8 +105,11 @@ async function handleProjectAr(project, id, res, debug = false) {
   const modelUrl = td.model_url || (td.model_path ? (td.model_path.startsWith('http') ? td.model_path : r2Url(td.model_path)) : '');
   const muxPlaybackId = td.mux_playback_id || project.mux_playback_id || null;
   const muxVideoUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}/capped-1080p.mp4` : null;
+  const optimizedPath = td.optimized_video_path || '';
+  const optimizedVideoUrl = optimizedPath ? (optimizedPath.startsWith('http') ? optimizedPath : r2Url(optimizedPath)) : '';
   const r2VideoUrl = (project.video_path && project.video_path.startsWith('http')) ? project.video_path : (project.video_path ? r2Url(project.video_path) : '');
-  const videoUrl = muxVideoUrl || r2VideoUrl;
+  // Self-hosted optimized MP4 (VM transcode) first, then Mux, then the original.
+  const videoUrl = optimizedVideoUrl || muxVideoUrl || r2VideoUrl;
   const props = (targetData && targetData.properties) || {};
   const tW = props.width || 640;
   const tH = props.height || 640;

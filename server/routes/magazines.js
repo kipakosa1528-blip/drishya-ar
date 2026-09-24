@@ -3,7 +3,7 @@
 
 import express from 'express';
 import { PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
-import { supabase, getR2, R2_BUCKET, r2Url, prepareMagazineTarget, createMuxAsset, deleteMuxAsset } from '../lib/clients.js';
+import { supabase, getR2, R2_BUCKET, r2Url, prepareMagazineTarget, deleteMuxAsset } from '../lib/clients.js';
 import { formatMagazine } from '../lib/magazine-types.js';
 
 /** Purge all R2 files stored under a magazine ID prefix. */
@@ -135,20 +135,11 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
           }
         }
 
-        // Ingest video into Mux for video overlays
-        let muxPlaybackId = t.muxPlaybackId || t.mux_playback_id || null;
-        let muxAssetId = t.muxAssetId || t.mux_asset_id || null;
-        if (overlayType === 'video' && !muxPlaybackId) {
-          try {
-            const overlayPublicUrl = overlayPath.startsWith('http') ? overlayPath : r2Url(overlayPath);
-            const muxResult = await createMuxAsset(overlayPublicUrl);
-            if (muxResult) {
-              muxAssetId = muxResult.assetId;
-              muxPlaybackId = muxResult.playbackId;
-            }
-          } catch (muxErr) {
-            console.warn(`Mux video ingestion for target ${i} warning:`, muxErr.message);
-          }
+        // Queue the self-hosted ffmpeg transcode for video overlays (replaces Mux)
+        if (overlayType === 'video') {
+          targetData.video_path = overlayPath;
+          targetData.transcode_status = 'queued';
+          targetData.transcode_error = null;
         }
 
         const framing = t.overlayFraming || t.overlay_framing || {};
@@ -167,10 +158,7 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
           overlay: {
             type: overlayType,
             path: overlayPath,
-            url: muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}/capped-1080p.mp4` : r2Url(overlayPath),
-            mux_playback_id: muxPlaybackId,
-            mux_asset_id: muxAssetId,
-            mux_stream_url: muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}.m3u8` : null,
+            url: r2Url(overlayPath),
             aspect_ratio: aspect,
             planeW,
             planeH,
@@ -311,23 +299,15 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
             await deleteMuxAsset(prevTarget.overlay.mux_asset_id);
           }
 
-          let muxAssetId = t.overlay?.mux_asset_id || t.mux_asset_id || ((t.overlayBase64 || t._overlayChanged) ? null : prevTarget?.overlay?.mux_asset_id);
-          let muxPlaybackId = t.overlay?.mux_playback_id || t.mux_playback_id || ((t.overlayBase64 || t._overlayChanged) ? null : prevTarget?.overlay?.mux_playback_id);
           let overlayUrl = t.overlayUrl || t.overlay_url || t.overlay?.url || '';
 
-          // Ingest into Mux if video overlay is new or changed
-          if (overlayType === 'video' && (!muxPlaybackId || t.overlayBase64 || t._overlayChanged)) {
-            try {
-              const videoPublicUrl = overlayPath.startsWith('http') ? overlayPath : r2Url(overlayPath);
-              const muxResult = await createMuxAsset(videoPublicUrl);
-              if (muxResult) {
-                muxAssetId = muxResult.assetId;
-                muxPlaybackId = muxResult.playbackId;
-                overlayUrl = `https://stream.mux.com/${muxPlaybackId}/capped-1080p.mp4`;
-              }
-            } catch (muxErr) {
-              console.warn(`Magazine target ${i} mux warning:`, muxErr.message);
-            }
+          // Queue the self-hosted transcode when the video overlay is new/changed
+          if (overlayType === 'video' && (t.overlayBase64 || t._overlayChanged)) {
+            targetData.video_path = overlayPath;
+            targetData.optimized_video_path = null;
+            targetData.optimized_video_url = null;
+            targetData.transcode_status = 'queued';
+            targetData.transcode_error = null;
           }
 
           if (!overlayUrl) {
@@ -352,9 +332,6 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
               path: overlayPath,
               url: overlayUrl,
               duration: t.overlay?.duration || t.duration || 30,
-              mux_asset_id: muxAssetId,
-              mux_playback_id: muxPlaybackId,
-              mux_stream_url: muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}.m3u8` : null,
               aspect_ratio: aspect,
               planeW,
               planeH,
