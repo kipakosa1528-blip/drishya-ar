@@ -183,7 +183,7 @@ export function calcDeliveryCost(projectOrMag) {
 
   const addOne = (td, fallbackDuration) => {
     videoCount++;
-    durationSec += Number(td.duration || fallbackDuration || 30);
+    durationSec += Number(td.video_duration || td.videoDuration || td.duration || fallbackDuration || 30);
     bytes += Number(td.video_bytes || td.videoBytes || 0);
   };
 
@@ -235,7 +235,7 @@ export function calcDeliveryCost(projectOrMag) {
     minutesDelivered: Number(minutesDelivered.toFixed(1)),
     formattedTotal: money(totalCost),
     formattedDelivery: money(deliveryCost),
-    formattedStorage: storageCost === 0 ? '$0.000/mo' : `$${storageCost.toFixed(3)}/mo`
+    formattedStorage: storageCost === 0 ? '$0.000/mo' : (storageCost < 0.01 ? '<$0.01/mo' : `$${storageCost.toFixed(3)}/mo`)
   };
 }
 
