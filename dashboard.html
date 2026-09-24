@@ -168,6 +168,11 @@
           <div class="stat-val" id="vm-queue">—</div>
           <div style="font-size:11px;color:var(--muted);margin-top:4px" id="vm-queue-sub">—</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-lbl">Videos Optimized</div>
+          <div class="stat-val" id="vm-videos">—</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px" id="vm-videos-sub">—</div>
+        </div>
       </div>
       <div style="margin-top:14px;height:120px"><canvas id="vmChart"></canvas></div>
     </div>
@@ -417,7 +422,11 @@
 
       const q = d.queue || {};
       document.getElementById('vm-queue').textContent = `${(q.queued || 0) + (q.processing || 0)} pending`;
-      document.getElementById('vm-queue-sub').textContent = `${q.optimized || 0}/${q.total || 0} videos optimized`;
+      document.getElementById('vm-queue-sub').textContent = `${q.projects || 0} projects + ${q.magazineTargets || 0} mag targets`;
+      const videosEl = document.getElementById('vm-videos');
+      if (videosEl) videosEl.textContent = `${q.optimized || 0}/${q.total || 0}`;
+      const videosSub = document.getElementById('vm-videos-sub');
+      if (videosSub) videosSub.textContent = q.total ? (q.optimized >= q.total ? 'all optimized ✓' : `${(q.total - q.optimized)} pending`) : 'no videos';
 
       vmHistory.push({ cpu, ram: vm.memTotal ? Math.round((vm.memUsed / vm.memTotal) * 100) : 0 });
       if (vmHistory.length > 40) vmHistory.shift();
@@ -425,7 +434,7 @@
     } catch (e) {
       badge.textContent = '● Unreachable';
       badge.className = 'badge badge-gold';
-      ['vm-cpu', 'vm-ram', 'vm-disk', 'vm-load', 'vm-uptime', 'vm-queue'].forEach(id => {
+      ['vm-cpu', 'vm-ram', 'vm-disk', 'vm-load', 'vm-uptime', 'vm-queue', 'vm-videos'].forEach(id => {
         const el = document.getElementById(id); if (el) el.textContent = '—';
       });
     }

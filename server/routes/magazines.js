@@ -95,8 +95,11 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
         const targetName = t.targetName || t.target_name || `target${i}`;
         let imagePath = t.imagePath || t.image_path || `magazines/${id}/targets/${i}/original.jpg`;
         const rawOverlayType = t.overlayType || t.overlay_type || t.overlay?.type || 'video';
-        const overlayType = rawOverlayType === '3d' ? '3d' : (rawOverlayType === 'image' ? 'image' : 'video');
+        let overlayType = rawOverlayType === '3d' ? '3d' : (rawOverlayType === 'image' ? 'image' : 'video');
         let overlayPath = t.overlayPath || t.overlay_path || t.videoPath || t.video_path || (overlayType === '3d' ? `magazines/${id}/targets/${i}/model.glb` : (overlayType === 'image' ? `magazines/${id}/targets/${i}/overlay.jpg` : `magazines/${id}/targets/${i}/overlay.mp4`));
+        // The actual media file type wins over the declared overlay type
+        if (/\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(overlayPath)) overlayType = 'image';
+        else if (/\.(mp4|mov|webm|m4v|mkv)(\?|$)/i.test(overlayPath)) overlayType = 'video';
 
         // Upload base64 target image if provided
         if (t.imageBase64 && r2) {
@@ -245,8 +248,11 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
           const targetName = t.targetName || t.target_name || `target${i}`;
           let imagePath = t.imagePath || t.image_path || `magazines/${id}/targets/${i}/original.jpg`;
           const rawOverlayType = t.overlayType || t.overlay_type || t.overlay?.type || 'video';
-          const overlayType = rawOverlayType === '3d' ? '3d' : (rawOverlayType === 'image' ? 'image' : 'video');
+          let overlayType = rawOverlayType === '3d' ? '3d' : (rawOverlayType === 'image' ? 'image' : 'video');
           let overlayPath = t.overlayPath || t.overlay_path || t.videoPath || t.video_path || (overlayType === '3d' ? `magazines/${id}/targets/${i}/model.glb` : (overlayType === 'image' ? `magazines/${id}/targets/${i}/overlay.jpg` : `magazines/${id}/targets/${i}/overlay.mp4`));
+          // The actual media file type wins over the declared overlay type
+          if (/\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(overlayPath)) overlayType = 'image';
+          else if (/\.(mp4|mov|webm|m4v|mkv)(\?|$)/i.test(overlayPath)) overlayType = 'video';
 
           const prevTarget = existingTargets[i] || null;
 
