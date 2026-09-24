@@ -41,10 +41,11 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=1">
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1">
   ${!is3D && videoUrl ? `
-  <!-- Preconnect to Mux CDN so TCP+TLS is ready before the video element is parsed -->
+  <!-- Preconnect to the video CDN so TCP+TLS is ready before playback.
+       NOTE: we deliberately do NOT <link preload as=video> — that forces the
+       whole (potentially 100+ MB) file to download before the camera starts. -->
   <link rel="preconnect" href="https://stream.mux.com" crossorigin>
   <link rel="dns-prefetch" href="https://stream.mux.com">
-  <link rel="preload" as="video" href="${esc(videoUrl)}" crossorigin="anonymous">
   ` : ''}
   <!-- 8frame must be synchronous: it registers <a-scene>/<a-entity> custom elements
        that must be defined before the browser parses the body -->
@@ -215,6 +216,9 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
     <p class="scan-hint">Point camera at the photo</p>
   </div>
 
+  <!-- Audio unlock cue: shown until the first tap on iOS (see unlockAudio) -->
+  <div id="tap-cue" style="display:none;position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:600;background:rgba(9,13,22,0.82);border:1px solid rgba(56,189,248,0.5);color:#f8fafc;font:600 13px/1 system-ui,-apple-system,sans-serif;padding:10px 16px;border-radius:9999px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none">🔊 Tap to play &amp; enable sound</div>
+
 
   <script>
     var targetData = ${jsonForScript(targetData)};
@@ -232,7 +236,7 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
       <a-asset-item id="ar-model-asset" src="${esc(modelUrl)}"></a-asset-item>
       ` : `
       <video id="ar-video" src="${esc(videoUrl)}"
-        preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous" muted autoplay>
+        preload="metadata" loop playsinline webkit-playsinline x5-playsinline crossorigin="anonymous" muted autoplay>
       </video>
       `}
     </a-assets>
@@ -266,6 +270,13 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
 
     // Never let the overlay bleed past the print: shave a hair off the plane.
     var PLANE_INSET = 0.995;
+
+    // iOS blocks unmuted playback without a user gesture, so we start muted
+    // (autoplay-muted is allowed) and unmute on the first tap.
+    var audioUnlocked = false;
+    var tapCue = document.getElementById('tap-cue');
+    function showTapCue() { if (tapCue) tapCue.style.display = 'block'; }
+    function hideTapCue() { if (tapCue) tapCue.style.display = 'none'; }
 
     function updateDebugHUD() {
       if (!DEBUG || !debugEl) return;
@@ -370,35 +381,35 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
       offX = Number(offX.toFixed(6));
       offY = Number(offY.toFixed(6));
 
-      // Primary: drive A-Frame's material component so its own texture update
-      // path applies the crop and cannot be reset by a later material refresh.
-      try {
-        plane.setAttribute('material', 'repeat', repX + ' ' + repY);
-        plane.setAttribute('material', 'offset', offX + ' ' + offY);
-      } catch (e) {}
-
-      // Backup: write straight onto the Three.js texture and refresh its matrix.
-      function applyTextureTransform() {
-        try {
-          var mesh = plane.getObject3D('mesh');
-          if (mesh && mesh.material) {
-            var mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
-            if (mat && mat.map) {
-              mat.map.wrapS = mat.map.wrapT = 1000; // THREE.RepeatWrapping
-              mat.map.repeat.set(repX, repY);
-              mat.map.offset.set(offX, offY);
-              if (mat.map.matrixAutoUpdate !== false) mat.map.updateMatrix();
-              mat.map.needsUpdate = true;
-              mat.needsUpdate = true;
-            }
-          }
-        } catch (err) {}
-      }
-
-      applyTextureTransform();
-      [80, 400, 1200].forEach(function(ms) { setTimeout(applyTextureTransform, ms); });
+      // Crop by rewriting the plane's UVs. This is the only method that works
+      // on every shader path: A-Frame swaps to its ios10hls shader on iOS,
+      // which hardcodes texture repeat/offset to (1,1)/(0,0) and reads geometry
+      // UVs only - so texture.repeat/offset is silently ignored on iPhones.
+      applyUVCrop(repX, repY, offX, offY);
+      [80, 400, 1200].forEach(function(ms) {
+        setTimeout(function() { applyUVCrop(repX, repY, offX, offY); }, ms);
+      });
 
       updateDebugHUD();
+    }
+
+    function applyUVCrop(repX, repY, offX, offY) {
+      try {
+        if (!plane) return;
+        var mesh = plane.getObject3D('mesh');
+        if (!mesh || !mesh.geometry) return;
+        var geo = mesh.geometry;
+        if (!geo.attributes || !geo.attributes.uv) return;
+        if (!geo.userData.__baseUV) {
+          geo.userData.__baseUV = Float32Array.from(geo.attributes.uv.array);
+        }
+        var base = geo.userData.__baseUV;
+        var uv = geo.attributes.uv;
+        for (var i = 0; i < uv.count; i++) {
+          uv.setXY(i, offX + base[i * 2] * repX, offY + base[i * 2 + 1] * repY);
+        }
+        uv.needsUpdate = true;
+      } catch (e) {}
     }
 
     if (plane) plane.addEventListener('materialtextureloaded', updatePlaneMapping);
@@ -481,15 +492,10 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
       }
 
       if (video) {
-        video.muted = false;
-        var p = video.play();
-        if (p && p.catch) {
-          p.catch(function() {
-            video.muted = false;
-            video.play().catch(function(){});
-          });
-        }
+        video.muted = !audioUnlocked;
+        playVideo();
         if (plane) plane.setAttribute('visible', 'true');
+        if (!audioUnlocked) showTapCue();
       }
     });
 
@@ -507,13 +513,27 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
         video.pause();
         if (plane) plane.setAttribute('visible', 'false');
       }
+      hideTapCue();
     });
 
-    function primeAudio() {
-      if (video) video.muted = false;
+    // Start muted (works everywhere, incl. iOS) — visuals always appear.
+    function playVideo() {
+      if (!video) return;
+      try {
+        var p = video.play();
+        if (p && p.catch) p.catch(showTapCue);
+      } catch (e) { showTapCue(); }
     }
-    document.addEventListener('touchstart', primeAudio, { passive: true, once: true });
-    document.addEventListener('click', primeAudio, { once: true });
+    // First user gesture → unmute with sound (iOS-legal) and keep playing.
+    function unlockAudio() {
+      if (!video) return;
+      audioUnlocked = true;
+      video.muted = false;
+      playVideo();
+      hideTapCue();
+    }
+    document.addEventListener('touchstart', unlockAudio, { passive: true });
+    document.addEventListener('click', unlockAudio);
   </script>
 </body>
 </html>`;

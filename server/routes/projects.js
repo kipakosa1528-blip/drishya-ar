@@ -22,9 +22,11 @@ function formatProject(row) {
   const muxPlaybackId = td.mux_playback_id || row.mux_playback_id || null;
   const muxAssetId = td.mux_asset_id || row.mux_asset_id || null;
   const muxStreamUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}.m3u8` : null;
-  const muxVideoUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}/high.mp4` : null;
+  const muxVideoUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}/capped-1080p.mp4` : null;
   const r2VideoUrl = videoPath ? (videoPath.startsWith('http') ? videoPath : r2Url(videoPath)) : '';
-  const videoUrl = r2VideoUrl || muxVideoUrl || '';
+  // Prefer Mux (adaptive/smaller) over the raw R2 original.
+  const videoUrl = muxVideoUrl || r2VideoUrl || '';
+  const muxStatus = muxPlaybackId ? 'ready' : (td.mux_status || (videoPath ? 'missing' : 'none'));
   const viewsCount = row.views_count || td._views_count || 0;
   const maxScans = row.max_scans || td._max_scans || null;
   const lastScannedAt = row.last_scanned_at || td._last_scanned_at || null;
@@ -63,6 +65,10 @@ function formatProject(row) {
     mux_asset_id: muxAssetId,
     muxStreamUrl,
     mux_stream_url: muxStreamUrl,
+    muxStatus,
+    mux_status: muxStatus,
+    muxError: td.mux_error || null,
+    mux_error: td.mux_error || null,
     viewsCount,
     views_count: viewsCount,
     lastScannedAt,
@@ -158,16 +164,18 @@ export function registerProjectsRoutes(app, { requireAuth }) {
         targetData.model_url = r2Url(resolvedModelPath);
       } else if (resolvedVideoPath) {
         targetData.overlay_type = 'video';
-        // Ingest video into Mux for sub-200ms global edge streaming
-        try {
-          const videoPublicUrl = resolvedVideoPath.startsWith('http') ? resolvedVideoPath : r2Url(resolvedVideoPath);
-          const muxResult = await createMuxAsset(videoPublicUrl);
-          if (muxResult) {
-            targetData.mux_asset_id = muxResult.assetId;
-            targetData.mux_playback_id = muxResult.playbackId;
-          }
-        } catch (muxErr) {
-          console.warn('Mux ingestion non-fatal warning:', muxErr.message);
+        // Ingest video into Mux. Failures are recorded (never silent) so the
+        // admin can see that a project is still serving the raw original.
+        const videoPublicUrl = resolvedVideoPath.startsWith('http') ? resolvedVideoPath : r2Url(resolvedVideoPath);
+        const muxResult = await createMuxAsset(videoPublicUrl);
+        if (muxResult && muxResult.playbackId) {
+          targetData.mux_asset_id = muxResult.assetId;
+          targetData.mux_playback_id = muxResult.playbackId;
+          targetData.mux_status = 'ready';
+          delete targetData.mux_error;
+        } else {
+          targetData.mux_status = 'error';
+          targetData.mux_error = (muxResult && muxResult.error) || 'Mux ingestion failed';
         }
       }
 
@@ -293,9 +301,14 @@ export function registerProjectsRoutes(app, { requireAuth }) {
         try {
           const videoPublicUrl = resolvedVideoPath.startsWith('http') ? resolvedVideoPath : r2Url(resolvedVideoPath);
           const muxResult = await createMuxAsset(videoPublicUrl);
-          if (muxResult) {
+          if (muxResult && muxResult.playbackId) {
             td.mux_asset_id = muxResult.assetId;
             td.mux_playback_id = muxResult.playbackId;
+            td.mux_status = 'ready';
+            delete td.mux_error;
+          } else {
+            td.mux_status = 'error';
+            td.mux_error = (muxResult && muxResult.error) || 'Mux re-ingestion failed';
           }
         } catch (muxErr) {
           console.warn('Mux re-ingestion warning:', muxErr.message);

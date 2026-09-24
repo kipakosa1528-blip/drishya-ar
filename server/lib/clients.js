@@ -51,11 +51,12 @@ export const mux = (MUX_TOKEN_ID && MUX_TOKEN_SECRET)
  * @returns {Promise<{ assetId: string, playbackId: string } | null>}
  */
 export async function createMuxAsset(videoUrl) {
-  if (!mux) return null;
+  if (!mux) return { assetId: null, playbackId: null, error: 'Mux not configured' };
   try {
     const asset = await mux.video.assets.create({
-      input: [{ url: videoUrl }],
-      playback_policy: ['public'],
+      inputs: [{ url: videoUrl }],
+      playback_policies: ['public'],
+      // Deprecated-but-supported MP4 fallback; primary playback uses HLS.
       mp4_support: 'capped-1080p',
     });
     const playbackId = asset.playback_ids?.find(p => p.policy === 'public')?.id || asset.playback_ids?.[0]?.id;
@@ -63,10 +64,11 @@ export async function createMuxAsset(videoUrl) {
       assetId: asset.id,
       playbackId: playbackId || null,
       duration: asset.duration || null,
+      error: null,
     };
   } catch (err) {
     console.error('Mux asset creation error:', err.message);
-    return null;
+    return { assetId: null, playbackId: null, error: err.message };
   }
 }
 

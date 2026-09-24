@@ -192,7 +192,7 @@ export function renderMagazineArPage({ title, magId, targets = [], debug = false
         if (t.overlayType === 'image') {
           return `<img id="ov-img-${idx}" src="${esc(t.overlayUrl)}" crossorigin="anonymous" />`;
         } else {
-          return `<video id="ov-vid-${idx}" src="${esc(t.overlayUrl)}" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous" muted autoplay></video>`;
+          return `<video id="ov-vid-${idx}" src="${esc(t.overlayUrl)}" preload="metadata" loop playsinline webkit-playsinline x5-playsinline crossorigin="anonymous" muted autoplay></video>`;
         }
       }).join('\n      ')}
     </a-assets>
@@ -335,34 +335,33 @@ export function renderMagazineArPage({ title, magId, targets = [], debug = false
       offX = Number(offX.toFixed(6));
       offY = Number(offY.toFixed(6));
 
-      // Primary: drive A-Frame's material component so its texture update path
-      // applies the crop and can't be reset by a later material refresh.
-      try {
-        plane.setAttribute('material', 'repeat', repX + ' ' + repY);
-        plane.setAttribute('material', 'offset', offX + ' ' + offY);
-      } catch (e) {}
-
-      function applyTextureTransform() {
-        try {
-          var mesh = plane.getObject3D('mesh');
-          if (mesh && mesh.material) {
-            var mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
-            if (mat && mat.map) {
-              mat.map.wrapS = mat.map.wrapT = 1000; // THREE.RepeatWrapping
-              mat.map.repeat.set(repX, repY);
-              mat.map.offset.set(offX, offY);
-              if (mat.map.matrixAutoUpdate !== false) mat.map.updateMatrix();
-              mat.map.needsUpdate = true;
-              mat.needsUpdate = true;
-            }
-          }
-        } catch (err) {}
-      }
-
-      applyTextureTransform();
-      [80, 400, 1200].forEach(function(ms) { setTimeout(applyTextureTransform, ms); });
+      // Crop by rewriting the plane's UVs - the only method that survives the
+      // iOS ios10hls shader swap (which ignores texture repeat/offset).
+      applyUVCropEl(plane, repX, repY, offX, offY);
+      [80, 400, 1200].forEach(function(ms) {
+        setTimeout(function() { applyUVCropEl(plane, repX, repY, offX, offY); }, ms);
+      });
 
       updateDebugHUD();
+    }
+
+    function applyUVCropEl(planeEl, repX, repY, offX, offY) {
+      try {
+        if (!planeEl) return;
+        var mesh = planeEl.getObject3D('mesh');
+        if (!mesh || !mesh.geometry) return;
+        var geo = mesh.geometry;
+        if (!geo.attributes || !geo.attributes.uv) return;
+        if (!geo.userData.__baseUV) {
+          geo.userData.__baseUV = Float32Array.from(geo.attributes.uv.array);
+        }
+        var base = geo.userData.__baseUV;
+        var uv = geo.attributes.uv;
+        for (var n = 0; n < uv.count; n++) {
+          uv.setXY(n, offX + base[n * 2] * repX, offY + base[n * 2 + 1] * repY);
+        }
+        uv.needsUpdate = true;
+      } catch (e) {}
     }
 
     // Initialize mapping for all targets
