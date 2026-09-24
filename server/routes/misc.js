@@ -160,28 +160,32 @@ export function registerMiscRoutes(app, { requireAuth }) {
       online = true;
     }
 
-    const queue = { queued: 0, processing: 0, ready: 0, error: 0, missing: 0, optimized: 0, total: 0, projects: 0, magazineTargets: 0 };
+    const queue = { queued: 0, processing: 0, ready: 0, error: 0, missing: 0, optimized: 0, total: 0, projects: 0, models: 0, magazineTargets: 0 };
     try {
       const { data: projs } = await supabase.from('projects').select('video_path,target_data');
       for (const row of projs || []) {
         const td = row.target_data || {};
-        const type = td.overlay_type || (row.video_path ? 'video' : null);
-        if (type !== 'video') continue;
-        queue.total++; queue.projects++;
-        const st = td.transcode_status || (td.optimized_video_path ? 'ready' : 'missing');
+        const type = td.overlay_type || (row.video_path ? 'video' : (td.model_path ? '3d' : null));
+        if (type !== 'video' && type !== '3d') continue;
+        queue.total++;
+        if (type === '3d') queue.models++; else queue.projects++;
+        const ready = type === '3d' ? td.optimized_model_path : td.optimized_video_path;
+        const st = td.transcode_status || (ready ? 'ready' : 'missing');
         if (queue[st] != null) queue[st]++;
-        if (td.optimized_video_path) queue.optimized++;
+        if (ready) queue.optimized++;
       }
       const { data: mags } = await supabase.from('magazines').select('targets');
       for (const m of mags || []) {
         for (const t of (m.targets || [])) {
           const type = (t.overlay && t.overlay.type) || (t.target_data && t.target_data.overlay_type);
-          if (type !== 'video') continue;
+          if (type !== 'video' && type !== '3d') continue;
           const td = t.target_data || {};
-          queue.total++; queue.magazineTargets++;
-          const st = td.transcode_status || (td.optimized_video_path ? 'ready' : 'missing');
+          queue.total++;
+          if (type === '3d') queue.models++; else queue.magazineTargets++;
+          const ready = type === '3d' ? td.optimized_model_path : td.optimized_video_path;
+          const st = td.transcode_status || (ready ? 'ready' : 'missing');
           if (queue[st] != null) queue[st]++;
-          if (td.optimized_video_path) queue.optimized++;
+          if (ready) queue.optimized++;
         }
       }
     } catch { /* db best-effort */ }

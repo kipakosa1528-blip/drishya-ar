@@ -7,6 +7,9 @@ import { PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@a
 import { supabase, getR2, R2_BUCKET, r2Url, prepareTarget } from '../lib/clients.js';
 import { cacheBust } from './ar.js';
 
+const ASSET_CACHE = 'public, max-age=3600, stale-while-revalidate=86400';
+const isGlb = (buf) => buf && buf.length >= 4 && buf.subarray(0, 4).toString('ascii') === 'glTF';
+
 /**
  * Normalize a DB row for API consumers.
  * NOTE: both camelCase and snake_case keys are emitted on purpose — the
@@ -31,7 +34,11 @@ function formatProject(row) {
   const lastScannedAt = row.last_scanned_at || td._last_scanned_at || null;
   const overlayType = td.overlay_type || (row.video_path ? 'video' : 'image');
   const modelPath = td.model_path || row.model_path || '';
-  const modelUrl = modelPath ? (modelPath.startsWith('http') ? modelPath : r2Url(modelPath)) : (td.model_url || '');
+  const baseModelUrl = modelPath ? (modelPath.startsWith('http') ? modelPath : r2Url(modelPath)) : (td.model_url || '');
+  const optimizedModelPath = td.optimized_model_path || '';
+  const optimizedModelUrl = optimizedModelPath ? (optimizedModelPath.startsWith('http') ? optimizedModelPath : r2Url(optimizedModelPath)) : '';
+  const modelUrl = optimizedModelUrl || baseModelUrl;
+  const modelBytes = td.model_bytes || null;
 
   return {
     id: row.id,
@@ -50,6 +57,12 @@ function formatProject(row) {
     model_path: modelPath,
     modelUrl,
     model_url: modelUrl,
+    optimizedModelUrl,
+    optimized_model_url: optimizedModelUrl,
+    optimizedModelPath,
+    optimized_model_path: optimizedModelPath,
+    modelBytes,
+    model_bytes: modelBytes,
     imagePath,
     image_path: imagePath,
     videoPath,
@@ -130,14 +143,15 @@ export function registerProjectsRoutes(app, { requireAuth }) {
       if (videoBase64 && r2 && overlayType !== '3d') {
         const buf = Buffer.from(videoBase64.split(',')[1] || videoBase64, 'base64');
         await r2.send(new PutObjectCommand({
-          Bucket: R2_BUCKET, Key: resolvedVideoPath, Body: buf, ContentType: 'video/mp4'
+          Bucket: R2_BUCKET, Key: resolvedVideoPath, Body: buf, ContentType: 'video/mp4', CacheControl: ASSET_CACHE
         }));
       }
 
       if (modelBase64 && r2) {
         const buf = Buffer.from(modelBase64.split(',')[1] || modelBase64, 'base64');
+        if (!isGlb(buf)) return res.status(400).json({ error: 'That file is not a valid 3D model (.glb / glTF)' });
         await r2.send(new PutObjectCommand({
-          Bucket: R2_BUCKET, Key: resolvedModelPath, Body: buf, ContentType: 'model/gltf-binary'
+          Bucket: R2_BUCKET, Key: resolvedModelPath, Body: buf, ContentType: 'model/gltf-binary', CacheControl: ASSET_CACHE
         }));
       }
 
@@ -260,13 +274,19 @@ export function registerProjectsRoutes(app, { requireAuth }) {
         const resolvedModelPath = modelPath || `${id}/model.glb`;
         if (modelBase64 && r2) {
           const buf = Buffer.from(modelBase64.split(',')[1] || modelBase64, 'base64');
+          if (!isGlb(buf)) return res.status(400).json({ error: 'That file is not a valid 3D model (.glb / glTF)' });
           await r2.send(new PutObjectCommand({
-            Bucket: R2_BUCKET, Key: resolvedModelPath, Body: buf, ContentType: 'model/gltf-binary'
+            Bucket: R2_BUCKET, Key: resolvedModelPath, Body: buf, ContentType: 'model/gltf-binary', CacheControl: ASSET_CACHE
           }));
         }
         td.overlay_type = '3d';
         td.model_path = resolvedModelPath;
         td.model_url = r2Url(resolvedModelPath);
+        // Re-optimize the model in the background
+        td.optimized_model_path = null;
+        td.optimized_model_url = null;
+        td.transcode_status = 'queued';
+        td.transcode_error = null;
       }
 
       // 3. If Overlay Video was replaced

@@ -169,7 +169,7 @@
           <div style="font-size:11px;color:var(--muted);margin-top:4px" id="vm-queue-sub">—</div>
         </div>
         <div class="stat-card">
-          <div class="stat-lbl">Videos Optimized</div>
+          <div class="stat-lbl">AR Assets Optimized</div>
           <div class="stat-val" id="vm-videos">—</div>
           <div style="font-size:11px;color:var(--muted);margin-top:4px" id="vm-videos-sub">—</div>
         </div>
@@ -426,7 +426,9 @@
       const videosEl = document.getElementById('vm-videos');
       if (videosEl) videosEl.textContent = `${q.optimized || 0}/${q.total || 0}`;
       const videosSub = document.getElementById('vm-videos-sub');
-      if (videosSub) videosSub.textContent = q.total ? (q.optimized >= q.total ? 'all optimized ✓' : `${(q.total - q.optimized)} pending`) : 'no videos';
+      if (videosSub) videosSub.textContent = q.total
+        ? `${q.projects || 0} video · ${q.models || 0} 3D · ${q.magazineTargets || 0} mag targets`
+        : 'no assets';
 
       vmHistory.push({ cpu, ram: vm.memTotal ? Math.round((vm.memUsed / vm.memTotal) * 100) : 0 });
       if (vmHistory.length > 40) vmHistory.shift();

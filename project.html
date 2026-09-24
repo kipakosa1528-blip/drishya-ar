@@ -686,16 +686,18 @@
   function renderPipelineBadge(p) {
     const el = document.getElementById('vid-pipeline-badge');
     if (!el) return;
+    const is3d = (p?.overlayType || p?.overlay_type) === '3d';
     const status = p?.transcodeStatus || p?.transcode_status;
-    const bytes = p?.videoBytes || p?.video_bytes;
-    const optimized = p?.optimizedVideoUrl || p?.optimized_video_url;
+    const bytes = (is3d ? (p?.modelBytes || p?.model_bytes) : (p?.videoBytes || p?.video_bytes));
+    const optimized = is3d ? (p?.optimizedModelUrl || p?.optimized_model_url) : (p?.optimizedVideoUrl || p?.optimized_video_url);
+    const kind = is3d ? '3D model' : 'video';
 
     let text = '', bg = '', color = '', border = '';
     if (optimized || status === 'ready') {
       text = `✅ Optimized for AR${bytes ? ' • ' + fmtBytes(bytes) : ''}`;
       bg = 'rgba(34,197,94,0.12)'; color = '#4ade80'; border = '1px solid rgba(34,197,94,0.35)';
     } else if (status === 'queued' || status === 'processing') {
-      text = '⏳ Optimizing video… (serving original meanwhile)';
+      text = `⏳ Optimizing ${kind}… (serving original meanwhile)`;
       bg = 'rgba(56,189,248,0.12)'; color = '#38bdf8'; border = '1px solid rgba(56,189,248,0.35)';
     } else if (status === 'error') {
       text = `⚠️ Using original${bytes ? ' • ' + fmtBytes(bytes) : ''} (optimizer failed)`;

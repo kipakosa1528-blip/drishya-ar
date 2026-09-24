@@ -229,7 +229,8 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
     xrweb="allowedDevices: any; disableWorldTracking: true; disableDefaultEnvironment: true">
     <a-assets>
       ${is3D ? `
-      <a-asset-item id="ar-model-asset" src="${esc(modelUrl)}"></a-asset-item>
+      <!-- 3D model is loaded lazily on target-found (see xrimagefound) so the
+           camera starts instantly instead of waiting for the whole GLB. -->
       ` : `
       <video id="ar-video" src="${esc(videoUrl)}"
         preload="metadata" loop playsinline webkit-playsinline x5-playsinline crossorigin="anonymous" muted autoplay>
@@ -240,7 +241,7 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
     <xrextras-named-image-target name="target0">
       ${is3D ? `
       <a-entity id="ar-model-container" position="0 0 0" rotation="90 0 0">
-        <a-entity id="ar-model" gltf-model="#ar-model-asset" fit-model="targetSize: ${Number(planeW) || 1.0}" spin-axis visible="false"></a-entity>
+        <a-entity id="ar-model" fit-model="targetSize: ${Number(planeW) || 1.0}" spin-axis visible="false"></a-entity>
       </a-entity>
       ` : `
       <a-plane id="ar-plane" width="${Number(planeW)}" height="${Number(planeH)}" position="0 0 0.001" visible="false"
@@ -257,6 +258,7 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
     var video = document.getElementById('ar-video');
     var plane = document.getElementById('ar-plane');
     var model = document.getElementById('ar-model');
+    var AR_MODEL_URL = ${is3D && modelUrl ? JSON.stringify(modelUrl) : 'null'};
 
     var DEBUG = !!document.getElementById('ar-debug');
     var debugEl = document.getElementById('ar-debug');
@@ -484,6 +486,10 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
       if (scanOverlay) scanOverlay.classList.add('hidden');
 
       if (model) {
+        // Load the GLB only now (target found) so the camera isn't blocked at startup.
+        if (AR_MODEL_URL && !model.getAttribute('gltf-model')) {
+          model.setAttribute('gltf-model', 'url(' + AR_MODEL_URL + ')');
+        }
         model.setAttribute('visible', 'true');
       }
 

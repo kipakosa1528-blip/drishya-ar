@@ -6,6 +6,9 @@ import { PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@a
 import { supabase, getR2, R2_BUCKET, r2Url, prepareMagazineTarget } from '../lib/clients.js';
 import { formatMagazine } from '../lib/magazine-types.js';
 
+const ASSET_CACHE = 'public, max-age=3600, stale-while-revalidate=86400';
+const isGlb = (buf) => buf && buf.length >= 4 && buf.subarray(0, 4).toString('ascii') === 'glTF';
+
 /** Purge all R2 files stored under a magazine ID prefix. */
 async function purgeMagazineFiles(id) {
   const r2 = getR2();
@@ -115,11 +118,13 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
         // Upload base64 overlay if provided
         if (t.overlayBase64 && r2) {
           const buf = Buffer.from(t.overlayBase64.split(',')[1] || t.overlayBase64, 'base64');
+          if (overlayType === '3d' && !isGlb(buf)) return res.status(400).json({ error: `Target ${i + 1}: that file is not a valid 3D model (.glb / glTF)` });
           await r2.send(new PutObjectCommand({
             Bucket: R2_BUCKET,
             Key: overlayPath,
             Body: buf,
-            ContentType: overlayType === '3d' ? 'model/gltf-binary' : (overlayType === 'image' ? 'image/jpeg' : 'video/mp4')
+            ContentType: overlayType === '3d' ? 'model/gltf-binary' : (overlayType === 'image' ? 'image/jpeg' : 'video/mp4'),
+            CacheControl: ASSET_CACHE
           }));
         }
 
@@ -287,21 +292,29 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
           // 2. Overlay (Upload if base64 provided)
           if (t.overlayBase64 && r2) {
             const buf = Buffer.from(t.overlayBase64.split(',')[1] || t.overlayBase64, 'base64');
+            if (overlayType === '3d' && !isGlb(buf)) return res.status(400).json({ error: `Target ${i + 1}: that file is not a valid 3D model (.glb / glTF)` });
             await r2.send(new PutObjectCommand({
               Bucket: R2_BUCKET,
               Key: overlayPath,
               Body: buf,
-              ContentType: overlayType === '3d' ? 'model/gltf-binary' : (overlayType === 'image' ? 'image/jpeg' : 'video/mp4')
+              ContentType: overlayType === '3d' ? 'model/gltf-binary' : (overlayType === 'image' ? 'image/jpeg' : 'video/mp4'),
+              CacheControl: ASSET_CACHE
             }));
           }
 
           let overlayUrl = t.overlayUrl || t.overlay_url || t.overlay?.url || '';
 
-          // Queue the self-hosted transcode when the video overlay is new/changed
+          // Queue the self-hosted transcode when the overlay is new/changed
           if (overlayType === 'video' && (t.overlayBase64 || t._overlayChanged)) {
             targetData.video_path = overlayPath;
             targetData.optimized_video_path = null;
             targetData.optimized_video_url = null;
+            targetData.transcode_status = 'queued';
+            targetData.transcode_error = null;
+          } else if (overlayType === '3d' && (t.overlayBase64 || t._overlayChanged)) {
+            targetData.model_path = overlayPath;
+            targetData.optimized_model_path = null;
+            targetData.optimized_model_url = null;
             targetData.transcode_status = 'queued';
             targetData.transcode_error = null;
           }

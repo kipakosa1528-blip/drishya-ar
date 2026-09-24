@@ -56,8 +56,9 @@ import { r2Url } from './clients.js';
 export function formatOverlay(raw = {}) {
   const type = raw.type === 'image' || raw.overlay_type === 'image' ? 'image' : 'video';
   const path = raw.path || raw.overlay_path || raw.video_path || raw.image_path || '';
-  const optimizedUrl = raw.optimized_video_url || (raw.optimized_video_path
-    ? (raw.optimized_video_path.startsWith('http') ? raw.optimized_video_path : r2Url(raw.optimized_video_path))
+  const optimizedPath = raw.optimized_video_path || raw.optimized_model_path || '';
+  const optimizedUrl = raw.optimized_video_url || raw.optimized_model_url || (optimizedPath
+    ? (optimizedPath.startsWith('http') ? optimizedPath : r2Url(optimizedPath))
     : '');
 
   let url = raw.url || raw.overlay_url || '';
@@ -128,9 +129,11 @@ export function formatMagazineTarget(raw = {}, index = 0) {
   const td = (typeof raw.targetData === 'object' && raw.targetData) ? raw.targetData : (typeof raw.target_data === 'object' && raw.target_data ? raw.target_data : null);
 
   const overlayRaw = { ...((typeof raw.overlay === 'object' && raw.overlay) ? raw.overlay : raw) };
-  if (td && td.optimized_video_path) {
+  if (td && (td.optimized_video_path || td.optimized_model_path)) {
     overlayRaw.optimized_video_path = td.optimized_video_path;
     overlayRaw.optimized_video_url = td.optimized_video_url;
+    overlayRaw.optimized_model_path = td.optimized_model_path;
+    overlayRaw.optimized_model_url = td.optimized_model_url;
   }
   const overlay = formatOverlay(overlayRaw);
   const overlayFraming = raw.overlayFraming || raw.overlay_framing || td?.overlay_framing || overlay.framing || null;

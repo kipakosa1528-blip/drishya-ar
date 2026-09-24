@@ -102,7 +102,11 @@ async function handleProjectAr(project, id, res, debug = false) {
   });
 
   const overlayType = td.overlay_type || (project.video_path ? 'video' : (td.model_url ? '3d' : 'image'));
-  const modelUrl = td.model_url || (td.model_path ? (td.model_path.startsWith('http') ? td.model_path : r2Url(td.model_path)) : '');
+  const optimizedModelPath = td.optimized_model_path || '';
+  const optimizedModelUrl = optimizedModelPath ? (optimizedModelPath.startsWith('http') ? optimizedModelPath : r2Url(optimizedModelPath)) : '';
+  const baseModelUrl = td.model_url || (td.model_path ? (td.model_path.startsWith('http') ? td.model_path : r2Url(td.model_path)) : '');
+  // Prefer the optimized GLB (VM worker) over the raw upload.
+  const modelUrl = optimizedModelUrl || baseModelUrl;
   const optimizedPath = td.optimized_video_path || '';
   const optimizedVideoUrl = optimizedPath ? (optimizedPath.startsWith('http') ? optimizedPath : r2Url(optimizedPath)) : '';
   const r2VideoUrl = (project.video_path && project.video_path.startsWith('http')) ? project.video_path : (project.video_path ? r2Url(project.video_path) : '');
