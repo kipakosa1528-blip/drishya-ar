@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Magazines — Kipakosa AR</title>
-  <link rel="stylesheet" href="css/app.css?v=5" />
+  <link rel="stylesheet" href="css/app.css?v=6" />
   <script src="js/admin-boot.js?v=1"></script>
   <script src="/external/chart.umd.min.js"></script>
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1" />
@@ -145,14 +145,14 @@
           Streamed: <strong id="sum-delivered-mins" style="color:var(--text)">0 mins</strong> (<span id="sum-views">0</span> scans)
         </div>
         <div style="font-size:12px;color:var(--text-secondary)">
-          Video Storage: <strong id="sum-storage-mins" style="color:var(--text)">0 mins</strong> (<span id="sum-video-targets">0</span> video overlays)
+          Stored: <strong id="sum-stored-gb" style="color:var(--text)">0 GB</strong> (<span id="sum-video-targets">0</span> video overlays)
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <div style="font-size:12px;color:var(--text-secondary)">
           Estimated Cost: <strong id="sum-total-cost" style="color:var(--accent);font-size:14px">$0.00</strong>
         </div>
-        <span class="badge badge-green" style="font-size:11px"><span class="badge-dot"></span>Covered by $20/mo Free Credit</span>
+        <span class="badge badge-green" style="font-size:11px"><span class="badge-dot"></span>Storage + Delivery (est.)</span>
       </div>
     </div>
 
@@ -242,7 +242,7 @@
   }
 
   function updateDeliverySummary(items) {
-    let totalStorageMins = 0;
+    let totalStoredGb = 0;
     let totalDeliveredMins = 0;
     let totalViews = 0;
     let totalCost = 0;
@@ -250,7 +250,7 @@
 
     items.forEach(m => {
       const cost = calcDeliveryCost(m);
-      totalStorageMins += cost.durationMin;
+      totalStoredGb += cost.storedGb;
       totalDeliveredMins += cost.minutesDelivered;
       totalViews += cost.views;
       totalCost += cost.totalCost;
@@ -259,13 +259,13 @@
 
     const sumDelivered = document.getElementById('sum-delivered-mins');
     const sumViews = document.getElementById('sum-views');
-    const sumStorage = document.getElementById('sum-storage-mins');
+    const sumStorage = document.getElementById('sum-stored-gb');
     const sumCost = document.getElementById('sum-total-cost');
     const sumVideoTargets = document.getElementById('sum-video-targets');
 
     if (sumDelivered) sumDelivered.textContent = totalDeliveredMins.toFixed(1) + ' mins';
     if (sumViews) sumViews.textContent = totalViews.toLocaleString();
-    if (sumStorage) sumStorage.textContent = totalStorageMins.toFixed(1) + ' mins';
+    if (sumStorage) sumStorage.textContent = totalStoredGb.toFixed(2) + ' GB';
     if (sumVideoTargets) sumVideoTargets.textContent = totalVideoTargets;
     if (sumCost) sumCost.textContent = totalCost === 0 ? '$0.00' : (totalCost < 0.01 ? '<$0.01' : '$' + totalCost.toFixed(2));
   }

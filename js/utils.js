@@ -160,10 +160,18 @@ export function sortProjects(list, mode = 'newest') {
   }
 }
 
+// ── Self-hosted video cost model ─────────────────────────────────────────────
+// Cloudflare R2 has zero egress fees today, but we price delivery as if it
+// weren't free so the numbers stay meaningful. Adjust all rates here.
+export const VIDEO_COST_RATES = {
+  storagePerGbMonth: 0.015, // R2 Standard: $/GB-month
+  deliveryPerGb: 0.09,      // assumed CDN egress: $/GB (S3-like)
+  assumedBitrateMbps: 1.8,  // matches the transcode profile
+};
+
 /**
- * Computes self-hosted video delivery & storage metrics for a single frame or a
- * multi-target magazine. Delivery runs on Cloudflare R2 (zero egress fees), so
- * delivery cost is $0; storage is R2 Standard at $0.015/GB-month.
+ * Computes estimated video storage + delivery cost for a single frame or a
+ * multi-target magazine, using the self-hosted R2 economics in VIDEO_COST_RATES.
  * @param {object} projectOrMag
  */
 export function calcDeliveryCost(projectOrMag) {
@@ -196,29 +204,37 @@ export function calcDeliveryCost(projectOrMag) {
 
   const durationMin = durationSec / 60;
   const views = Number(projectOrMag.viewsCount || projectOrMag.views_count || 0);
-
-  // Estimate stored size when the optimized file size isn't known (~1.8 Mbps).
-  const estimatedBytes = bytes || (durationSec * 0.225 * 1024 * 1024);
-  const storageGb = estimatedBytes / (1024 * 1024 * 1024);
-
-  const storageCost = storageGb * 0.015;   // R2 Standard $0.015/GB-month
-  const deliveryCost = 0;                  // R2 has zero egress / delivery fees
-  const totalCost = storageCost + deliveryCost;
   const minutesDelivered = durationMin * views;
+
+  const { storagePerGbMonth, deliveryPerGb, assumedBitrateMbps } = VIDEO_COST_RATES;
+  const mbPerSec = assumedBitrateMbps / 8;
+
+  // Stored size: real optimized bytes when known, else estimated from duration.
+  const storageBytes = bytes || (durationSec * mbPerSec * 1024 * 1024);
+  const storedGb = storageBytes / (1024 * 1024 * 1024);
+  const storageCost = storedGb * storagePerGbMonth;
+
+  // Delivered size derived from streamed minutes.
+  const deliveredGb = (minutesDelivered * mbPerSec * 60) / 1024;
+  const deliveryCost = deliveredGb * deliveryPerGb;
+
+  const totalCost = storageCost + deliveryCost;
+  const money = (v) => (v === 0 ? '$0.00' : (v < 0.01 ? '<$0.01' : `$${v.toFixed(2)}`));
 
   return {
     videoCount,
     durationSec: Number(durationSec.toFixed(1)),
     durationMin: Number(durationMin.toFixed(2)),
     views,
-    bytes: estimatedBytes,
-    optimizedBytes: bytes || null,
+    storageBytes,
+    storedGb: Number(storedGb.toFixed(3)),
+    deliveredGb: Number(deliveredGb.toFixed(3)),
     storageCost,
     deliveryCost,
     totalCost,
     minutesDelivered: Number(minutesDelivered.toFixed(1)),
-    formattedTotal: totalCost === 0 ? '$0.00' : (totalCost < 0.01 ? '<$0.01' : `$${totalCost.toFixed(2)}`),
-    formattedDelivery: '$0.00',
+    formattedTotal: money(totalCost),
+    formattedDelivery: money(deliveryCost),
     formattedStorage: storageCost === 0 ? '$0.000/mo' : `$${storageCost.toFixed(3)}/mo`
   };
 }

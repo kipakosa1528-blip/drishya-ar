@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Dashboard — Kipakosa AR</title>
-  <link rel="stylesheet" href="css/app.css?v=5" />
+  <link rel="stylesheet" href="css/app.css?v=6" />
   <script src="js/admin-boot.js?v=1"></script>
   <script src="/external/chart.umd.min.js"></script>
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1" />
@@ -117,7 +117,7 @@
       <div class="stat-card">
         <div class="stat-lbl">Total Delivery Cost</div>
         <div class="stat-val" style="color:var(--accent);font-size:24px" id="st-cost">$0.00</div>
-        <div style="font-size:11px;color:var(--green);margin-top:4px"><span class="badge-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:4px"></span>Covered by Free Tier</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px"><span class="badge-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:4px"></span>Storage + Delivery (est.)</div>
       </div>
       <div class="stat-card">
         <div class="stat-lbl">Total AR Scans</div>
@@ -327,9 +327,9 @@
 </div>
 
 <script type="module">
-  import { requireAuth, initNav, authHeaders } from './js/auth.js?v=5';
-  import { getAllProjects, deleteProject, getAllMagazines, deleteMagazine } from './js/db.js?v=5';
-  import { fmt, isExpired, statusBadge, toast, calcDeliveryCost } from './js/utils.js?v=5';
+  import { requireAuth, initNav, authHeaders } from './js/auth.js?v=6';
+  import { getAllProjects, deleteProject, getAllMagazines, deleteMagazine } from './js/db.js?v=6';
+  import { fmt, isExpired, statusBadge, toast, calcDeliveryCost } from './js/utils.js?v=6';
 
   requireAuth(); 
   initNav('dashboard');

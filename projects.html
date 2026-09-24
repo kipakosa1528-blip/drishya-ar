@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Projects — Kipakosa AR</title>
-  <link rel="stylesheet" href="css/app.css?v=5" />
+  <link rel="stylesheet" href="css/app.css?v=6" />
   <script src="js/admin-boot.js?v=1"></script>
   <script src="/external/chart.umd.min.js"></script>
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1" />
@@ -126,14 +126,14 @@
           Streamed: <strong id="sum-delivered-mins" style="color:var(--text)">0 mins</strong> (<span id="sum-views">0</span> scans)
         </div>
         <div style="font-size:12px;color:var(--text-secondary)">
-          Storage: <strong id="sum-storage-mins" style="color:var(--text)">0 mins</strong>
+          Stored: <strong id="sum-stored-gb" style="color:var(--text)">0 GB</strong>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <div style="font-size:12px;color:var(--text-secondary)">
           Estimated Cost: <strong id="sum-total-cost" style="color:var(--accent);font-size:14px">$0.00</strong>
         </div>
-        <span class="badge badge-green" style="font-size:11px"><span class="badge-dot"></span>Covered by $20/mo Free Credit</span>
+        <span class="badge badge-green" style="font-size:11px"><span class="badge-dot"></span>Storage + Delivery (est.)</span>
       </div>
     </div>
 
@@ -194,9 +194,9 @@
 </div>
 
 <script type="module">
-  import { requireAuth, initNav } from './js/auth.js?v=5';
-  import { getAllProjects, deleteProject } from './js/db.js?v=5';
-  import { fmt, statusBadge, isExpired, toast, filterProjects, sortProjects, calcDeliveryCost } from './js/utils.js?v=5';
+  import { requireAuth, initNav } from './js/auth.js?v=6';
+  import { getAllProjects, deleteProject } from './js/db.js?v=6';
+  import { fmt, statusBadge, isExpired, toast, filterProjects, sortProjects, calcDeliveryCost } from './js/utils.js?v=6';
 
   requireAuth(); 
   initNav('projects');
@@ -293,14 +293,14 @@
 
     // Update global delivery summary
     let totalDeliveredMins = 0;
-    let totalStorageMins = 0;
+    let totalStoredGb = 0;
     let totalViews = 0;
     let totalCost = 0;
 
     all.forEach(p => {
       const cost = calcDeliveryCost(p);
       totalDeliveredMins += cost.minutesDelivered;
-      totalStorageMins += cost.durationMin;
+      totalStoredGb += cost.storedGb;
       totalViews += cost.views;
       totalCost += cost.totalCost;
     });
@@ -309,8 +309,8 @@
     if (sumDeliveredEl) sumDeliveredEl.textContent = `${totalDeliveredMins.toFixed(1)} mins`;
     const sumViewsEl = document.getElementById('sum-views');
     if (sumViewsEl) sumViewsEl.textContent = totalViews.toLocaleString();
-    const sumStorageEl = document.getElementById('sum-storage-mins');
-    if (sumStorageEl) sumStorageEl.textContent = `${totalStorageMins.toFixed(1)} mins`;
+    const sumStorageEl = document.getElementById('sum-stored-gb');
+    if (sumStorageEl) sumStorageEl.textContent = `${totalStoredGb.toFixed(2)} GB`;
     const sumCostEl = document.getElementById('sum-total-cost');
     if (sumCostEl) sumCostEl.textContent = totalCost === 0 ? '$0.00' : (totalCost < 0.01 ? '<$0.01' : `$${totalCost.toFixed(2)}`);
 

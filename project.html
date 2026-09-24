@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Project Detail — Kipakosa AR</title>
-  <link rel="stylesheet" href="css/app.css?v=5" />
+  <link rel="stylesheet" href="css/app.css?v=6" />
   <script src="js/admin-boot.js?v=1"></script>
   <script src="/external/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
@@ -168,22 +168,23 @@
               <td id="m-delivered" style="font-weight:600">—</td>
             </tr>
             <tr>
-              <td style="color:var(--muted);padding:6px 0">Delivery Cost (R2)</td>
+              <td style="color:var(--muted);padding:6px 0">Delivery (est.)</td>
               <td id="m-delivery-cost" style="font-weight:600;color:var(--text)">$0.00</td>
             </tr>
             <tr>
-              <td style="color:var(--muted);padding:6px 0">Storage Cost (R2)</td>
+              <td style="color:var(--muted);padding:6px 0">Storage (est.)</td>
               <td id="m-storage-cost" style="font-weight:600;color:var(--text)">$0.00/mo</td>
             </tr>
             <tr style="border-top:1px solid var(--border)">
-              <td style="color:var(--accent);padding:8px 0;font-weight:700">Total Incurred Cost</td>
+              <td style="color:var(--accent);padding:8px 0;font-weight:700">Total Delivery Cost</td>
               <td id="m-total-cost" style="color:var(--accent);font-weight:800;font-size:15px">$0.00</td>
             </tr>
             <tr>
-              <td style="color:var(--text-secondary);padding:6px 0;font-size:12px">Suggested Client Fee</td>
+              <td style="color:var(--text-secondary);padding:6px 0;font-size:12px">Suggested Client Fee (≈4×)</td>
               <td id="m-suggested-charge" style="font-size:12px;color:var(--text-secondary)">—</td>
             </tr>
           </table>
+          <div style="font-size:10px;color:var(--muted);margin-top:8px">Est. at $0.09/GB delivery + $0.015/GB-mo storage. R2 egress is currently $0.</div>
 
           <!-- Individual Frame Performance Chart -->
           <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06)">
@@ -478,9 +479,9 @@
   })();
 </script>
 <script type="module">
-  import { requireAuth, initNav, authHeaders } from './js/auth.js?v=5';
-  import { getProject, updateProject, deleteProject } from './js/db.js?v=5';
-  import { fmt, isExpired, statusBadge, arUrl, toast, generateQR, downloadQR, downloadMedia, copyText, calcDeliveryCost, getRatioLabel, checkAspectMismatch, buildFraming, framedMediaStyle, resolveFramingAspect } from './js/utils.js?v=5';
+  import { requireAuth, initNav, authHeaders } from './js/auth.js?v=6';
+  import { getProject, updateProject, deleteProject } from './js/db.js?v=6';
+  import { fmt, isExpired, statusBadge, arUrl, toast, generateQR, downloadQR, downloadMedia, copyText, calcDeliveryCost, getRatioLabel, checkAspectMismatch, buildFraming, framedMediaStyle, resolveFramingAspect } from './js/utils.js?v=6';
 
   requireAuth(); 
   initNav('projects');
@@ -804,7 +805,7 @@
       window._singleProjCostChart = new Chart(chartCtx, {
         type: 'bar',
         data: {
-          labels: ['Delivery Cost', 'Storage Cost', 'Total Incurred'],
+          labels: ['Delivery', 'Storage', 'Total'],
           datasets: [{
             data: [+cost.deliveryCost.toFixed(4), +cost.storageCost.toFixed(4), +cost.totalCost.toFixed(4)],
             backgroundColor: ['#38bdf8', '#C9A96E', '#a855f7'],

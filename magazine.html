@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Magazine Detail — Kipakosa AR</title>
-  <link rel="stylesheet" href="css/app.css?v=5" />
+  <link rel="stylesheet" href="css/app.css?v=6" />
   <script src="js/admin-boot.js?v=1"></script>
   <script src="/external/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
@@ -351,11 +351,11 @@
               <td id="delivered-minutes" style="font-weight:600">—</td>
             </tr>
             <tr>
-              <td style="color:var(--muted);padding:6px 0">Delivery Cost (R2)</td>
+              <td style="color:var(--muted);padding:6px 0">Delivery (est.)</td>
               <td id="delivery-cost" style="font-weight:600;color:var(--text)">$0.00</td>
             </tr>
             <tr>
-              <td style="color:var(--muted);padding:6px 0">Storage Cost (R2)</td>
+              <td style="color:var(--muted);padding:6px 0">Storage (est.)</td>
               <td id="storage-cost" style="font-weight:600;color:var(--text)">$0.00/mo</td>
             </tr>
             <tr style="border-top:1px solid var(--border)">
@@ -363,6 +363,7 @@
               <td id="total-cost" style="color:var(--accent);font-weight:800;font-size:15px">$0.00</td>
             </tr>
           </table>
+          <div style="font-size:10px;color:var(--muted);margin-top:8px">Est. at $0.09/GB delivery + $0.015/GB-mo storage. R2 egress is currently $0.</div>
 
           <!-- Individual Magazine Performance Chart -->
           <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06)">
@@ -1242,7 +1243,7 @@
         window._singleMagCostChart = new Chart(chartCtx, {
           type: 'bar',
           data: {
-            labels: ['Delivery Cost', 'Storage Cost', 'Total Incurred'],
+            labels: ['Delivery', 'Storage', 'Total'],
             datasets: [{
               data: [+deliveryCost.deliveryCost.toFixed(4), +deliveryCost.storageCost.toFixed(4), +deliveryCost.totalCost.toFixed(4)],
               backgroundColor: ['#38bdf8', '#C9A96E', '#a855f7'],
