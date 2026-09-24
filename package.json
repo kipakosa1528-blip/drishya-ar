@@ -8,7 +8,9 @@
         "dev": "node server.js",
         "deploy": "vercel --prod --yes",
         "lint": "eslint .",
-        "test": "playwright test"
+        "test": "playwright test",
+        "test:ios": "playwright test --project=webkit",
+        "test:chromium": "playwright test --project=chromium"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.1112.0",
