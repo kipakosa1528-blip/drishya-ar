@@ -154,45 +154,55 @@ export function sortProjects(list, mode = 'newest') {
       return arr.sort((a, b) => lastScanMs(b) - lastScanMs(a));
     }
     case 'cost_desc':
-      return arr.sort((a, b) => calcMuxCost(b).totalCost - calcMuxCost(a).totalCost);
+      return arr.sort((a, b) => calcDeliveryCost(b).totalCost - calcDeliveryCost(a).totalCost);
     default: // newest
       return arr.sort((a, b) => createdMs(b) - createdMs(a));
   }
 }
 
 /**
- * Computes exact estimated Mux Video API costs (Storage + Delivery) for both single frames and multi-target magazines.
+ * Computes self-hosted video delivery & storage metrics for a single frame or a
+ * multi-target magazine. Delivery runs on Cloudflare R2 (zero egress fees), so
+ * delivery cost is $0; storage is R2 Standard at $0.015/GB-month.
  * @param {object} projectOrMag
  */
-export function calcMuxCost(projectOrMag) {
+export function calcDeliveryCost(projectOrMag) {
   if (!projectOrMag) return { totalCost: 0, formattedTotal: '$0.00', minutesDelivered: 0, videoCount: 0 };
 
   let durationSec = 0;
   let videoCount = 0;
+  let bytes = 0;
+
+  const addOne = (td, fallbackDuration) => {
+    videoCount++;
+    durationSec += Number(td.duration || fallbackDuration || 30);
+    bytes += Number(td.video_bytes || td.videoBytes || 0);
+  };
 
   // Check if magazine with targets array
   if (Array.isArray(projectOrMag.targets) && projectOrMag.targets.length > 0) {
     projectOrMag.targets.forEach(t => {
       const oType = (t.overlay && t.overlay.type) || t.overlay_type || 'video';
       if (oType === 'video') {
-        videoCount++;
         const td = (typeof t.targetData === 'object' && t.targetData) ? t.targetData : (t.target_data || {});
-        durationSec += Number(td.duration || t.duration || 30);
+        addOne(td, t.duration);
       }
     });
   } else {
     // Single Living Frame
-    videoCount = 1;
     const td = (typeof projectOrMag.targetData === 'object' && projectOrMag.targetData) ? projectOrMag.targetData : (projectOrMag.target_data || {});
-    durationSec = Number(td.duration || projectOrMag.duration || 30);
+    addOne(td, projectOrMag.duration);
   }
 
   const durationMin = durationSec / 60;
   const views = Number(projectOrMag.viewsCount || projectOrMag.views_count || 0);
 
-  // Mux rates: $0.005/min/month storage, $0.0013/min delivered
-  const storageCost = durationMin * 0.005;
-  const deliveryCost = durationMin * views * 0.0013;
+  // Estimate stored size when the optimized file size isn't known (~1.8 Mbps).
+  const estimatedBytes = bytes || (durationSec * 0.225 * 1024 * 1024);
+  const storageGb = estimatedBytes / (1024 * 1024 * 1024);
+
+  const storageCost = storageGb * 0.015;   // R2 Standard $0.015/GB-month
+  const deliveryCost = 0;                  // R2 has zero egress / delivery fees
   const totalCost = storageCost + deliveryCost;
   const minutesDelivered = durationMin * views;
 
@@ -201,13 +211,15 @@ export function calcMuxCost(projectOrMag) {
     durationSec: Number(durationSec.toFixed(1)),
     durationMin: Number(durationMin.toFixed(2)),
     views,
+    bytes: estimatedBytes,
+    optimizedBytes: bytes || null,
     storageCost,
     deliveryCost,
     totalCost,
     minutesDelivered: Number(minutesDelivered.toFixed(1)),
     formattedTotal: totalCost === 0 ? '$0.00' : (totalCost < 0.01 ? '<$0.01' : `$${totalCost.toFixed(2)}`),
-    formattedDelivery: deliveryCost === 0 ? '$0.00' : (deliveryCost < 0.01 ? '<$0.01' : `$${deliveryCost.toFixed(2)}`),
-    formattedStorage: `$${storageCost.toFixed(3)}/mo`
+    formattedDelivery: '$0.00',
+    formattedStorage: storageCost === 0 ? '$0.000/mo' : `$${storageCost.toFixed(3)}/mo`
   };
 }
 

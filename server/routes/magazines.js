@@ -3,7 +3,7 @@
 
 import express from 'express';
 import { PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
-import { supabase, getR2, R2_BUCKET, r2Url, prepareMagazineTarget, deleteMuxAsset } from '../lib/clients.js';
+import { supabase, getR2, R2_BUCKET, r2Url, prepareMagazineTarget } from '../lib/clients.js';
 import { formatMagazine } from '../lib/magazine-types.js';
 
 /** Purge all R2 files stored under a magazine ID prefix. */
@@ -135,7 +135,7 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
           }
         }
 
-        // Queue the self-hosted ffmpeg transcode for video overlays (replaces Mux)
+        // Queue the self-hosted ffmpeg transcode for video overlays.
         if (overlayType === 'video') {
           targetData.video_path = overlayPath;
           targetData.transcode_status = 'queued';
@@ -287,16 +287,6 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
               Body: buf,
               ContentType: overlayType === '3d' ? 'model/gltf-binary' : (overlayType === 'image' ? 'image/jpeg' : 'video/mp4')
             }));
-
-            // If replacing previous video overlay, delete old Mux asset to avoid orphan storage
-            const oldMuxId = prevTarget?.overlay?.mux_asset_id || prevTarget?.mux_asset_id;
-            if (oldMuxId) {
-              await deleteMuxAsset(oldMuxId);
-            }
-          }
-
-          if (t._overlayChanged && prevTarget?.overlay?.mux_asset_id) {
-            await deleteMuxAsset(prevTarget.overlay.mux_asset_id);
           }
 
           let overlayUrl = t.overlayUrl || t.overlay_url || t.overlay?.url || '';
@@ -356,11 +346,6 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
         // Clean up any removed targets beyond the new length
         if (existingTargets.length > targets.length) {
           for (let rem = targets.length; rem < existingTargets.length; rem++) {
-            const remTarget = existingTargets[rem];
-            const remMuxId = remTarget.overlay?.mux_asset_id || remTarget.mux_asset_id;
-            if (remMuxId) {
-              await deleteMuxAsset(remMuxId);
-            }
             if (r2) {
               try {
                 const listed = await r2.send(new ListObjectsV2Command({ Bucket: R2_BUCKET, Prefix: `magazines/${id}/targets/${rem}/` }));
@@ -395,7 +380,7 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
   });
 
   // Lightweight framing-only update: persists a single target's overlay framing
-  // without re-uploading media or re-ingesting Mux.
+  // without re-uploading media.
   app.patch('/api/magazines/:id/targets/:index/framing', express.json({ limit: '1mb' }), requireAuth, async (req, res) => {
     try {
       const { id, index } = req.params;
@@ -462,16 +447,6 @@ export function registerMagazinesRoutes(app, { requireAuth }) {
   app.delete('/api/magazines/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const { data: existing } = await supabase.from('magazines').select('targets').eq('id', id).single();
-      const targets = Array.isArray(existing?.targets) ? existing.targets : [];
-
-      // Delete all Mux assets attached to targets
-      for (const t of targets) {
-        const muxId = t.overlay?.mux_asset_id || t.mux_asset_id;
-        if (muxId) {
-          await deleteMuxAsset(muxId);
-        }
-      }
 
       const { error } = await supabase.from('magazines').delete().eq('id', id);
       if (error) return res.status(500).json({ error: error.message });

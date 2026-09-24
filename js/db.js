@@ -193,7 +193,7 @@ export async function updateMagazine(id, updates) {
   return await res.json();
 }
 
-// Persist only a single target's overlay framing (no media re-upload / Mux churn)
+// Persist only a single target's overlay framing (no media re-upload)
 export async function updateMagazineTargetFraming(id, index, overlayFraming) {
   const res = await fetch(`/api/magazines/${id}/targets/${index}/framing`, {
     method: 'PATCH',

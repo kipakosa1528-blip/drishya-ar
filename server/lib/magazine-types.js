@@ -9,9 +9,8 @@ import { r2Url } from './clients.js';
  * @property {OverlayType} type
  * @property {string} path - Storage path in R2 or cloud storage
  * @property {string} url - Public access URL
- * @property {string|null} [muxPlaybackId] - Mux stream playback ID (if video)
- * @property {string|null} [muxAssetId] - Mux asset ID (if video)
- * @property {string|null} [muxStreamUrl] - HLS stream URL (if video)
+ * @property {string|null} [optimizedVideoPath] - R2 path of the self-hosted optimized MP4 (if video)
+ * @property {string|null} [optimizedVideoUrl] - Public URL of the optimized MP4 (if video)
  * @property {number} [aspectRatio] - Video/image aspect ratio (W / H)
  * @property {number} [planeW] - Rendered AR plane width
  * @property {number} [planeH] - Rendered AR plane height
@@ -57,20 +56,14 @@ import { r2Url } from './clients.js';
 export function formatOverlay(raw = {}) {
   const type = raw.type === 'image' || raw.overlay_type === 'image' ? 'image' : 'video';
   const path = raw.path || raw.overlay_path || raw.video_path || raw.image_path || '';
-  const muxPlaybackId = raw.muxPlaybackId || raw.mux_playback_id || null;
-  const muxAssetId = raw.muxAssetId || raw.mux_asset_id || null;
-  const muxStreamUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}.m3u8` : null;
-  const muxVideoUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}/capped-1080p.mp4` : null;
   const optimizedUrl = raw.optimized_video_url || (raw.optimized_video_path
     ? (raw.optimized_video_path.startsWith('http') ? raw.optimized_video_path : r2Url(raw.optimized_video_path))
     : '');
 
   let url = raw.url || raw.overlay_url || '';
-  // Self-hosted optimized MP4 (VM transcode) first, then Mux, then the original.
+  // Self-hosted optimized MP4 (VM transcode) first, then the raw original.
   if (optimizedUrl) {
     url = optimizedUrl;
-  } else if (muxVideoUrl) {
-    url = muxVideoUrl;
   } else if (!url && path) {
     url = path.startsWith('http') ? path : r2Url(path);
   }
@@ -101,12 +94,6 @@ export function formatOverlay(raw = {}) {
     type,
     path,
     url,
-    muxPlaybackId,
-    mux_playback_id: muxPlaybackId,
-    muxAssetId,
-    mux_asset_id: muxAssetId,
-    muxStreamUrl,
-    mux_stream_url: muxStreamUrl,
     aspectRatio: aspect,
     aspect_ratio: aspect,
     planeW,

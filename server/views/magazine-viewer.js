@@ -51,9 +51,6 @@ export function renderMagazineArPage({ title, magId, targets = [], debug = false
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=1">
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1">
-  
-  <link rel="preconnect" href="https://stream.mux.com" crossorigin>
-  <link rel="dns-prefetch" href="https://stream.mux.com">
 
   <!-- 8frame (A-Frame fork for 8th Wall) -->
   <script crossorigin="anonymous" src="/external/8frame-1.5.0.min.js"></script>

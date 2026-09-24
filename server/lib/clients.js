@@ -4,7 +4,7 @@
 import sharp from 'sharp';
 import { createClient } from '@supabase/supabase-js';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import Mux from '@mux/mux-node';
+
 
 const SUPABASE_URL      = process.env.SUPABASE_URL;
 const SUPABASE_SECRET   = process.env.SUPABASE_SERVICE_KEY;
@@ -37,56 +37,6 @@ const r2 = (process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY)
       },
     })
   : null;
-
-export const MUX_TOKEN_ID     = process.env.MUX_TOKEN_ID;
-export const MUX_TOKEN_SECRET = process.env.MUX_TOKEN_SECRET;
-
-export const mux = (MUX_TOKEN_ID && MUX_TOKEN_SECRET)
-  ? new Mux({ tokenId: MUX_TOKEN_ID, tokenSecret: MUX_TOKEN_SECRET })
-  : null;
-
-/**
- * Ingests a video URL into Mux for instant adaptive streaming and sub-second startup.
- * @param {string} videoUrl
- * @returns {Promise<{ assetId: string, playbackId: string } | null>}
- */
-export async function createMuxAsset(videoUrl) {
-  if (!mux) return { assetId: null, playbackId: null, error: 'Mux not configured' };
-  try {
-    const asset = await mux.video.assets.create({
-      inputs: [{ url: videoUrl }],
-      playback_policies: ['public'],
-      // Deprecated-but-supported MP4 fallback; primary playback uses HLS.
-      mp4_support: 'capped-1080p',
-    });
-    const playbackId = asset.playback_ids?.find(p => p.policy === 'public')?.id || asset.playback_ids?.[0]?.id;
-    return {
-      assetId: asset.id,
-      playbackId: playbackId || null,
-      duration: asset.duration || null,
-      error: null,
-    };
-  } catch (err) {
-    console.error('Mux asset creation error:', err.message);
-    return { assetId: null, playbackId: null, error: err.message };
-  }
-}
-
-/**
- * Permanently deletes a video asset from Mux to terminate storage costs immediately.
- * @param {string} assetId
- * @returns {Promise<boolean>}
- */
-export async function deleteMuxAsset(assetId) {
-  if (!mux || !assetId) return false;
-  try {
-    await mux.video.assets.delete(assetId);
-    return true;
-  } catch (err) {
-    console.warn(`Mux asset delete error (${assetId}):`, err.message);
-    return false;
-  }
-}
 
 /** @returns {boolean} whether direct-to-R2 uploads are available */
 export function hasR2() {

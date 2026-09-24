@@ -20,7 +20,6 @@ export function renderMessagePage({ icon = '', color = '#38bdf8', title = '', bo
  * @param {object} p
  * @param {string} p.name project display name
  * @param {string} p.videoUrl absolute video URL
- * @param {string} p.muxPlaybackId optional Mux stream ID
  * @param {string} p.r2VideoUrl optional fallback R2 URL
  * @param {object} p.targetData 8th Wall target descriptor
  * @param {number} p.planeW rendered plane width
@@ -28,7 +27,7 @@ export function renderMessagePage({ icon = '', color = '#38bdf8', title = '', bo
  * @param {number} p.tW target image width in px
  * @param {number} p.tH target image height in px
  */
-export function renderArPage({ name, overlayType = 'video', modelUrl = '', videoUrl = '', muxPlaybackId, r2VideoUrl, targetData, planeW, planeH, tW, tH, debug = false }) {
+export function renderArPage({ name, overlayType = 'video', modelUrl = '', videoUrl = '', r2VideoUrl, targetData, planeW, planeH, tW, tH, debug = false }) {
   const is3D = overlayType === '3d' && Boolean(modelUrl);
   return `<!DOCTYPE html>
 <html>
@@ -41,11 +40,8 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=1">
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1">
   ${!is3D && videoUrl ? `
-  <!-- Preconnect to the video CDN so TCP+TLS is ready before playback.
-       NOTE: we deliberately do NOT <link preload as=video> — that forces the
+  <!-- NOTE: we deliberately do NOT <link preload as=video> — that would force the
        whole (potentially 100+ MB) file to download before the camera starts. -->
-  <link rel="preconnect" href="https://stream.mux.com" crossorigin>
-  <link rel="dns-prefetch" href="https://stream.mux.com">
   ` : ''}
   <!-- 8frame must be synchronous: it registers <a-scene>/<a-entity> custom elements
        that must be defined before the browser parses the body -->

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Projects — Kipakosa AR</title>
-  <link rel="stylesheet" href="css/app.css?v=4" />
+  <link rel="stylesheet" href="css/app.css?v=5" />
   <script src="js/admin-boot.js?v=1"></script>
   <script src="/external/chart.umd.min.js"></script>
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1" />
@@ -105,7 +105,7 @@
       <select class="form-control f-select" id="f-sort" title="Sort order">
         <option value="newest">Newest first</option>
         <option value="oldest">Oldest first</option>
-        <option value="cost_desc">Highest Mux Cost / Usage</option>
+        <option value="cost_desc">Highest Delivery Cost / Usage</option>
         <option value="scans_desc">Most scans</option>
         <option value="scans_asc">Fewest scans</option>
         <option value="name_asc">Name A–Z</option>
@@ -115,12 +115,12 @@
       <button class="btn btn-sm btn-default filter-clear" id="f-reset" style="display:none">Clear ✕</button>
     </div>
 
-    <!-- Mux Live API Cost & Usage Summary -->
-    <div id="mux-summary-card" class="panel" style="margin-bottom:16px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:linear-gradient(135deg,rgba(56,189,248,0.08),rgba(9,13,22,0.7));border:1px solid rgba(56,189,248,0.22);border-radius:10px">
+    <!-- Video Delivery & Usage Summary -->
+    <div id="delivery-summary-card" class="panel" style="margin-bottom:16px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:linear-gradient(135deg,rgba(56,189,248,0.08),rgba(9,13,22,0.7));border:1px solid rgba(56,189,248,0.22);border-radius:10px">
       <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:16px">⚡</span>
-          <span style="font-weight:700;font-size:13px;color:var(--text)">Mux Video API Usage</span>
+          <span style="font-weight:700;font-size:13px;color:var(--text)">Video Delivery (Self-Hosted)</span>
         </div>
         <div style="font-size:12px;color:var(--text-secondary)">
           Streamed: <strong id="sum-delivered-mins" style="color:var(--text)">0 mins</strong> (<span id="sum-views">0</span> scans)
@@ -142,11 +142,11 @@
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
         <div style="font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
           <span>📊</span>
-          <span>Living Frames Performance &amp; Mux Analytics</span>
+          <span>Living Frames Performance &amp; Delivery</span>
         </div>
         <div style="display:flex;gap:4px">
           <button class="analytics-tab-btn active" data-fmetric="scans" id="btn-f-scans">Scans</button>
-          <button class="analytics-tab-btn" data-fmetric="cost" id="btn-f-cost">Mux Cost ($)</button>
+          <button class="analytics-tab-btn" data-fmetric="cost" id="btn-f-cost">Delivery Cost ($)</button>
           <button class="analytics-tab-btn" data-fmetric="duration" id="btn-f-duration">Video Mins</button>
         </div>
       </div>
@@ -169,7 +169,7 @@
             <th style="width:70px">Image</th>
             <th>Project</th>
             <th>Client</th>
-            <th>Scans & Mux Cost</th>
+            <th>Scans & Delivery</th>
             <th>Status</th>
             <th>Expires</th>
             <th style="text-align:right;width:140px">Actions</th>
@@ -194,9 +194,9 @@
 </div>
 
 <script type="module">
-  import { requireAuth, initNav } from './js/auth.js?v=4';
-  import { getAllProjects, deleteProject } from './js/db.js?v=4';
-  import { fmt, statusBadge, isExpired, toast, filterProjects, sortProjects, calcMuxCost } from './js/utils.js?v=4';
+  import { requireAuth, initNav } from './js/auth.js?v=5';
+  import { getAllProjects, deleteProject } from './js/db.js?v=5';
+  import { fmt, statusBadge, isExpired, toast, filterProjects, sortProjects, calcDeliveryCost } from './js/utils.js?v=5';
 
   requireAuth(); 
   initNav('projects');
@@ -291,14 +291,14 @@
   function renderTable() {
     const data = sortProjects(filterProjects(all, state), state.sort);
 
-    // Update global Mux summary
+    // Update global delivery summary
     let totalDeliveredMins = 0;
     let totalStorageMins = 0;
     let totalViews = 0;
     let totalCost = 0;
 
     all.forEach(p => {
-      const cost = calcMuxCost(p);
+      const cost = calcDeliveryCost(p);
       totalDeliveredMins += cost.minutesDelivered;
       totalStorageMins += cost.durationMin;
       totalViews += cost.views;
@@ -321,7 +321,7 @@
       return;
     }
     body.innerHTML = data.map(p => {
-      const cost = calcMuxCost(p);
+      const cost = calcDeliveryCost(p);
       return `
       <tr>
         <td style="width:70px">
@@ -367,18 +367,18 @@
 
     const sorted = items.slice().sort((a, b) => {
       if (currentFMetric === 'scans') return (b.viewsCount || b.views_count || 0) - (a.viewsCount || a.views_count || 0);
-      if (currentFMetric === 'cost') return calcMuxCost(b).totalCost - calcMuxCost(a).totalCost;
-      return calcMuxCost(b).durationMin - calcMuxCost(a).durationMin;
+      if (currentFMetric === 'cost') return calcDeliveryCost(b).totalCost - calcDeliveryCost(a).totalCost;
+      return calcDeliveryCost(b).durationMin - calcDeliveryCost(a).durationMin;
     }).slice(0, 6);
 
     const titleEl = document.getElementById('frame-chart-title');
-    if (titleEl) titleEl.textContent = currentFMetric === 'scans' ? 'Top Frames by Scans' : (currentFMetric === 'cost' ? 'Top Mux Costs ($)' : 'Longest Video Overlays (mins)');
+    if (titleEl) titleEl.textContent = currentFMetric === 'scans' ? 'Top Frames by Scans' : (currentFMetric === 'cost' ? 'Top Delivery Costs ($)' : 'Longest Video Overlays (mins)');
 
     const labels = sorted.map(p => p.name.length > 12 ? p.name.slice(0, 10) + '…' : p.name);
     const dataValues = sorted.map(p => {
       if (currentFMetric === 'scans') return Number(p.viewsCount || p.views_count || 0);
-      if (currentFMetric === 'cost') return +calcMuxCost(p).totalCost.toFixed(3);
-      return +calcMuxCost(p).durationMin.toFixed(2);
+      if (currentFMetric === 'cost') return +calcDeliveryCost(p).totalCost.toFixed(3);
+      return +calcDeliveryCost(p).durationMin.toFixed(2);
     });
 
     const ctx = document.getElementById('framesBarChart').getContext('2d');

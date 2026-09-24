@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Magazine Detail — Kipakosa AR</title>
-  <link rel="stylesheet" href="css/app.css?v=4" />
+  <link rel="stylesheet" href="css/app.css?v=5" />
   <script src="js/admin-boot.js?v=1"></script>
   <script src="/external/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
@@ -331,42 +331,42 @@
           </table>
         </div>
 
-        <!-- Mux API & Bandwidth Billing Card -->
+        <!-- Video Delivery & Storage Card -->
         <div class="panel" style="border:1px solid rgba(56,189,248,0.25);background:linear-gradient(135deg,rgba(56,189,248,0.06),rgba(9,13,22,0.6))">
           <div class="panel-title" style="display:flex;align-items:center;justify-content:space-between">
-            <span>⚡ Mux Video API Billing &amp; Bandwidth</span>
+            <span>⚡ Video Delivery &amp; Storage</span>
             <span class="badge badge-green" style="font-size:10px"><span class="badge-dot"></span>Real-time</span>
           </div>
           <table style="width:100%;font-size:13px;border-collapse:collapse">
             <tr>
               <td style="color:var(--muted);padding:6px 0;width:170px">Video Overlays Count</td>
-              <td id="mux-vid-count" style="font-weight:600">—</td>
+              <td id="vid-count" style="font-weight:600">—</td>
             </tr>
             <tr>
               <td style="color:var(--muted);padding:6px 0">Total Video Duration</td>
-              <td id="mux-total-duration" style="font-weight:600">—</td>
+              <td id="total-duration" style="font-weight:600">—</td>
             </tr>
             <tr>
               <td style="color:var(--muted);padding:6px 0">Streamed Minutes</td>
-              <td id="mux-delivered" style="font-weight:600">—</td>
+              <td id="delivered-minutes" style="font-weight:600">—</td>
             </tr>
             <tr>
-              <td style="color:var(--muted);padding:6px 0">Mux Delivery Cost</td>
-              <td id="mux-delivery-cost" style="font-weight:600;color:var(--text)">$0.00</td>
+              <td style="color:var(--muted);padding:6px 0">Delivery Cost (R2)</td>
+              <td id="delivery-cost" style="font-weight:600;color:var(--text)">$0.00</td>
             </tr>
             <tr>
-              <td style="color:var(--muted);padding:6px 0">Mux Storage Cost</td>
-              <td id="mux-storage-cost" style="font-weight:600;color:var(--text)">$0.00/mo</td>
+              <td style="color:var(--muted);padding:6px 0">Storage Cost (R2)</td>
+              <td id="storage-cost" style="font-weight:600;color:var(--text)">$0.00/mo</td>
             </tr>
             <tr style="border-top:1px solid var(--border)">
-              <td style="color:var(--accent);padding:8px 0;font-weight:700">Total Incurred Mux Cost</td>
-              <td id="mux-total-cost" style="color:var(--accent);font-weight:800;font-size:15px">$0.00</td>
+              <td style="color:var(--accent);padding:8px 0;font-weight:700">Total Delivery Cost</td>
+              <td id="total-cost" style="color:var(--accent);font-weight:800;font-size:15px">$0.00</td>
             </tr>
           </table>
 
           <!-- Individual Magazine Performance Chart -->
           <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06)">
-            <div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:8px">Mux Cost Composition</div>
+            <div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:8px">Delivery Cost Composition</div>
             <div style="position:relative;height:120px">
               <canvas id="singleMagCostChart"></canvas>
             </div>
@@ -429,7 +429,7 @@
 <script type="module">
   import { requireAuth, initNav, authHeaders } from './js/auth.js';
   import { getMagazine, updateMagazine, updateMagazineTargetFraming, deleteMagazine } from './js/db.js';
-  import { fmt, statusBadge, isExpired, expType, calcMuxCost, toast, getRatioLabel, checkAspectMismatch, buildFraming, resolveFramingAspect } from './js/utils.js';
+  import { fmt, statusBadge, isExpired, expType, calcDeliveryCost, toast, getRatioLabel, checkAspectMismatch, buildFraming, resolveFramingAspect } from './js/utils.js';
 
   const params = new URLSearchParams(location.search);
   const id = params.get('id');
@@ -1219,19 +1219,19 @@
         document.getElementById('notes-row').style.display = 'table-row';
       }
 
-      // Render Targets & Mux Billing
+      // Render Targets & Delivery
       const targets = Array.isArray(m.targets) ? m.targets : [];
       document.getElementById('p-target-count').textContent = targets.length;
       document.getElementById('m-target-count-val').textContent = targets.length + (targets.length === 1 ? ' target' : ' targets');
 
-      // Mux API calculations
-      const muxCost = calcMuxCost(m);
-      document.getElementById('mux-vid-count').textContent = `${muxCost.videoCount} video ${muxCost.videoCount === 1 ? 'overlay' : 'overlays'}`;
-      document.getElementById('mux-total-duration').textContent = `${muxCost.durationMin.toFixed(1)} mins (${muxCost.durationSec}s total)`;
-      document.getElementById('mux-delivered').textContent = `${muxCost.minutesDelivered.toFixed(1)} mins (${views} scans)`;
-      document.getElementById('mux-delivery-cost').textContent = muxCost.formattedDelivery;
-      document.getElementById('mux-storage-cost').textContent = muxCost.formattedStorage;
-      document.getElementById('mux-total-cost').textContent = muxCost.formattedTotal;
+      // Delivery calculations
+      const deliveryCost = calcDeliveryCost(m);
+      document.getElementById('vid-count').textContent = `${deliveryCost.videoCount} video ${deliveryCost.videoCount === 1 ? 'overlay' : 'overlays'}`;
+      document.getElementById('total-duration').textContent = `${deliveryCost.durationMin.toFixed(1)} mins (${deliveryCost.durationSec}s total)`;
+      document.getElementById('delivered-minutes').textContent = `${deliveryCost.minutesDelivered.toFixed(1)} mins (${views} scans)`;
+      document.getElementById('delivery-cost').textContent = deliveryCost.formattedDelivery;
+      document.getElementById('storage-cost').textContent = deliveryCost.formattedStorage;
+      document.getElementById('total-cost').textContent = deliveryCost.formattedTotal;
 
       // Render single magazine mini-chart
       if (typeof Chart !== 'undefined' && document.getElementById('singleMagCostChart')) {
@@ -1244,7 +1244,7 @@
           data: {
             labels: ['Delivery Cost', 'Storage Cost', 'Total Incurred'],
             datasets: [{
-              data: [+muxCost.deliveryCost.toFixed(4), +muxCost.storageCost.toFixed(4), +muxCost.totalCost.toFixed(4)],
+              data: [+deliveryCost.deliveryCost.toFixed(4), +deliveryCost.storageCost.toFixed(4), +deliveryCost.totalCost.toFixed(4)],
               backgroundColor: ['#38bdf8', '#C9A96E', '#a855f7'],
               borderRadius: 4
             }]

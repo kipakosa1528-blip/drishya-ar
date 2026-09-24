@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Magazines — Kipakosa AR</title>
-  <link rel="stylesheet" href="css/app.css?v=4" />
+  <link rel="stylesheet" href="css/app.css?v=5" />
   <script src="js/admin-boot.js?v=1"></script>
   <script src="/external/chart.umd.min.js"></script>
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1" />
@@ -124,7 +124,7 @@
       <select class="form-control f-select" id="f-sort" title="Sort order">
         <option value="newest">Newest first</option>
         <option value="oldest">Oldest first</option>
-        <option value="cost_desc">Highest Mux Cost / Usage</option>
+        <option value="cost_desc">Highest Delivery Cost / Usage</option>
         <option value="scans_desc">Most scans</option>
         <option value="scans_asc">Fewest scans</option>
         <option value="name_asc">Name A–Z</option>
@@ -134,12 +134,12 @@
       <button class="btn btn-sm btn-default filter-clear" id="f-reset" style="display:none">Clear ✕</button>
     </div>
 
-    <!-- Mux Live API Cost & Usage Summary for Magazines -->
-    <div id="mux-summary-card" class="panel" style="margin-bottom:16px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:linear-gradient(135deg,rgba(56,189,248,0.08),rgba(9,13,22,0.7));border:1px solid rgba(56,189,248,0.22);border-radius:10px">
+    <!-- Video Delivery & Usage Summary for Magazines -->
+    <div id="delivery-summary-card" class="panel" style="margin-bottom:16px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:linear-gradient(135deg,rgba(56,189,248,0.08),rgba(9,13,22,0.7));border:1px solid rgba(56,189,248,0.22);border-radius:10px">
       <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:16px">⚡</span>
-          <span style="font-weight:700;font-size:13px;color:var(--text)">Magazine Mux Video API Usage</span>
+          <span style="font-weight:700;font-size:13px;color:var(--text)">Magazine Video Delivery (Self-Hosted)</span>
         </div>
         <div style="font-size:12px;color:var(--text-secondary)">
           Streamed: <strong id="sum-delivered-mins" style="color:var(--text)">0 mins</strong> (<span id="sum-views">0</span> scans)
@@ -165,7 +165,7 @@
         </div>
         <div style="display:flex;gap:4px">
           <button class="analytics-tab-btn active" data-mmetric="scans" id="btn-m-scans">Scans</button>
-          <button class="analytics-tab-btn" data-mmetric="cost" id="btn-m-cost">Mux Cost ($)</button>
+          <button class="analytics-tab-btn" data-mmetric="cost" id="btn-m-cost">Delivery Cost ($)</button>
           <button class="analytics-tab-btn" data-mmetric="targets" id="btn-m-targets">Targets Count</button>
         </div>
       </div>
@@ -189,7 +189,7 @@
             <th>Magazine Name</th>
             <th>Client</th>
             <th>Targets</th>
-            <th>Scans &amp; Mux Cost</th>
+            <th>Scans &amp; Delivery</th>
             <th>Status</th>
             <th>Expires</th>
             <th style="text-align:right;width:140px">Actions</th>
@@ -204,7 +204,7 @@
 <script type="module">
   import { initNav } from './js/auth.js';
   import { getAllMagazines, deleteMagazine } from './js/db.js';
-  import { fmt, statusBadge, isExpired, expType, filterProjects, sortProjects, calcMuxCost } from './js/utils.js';
+  import { fmt, statusBadge, isExpired, expType, filterProjects, sortProjects, calcDeliveryCost } from './js/utils.js';
 
   initNav('magazines');
 
@@ -241,7 +241,7 @@
       clients.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
   }
 
-  function updateMuxSummary(items) {
+  function updateDeliverySummary(items) {
     let totalStorageMins = 0;
     let totalDeliveredMins = 0;
     let totalViews = 0;
@@ -249,7 +249,7 @@
     let totalVideoTargets = 0;
 
     items.forEach(m => {
-      const cost = calcMuxCost(m);
+      const cost = calcDeliveryCost(m);
       totalStorageMins += cost.durationMin;
       totalDeliveredMins += cost.minutesDelivered;
       totalViews += cost.views;
@@ -290,7 +290,7 @@
     filtered = sortProjects(filtered, filterState.sort);
 
     countEl.textContent = '(' + filtered.length + ')';
-    updateMuxSummary(filtered);
+    updateDeliverySummary(filtered);
 
     if (filtered.length === 0) {
       body.innerHTML = '<tr><td colspan="8" class="empty" style="text-align:center;padding:40px;color:var(--muted)">No multi-target magazines found. <a href="createMagzine" style="color:var(--accent);font-weight:600">Create one</a></td></tr>';
@@ -303,7 +303,7 @@
       const expDate = m.expiresAt || m.expires_at;
       const scanLimit = m.maxScans || m.max_scans;
       const views = Number(m.viewsCount || m.views_count || 0);
-      const cost = calcMuxCost(m);
+      const cost = calcDeliveryCost(m);
 
       return '<tr>' +
         '<td>' +
@@ -320,7 +320,7 @@
         '<td>' +
           '<div style="display:flex;flex-direction:column;gap:2px">' +
             '<span style="font-weight:600;color:var(--accent)">' + views.toLocaleString() + (scanLimit ? ' / ' + scanLimit : ' scans') + '</span>' +
-            '<span style="font-size:11px;color:var(--text-secondary);display:inline-flex;align-items:center;gap:3px">⚡ ' + cost.formattedTotal + ' Mux</span>' +
+            '<span style="font-size:11px;color:var(--text-secondary);display:inline-flex;align-items:center;gap:3px">⚡ ' + cost.formattedTotal + ' self-hosted</span>' +
           '</div>' +
         '</td>' +
         '<td>' + statusBadge(m) + '</td>' +
@@ -364,12 +364,12 @@
 
     const sorted = items.slice().sort((a, b) => {
       if (currentMMetric === 'scans') return (b.viewsCount || b.views_count || 0) - (a.viewsCount || a.views_count || 0);
-      if (currentMMetric === 'cost') return calcMuxCost(b).totalCost - calcMuxCost(a).totalCost;
+      if (currentMMetric === 'cost') return calcDeliveryCost(b).totalCost - calcDeliveryCost(a).totalCost;
       return (b.targets || []).length - (a.targets || []).length;
     }).slice(0, 6);
 
     const titleEl = document.getElementById('mag-chart-title');
-    if (titleEl) titleEl.textContent = currentMMetric === 'scans' ? 'Top Magazines by Scans' : (currentMMetric === 'cost' ? 'Top Magazine Mux Costs ($)' : 'Most Target Pages');
+    if (titleEl) titleEl.textContent = currentMMetric === 'scans' ? 'Top Magazines by Scans' : (currentMMetric === 'cost' ? 'Top Magazine Delivery Costs ($)' : 'Most Target Pages');
 
     const labels = sorted.map(m => {
       const name = m.title || m.name || 'Untitled';
@@ -378,7 +378,7 @@
 
     const dataValues = sorted.map(m => {
       if (currentMMetric === 'scans') return Number(m.viewsCount || m.views_count || 0);
-      if (currentMMetric === 'cost') return +calcMuxCost(m).totalCost.toFixed(3);
+      if (currentMMetric === 'cost') return +calcDeliveryCost(m).totalCost.toFixed(3);
       return (m.targets || []).length;
     });
 

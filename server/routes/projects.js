@@ -4,7 +4,7 @@
 
 import express from 'express';
 import { PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
-import { supabase, getR2, R2_BUCKET, r2Url, prepareTarget, deleteMuxAsset } from '../lib/clients.js';
+import { supabase, getR2, R2_BUCKET, r2Url, prepareTarget } from '../lib/clients.js';
 import { cacheBust } from './ar.js';
 
 /**
@@ -19,16 +19,11 @@ function formatProject(row) {
   const videoPath = row.video_path || '';
   const imageUrl = imagePath ? (imagePath.startsWith('http') ? imagePath : r2Url(imagePath)) : '';
   const td = (typeof row.target_data === 'object' && row.target_data) ? row.target_data : {};
-  const muxPlaybackId = td.mux_playback_id || row.mux_playback_id || null;
-  const muxAssetId = td.mux_asset_id || row.mux_asset_id || null;
-  const muxStreamUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}.m3u8` : null;
-  const muxVideoUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}/capped-1080p.mp4` : null;
   const optimizedPath = td.optimized_video_path || '';
   const optimizedVideoUrl = optimizedPath ? (optimizedPath.startsWith('http') ? optimizedPath : r2Url(optimizedPath)) : '';
   const r2VideoUrl = videoPath ? (videoPath.startsWith('http') ? videoPath : r2Url(videoPath)) : '';
-  // Self-hosted optimized MP4 (VM transcode) is the primary source; Mux and the
-  // raw R2 original are fallbacks.
-  const videoUrl = optimizedVideoUrl || muxVideoUrl || r2VideoUrl || '';
+  // Self-hosted optimized MP4 (VM transcode) first, then the raw R2 original.
+  const videoUrl = optimizedVideoUrl || r2VideoUrl || '';
   const videoBytes = td.video_bytes || null;
   const transcodeStatus = td.transcode_status || (optimizedVideoUrl ? 'ready' : (videoPath ? 'missing' : 'none'));
   const viewsCount = row.views_count || td._views_count || 0;
@@ -63,16 +58,6 @@ function formatProject(row) {
     videoUrl,
     r2VideoUrl,
     r2_video_url: r2VideoUrl,
-    muxPlaybackId,
-    mux_playback_id: muxPlaybackId,
-    muxAssetId,
-    mux_asset_id: muxAssetId,
-    muxStreamUrl,
-    mux_stream_url: muxStreamUrl,
-    muxStatus: muxPlaybackId ? 'ready' : (td.mux_status || null),
-    mux_status: muxPlaybackId ? 'ready' : (td.mux_status || null),
-    muxError: td.mux_error || null,
-    mux_error: td.mux_error || null,
     optimizedVideoUrl,
     optimized_video_url: optimizedVideoUrl,
     optimizedPath,
@@ -178,7 +163,7 @@ export function registerProjectsRoutes(app, { requireAuth }) {
         targetData.model_url = r2Url(resolvedModelPath);
       } else if (resolvedVideoPath) {
         targetData.overlay_type = 'video';
-        // Queue the self-hosted ffmpeg transcode (VM worker) — replaces Mux.
+        // Queue the self-hosted ffmpeg transcode (VM worker).
         targetData.video_path = resolvedVideoPath;
         targetData.transcode_status = 'queued';
         targetData.transcode_error = null;
@@ -252,14 +237,12 @@ export function registerProjectsRoutes(app, { requireAuth }) {
         const imgBuffer = Buffer.from(await imgFetch.arrayBuffer());
 
         const newTargetData = await prepareTarget(imgBuffer, id);
-        // Preserve views, max_scans, overlay type and mux metadata
+        // Preserve views, max_scans, overlay type and model metadata
         newTargetData._views_count = td._views_count || existing.views_count || 0;
         newTargetData._max_scans = td._max_scans || null;
         newTargetData.overlay_type = td.overlay_type || 'video';
         newTargetData.model_path = td.model_path || null;
         newTargetData.model_url = td.model_url || null;
-        newTargetData.mux_asset_id = td.mux_asset_id || null;
-        newTargetData.mux_playback_id = td.mux_playback_id || null;
         // Preserve the user's framing choice across image replacement
         if (td.overlay_framing !== undefined) {
           newTargetData.overlay_framing = td.overlay_framing;
@@ -296,13 +279,6 @@ export function registerProjectsRoutes(app, { requireAuth }) {
           }));
         }
 
-        // Clean up any legacy Mux asset (replaced by self-hosted transcode)
-        if (td.mux_asset_id) {
-          await deleteMuxAsset(td.mux_asset_id);
-          td.mux_asset_id = null;
-          td.mux_playback_id = null;
-        }
-
         td.overlay_type = 'video';
         td.video_path = resolvedVideoPath;
         td.optimized_video_path = null;
@@ -329,12 +305,6 @@ export function registerProjectsRoutes(app, { requireAuth }) {
   app.delete('/api/projects/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const { data: existing } = await supabase.from('projects').select('target_data').eq('id', id).single();
-      const td = (typeof existing?.target_data === 'object' && existing?.target_data) ? existing.target_data : {};
-      if (td.mux_asset_id) {
-        await deleteMuxAsset(td.mux_asset_id);
-      }
-
       const { error } = await supabase.from('projects').delete().eq('id', id);
       if (error) return res.status(500).json({ error: error.message });
       await purgeProjectFiles(id);

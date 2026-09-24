@@ -103,13 +103,11 @@ async function handleProjectAr(project, id, res, debug = false) {
 
   const overlayType = td.overlay_type || (project.video_path ? 'video' : (td.model_url ? '3d' : 'image'));
   const modelUrl = td.model_url || (td.model_path ? (td.model_path.startsWith('http') ? td.model_path : r2Url(td.model_path)) : '');
-  const muxPlaybackId = td.mux_playback_id || project.mux_playback_id || null;
-  const muxVideoUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}/capped-1080p.mp4` : null;
   const optimizedPath = td.optimized_video_path || '';
   const optimizedVideoUrl = optimizedPath ? (optimizedPath.startsWith('http') ? optimizedPath : r2Url(optimizedPath)) : '';
   const r2VideoUrl = (project.video_path && project.video_path.startsWith('http')) ? project.video_path : (project.video_path ? r2Url(project.video_path) : '');
-  // Self-hosted optimized MP4 (VM transcode) first, then Mux, then the original.
-  const videoUrl = optimizedVideoUrl || muxVideoUrl || r2VideoUrl;
+  // Self-hosted optimized MP4 (VM transcode) first, then the raw R2 original.
+  const videoUrl = optimizedVideoUrl || r2VideoUrl;
   const props = (targetData && targetData.properties) || {};
   const tW = props.width || 640;
   const tH = props.height || 640;
@@ -118,7 +116,7 @@ async function handleProjectAr(project, id, res, debug = false) {
   const planeH = tAspect >= 1 ? Number((1 / tAspect).toFixed(4)) : 1;
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(renderArPage({ name: project.name, overlayType, modelUrl, videoUrl, muxPlaybackId, r2VideoUrl, targetData, planeW, planeH, tW, tH, debug }));
+  res.send(renderArPage({ name: project.name, overlayType, modelUrl, videoUrl, r2VideoUrl, targetData, planeW, planeH, tW, tH, debug }));
 }
 
 async function handleMagazineAr(id, res, debug = false) {

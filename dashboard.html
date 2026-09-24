@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Dashboard — Kipakosa AR</title>
-  <link rel="stylesheet" href="css/app.css?v=4" />
+  <link rel="stylesheet" href="css/app.css?v=5" />
   <script src="js/admin-boot.js?v=1"></script>
   <script src="/external/chart.umd.min.js"></script>
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1" />
@@ -107,15 +107,15 @@
       <div class="stat-card">
         <div class="stat-lbl">Living Frames</div>
         <div class="stat-val" id="st-total">—</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px" id="st-total-sub">⚡ Mux: $0.00</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px" id="st-total-sub">⚡ Delivery: $0.00</div>
       </div>
       <div class="stat-card">
         <div class="stat-lbl">AR Magazines</div>
         <div class="stat-val" style="color:var(--accent)" id="st-mags">—</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px" id="st-mags-sub">⚡ Mux: $0.00</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px" id="st-mags-sub">⚡ Delivery: $0.00</div>
       </div>
       <div class="stat-card">
-        <div class="stat-lbl">Total Mux Incurred Cost</div>
+        <div class="stat-lbl">Total Delivery Cost</div>
         <div class="stat-val" style="color:var(--accent);font-size:24px" id="st-cost">$0.00</div>
         <div style="font-size:11px;color:var(--green);margin-top:4px"><span class="badge-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:4px"></span>Covered by Free Tier</div>
       </div>
@@ -197,7 +197,7 @@
           <!-- Metric View Buttons -->
           <div style="display:flex;gap:4px">
             <button class="analytics-tab-btn active" data-metric="scans" id="btn-metric-scans">📊 Scans</button>
-            <button class="analytics-tab-btn" data-metric="cost" id="btn-metric-cost">⚡ Mux Cost ($)</button>
+            <button class="analytics-tab-btn" data-metric="cost" id="btn-metric-cost">⚡ Delivery Cost ($)</button>
             <button class="analytics-tab-btn" data-metric="duration" id="btn-metric-duration">⏱️ Video Mins</button>
           </div>
         </div>
@@ -222,7 +222,7 @@
           <span class="kpi-chip-val" id="kpi-val-4">0 mins</span>
         </div>
         <div class="kpi-chip">
-          <span class="kpi-chip-title" id="kpi-title-5">Incurred Mux Cost</span>
+          <span class="kpi-chip-title" id="kpi-title-5">Delivery Cost</span>
           <span class="kpi-chip-val" style="color:var(--accent)" id="kpi-val-5">$0.00</span>
         </div>
         <div class="kpi-chip">
@@ -327,9 +327,9 @@
 </div>
 
 <script type="module">
-  import { requireAuth, initNav, authHeaders } from './js/auth.js?v=4';
-  import { getAllProjects, deleteProject, getAllMagazines, deleteMagazine } from './js/db.js?v=4';
-  import { fmt, isExpired, statusBadge, toast, calcMuxCost } from './js/utils.js?v=4';
+  import { requireAuth, initNav, authHeaders } from './js/auth.js?v=5';
+  import { getAllProjects, deleteProject, getAllMagazines, deleteMagazine } from './js/db.js?v=5';
+  import { fmt, isExpired, statusBadge, toast, calcDeliveryCost } from './js/utils.js?v=5';
 
   requireAuth(); 
   initNav('dashboard');
@@ -453,20 +453,20 @@
 
     projects.forEach(p => {
       frameScans += Number(p.viewsCount || p.views_count || 0);
-      frameCost += calcMuxCost(p).totalCost;
+      frameCost += calcDeliveryCost(p).totalCost;
     });
 
     magazines.forEach(m => {
       magScans += Number(m.viewsCount || m.views_count || 0);
-      magCost += calcMuxCost(m).totalCost;
+      magCost += calcDeliveryCost(m).totalCost;
     });
 
     const totalCost = frameCost + magCost;
 
     document.getElementById('st-total').textContent  = totalFrames;
-    document.getElementById('st-total-sub').textContent = `⚡ Mux: $${frameCost.toFixed(2)}`;
+    document.getElementById('st-total-sub').textContent = `⚡ Delivery: $${frameCost.toFixed(2)}`;
     document.getElementById('st-mags').textContent   = totalMags;
-    document.getElementById('st-mags-sub').textContent = `⚡ Mux: $${magCost.toFixed(2)}`;
+    document.getElementById('st-mags-sub').textContent = `⚡ Delivery: $${magCost.toFixed(2)}`;
     document.getElementById('st-cost').textContent   = totalCost === 0 ? '$0.00' : (totalCost < 0.01 ? '<$0.01' : `$${totalCost.toFixed(2)}`);
     document.getElementById('st-scans').textContent  = (frameScans + magScans).toLocaleString();
     document.getElementById('st-scans-sub').textContent = `${frameScans} Frames • ${magScans} Magazines`;
@@ -489,16 +489,16 @@
     }
 
     // Update Dynamic KPI Chips
-    let totalScans = 0, totalOverlays = 0, totalStoredMins = 0, totalDeliveredMins = 0, totalMuxCost = 0, totalR2MB = 0;
+    let totalScans = 0, totalOverlays = 0, totalStoredMins = 0, totalDeliveredMins = 0, totalDeliveryCost = 0, totalR2MB = 0;
 
     selectedItems.forEach(item => {
-      const cost = calcMuxCost(item);
+      const cost = calcDeliveryCost(item);
       const views = Number(item.viewsCount || item.views_count || 0);
       totalScans += views;
       totalOverlays += (cost.videoCount || 1);
       totalStoredMins += cost.durationMin;
       totalDeliveredMins += cost.minutesDelivered;
-      totalMuxCost += cost.totalCost;
+      totalDeliveryCost += cost.totalCost;
 
       if (item._type === 'mag') {
         const tLen = (item.targets || []).length;
@@ -512,7 +512,7 @@
     document.getElementById('kpi-val-2').textContent = totalOverlays;
     document.getElementById('kpi-val-3').textContent = totalStoredMins.toFixed(1) + ' mins';
     document.getElementById('kpi-val-4').textContent = totalDeliveredMins.toFixed(1) + ' mins';
-    document.getElementById('kpi-val-5').textContent = totalMuxCost === 0 ? '$0.00' : (totalMuxCost < 0.01 ? '<$0.01' : `$${totalMuxCost.toFixed(2)}`);
+    document.getElementById('kpi-val-5').textContent = totalDeliveryCost === 0 ? '$0.00' : (totalDeliveryCost < 0.01 ? '<$0.01' : `$${totalDeliveryCost.toFixed(2)}`);
     document.getElementById('kpi-val-6').textContent = `~${totalR2MB} MB (${(totalR2MB/1024).toFixed(2)} GB)`;
 
     renderCharts(selectedItems);
@@ -524,8 +524,8 @@
     // Multiple items ranking
     const sorted = items.slice().sort((a, b) => {
       if (currentMetric === 'scans') return (b.viewsCount || b.views_count || 0) - (a.viewsCount || a.views_count || 0);
-      if (currentMetric === 'cost') return calcMuxCost(b).totalCost - calcMuxCost(a).totalCost;
-      return calcMuxCost(b).durationMin - calcMuxCost(a).durationMin;
+      if (currentMetric === 'cost') return calcDeliveryCost(b).totalCost - calcDeliveryCost(a).totalCost;
+      return calcDeliveryCost(b).durationMin - calcDeliveryCost(a).durationMin;
     }).slice(0, 8);
 
     const mainTitle = currentMetric === 'scans' ? 'Top Experiences by Scans' : (currentMetric === 'cost' ? 'Top Infrastructure Costs' : 'Longest Video Durations');
@@ -539,8 +539,8 @@
 
     const dataValues = sorted.map(item => {
       if (currentMetric === 'scans') return Number(item.viewsCount || item.views_count || 0);
-      if (currentMetric === 'cost') return +calcMuxCost(item).totalCost.toFixed(3);
-      return +calcMuxCost(item).durationMin.toFixed(2);
+      if (currentMetric === 'cost') return +calcDeliveryCost(item).totalCost.toFixed(3);
+      return +calcDeliveryCost(item).durationMin.toFixed(2);
     });
 
     const barColors = sorted.map((_, i) => i === 0 ? '#C9A96E' : (i % 2 === 0 ? '#38bdf8' : '#22c55e'));
@@ -599,13 +599,13 @@
     let framesSum = 0, magsSum = 0;
     projects.forEach(p => {
       if (currentMetric === 'scans') framesSum += Number(p.viewsCount || p.views_count || 0);
-      else if (currentMetric === 'cost') framesSum += calcMuxCost(p).totalCost;
-      else framesSum += calcMuxCost(p).durationMin;
+      else if (currentMetric === 'cost') framesSum += calcDeliveryCost(p).totalCost;
+      else framesSum += calcDeliveryCost(p).durationMin;
     });
     magazines.forEach(m => {
       if (currentMetric === 'scans') magsSum += Number(m.viewsCount || m.views_count || 0);
-      else if (currentMetric === 'cost') magsSum += calcMuxCost(m).totalCost;
-      else magsSum += calcMuxCost(m).durationMin;
+      else if (currentMetric === 'cost') magsSum += calcDeliveryCost(m).totalCost;
+      else magsSum += calcDeliveryCost(m).durationMin;
     });
 
     const donutValues = [Math.max(0.1, +framesSum.toFixed(2)), Math.max(0.1, +magsSum.toFixed(2))];

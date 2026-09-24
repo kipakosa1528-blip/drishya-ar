@@ -1,8 +1,8 @@
 // Kipakosa transcode worker.
 //
-// Replaces Mux: pulls the raw upload from R2, produces a web-optimised,
-// fast-start MP4 with ffmpeg, uploads it to R2 and flips the project's
-// target_data to point at it. Runs on the Oracle VM under pm2.
+// Pulls the raw upload from R2, produces a web-optimised, fast-start MP4 with
+// ffmpeg, uploads it to R2 and flips the project's target_data to point at it.
+// Runs on the Oracle VM under pm2.
 //
 // Job state lives in target_data.transcode_status:
 //   queued -> processing -> ready | error
