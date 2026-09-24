@@ -29,14 +29,14 @@ test('Real E2E: compile real image, verify .mind file > 100KB on server', async 
 
   // Login via the Supabase Auth admin page
   const { email, password } = getAdminCreds();
-  await page.goto('/admin.html');
+  await page.goto('/admin');
   await page.fill('#email', email);
   await page.fill('#pw', password);
   await page.click('#login-btn');
-  await page.waitForURL('/dashboard.html');
+  await page.waitForURL('/dashboard');
 
   // Go to create
-  await page.goto('/create.html');
+  await page.goto('/create');
   await page.waitForLoadState('networkidle');
 
   // Step 1: Info

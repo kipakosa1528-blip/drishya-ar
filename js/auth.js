@@ -59,7 +59,7 @@ export async function isLoggedIn() {
 
 export async function requireAuth() {
   if (!(await isLoggedIn())) {
-    window.location.replace('/admin.html');
+    window.location.replace('/admin');
   }
 }
 
@@ -75,7 +75,7 @@ export async function logout() {
     const sb = await getSupabase();
     await sb.auth.signOut();
   } catch { /* ignore */ }
-  window.location.replace('/admin.html');
+  window.location.replace('/admin');
 }
 
 export async function logoutToLogin() { return logout(); }

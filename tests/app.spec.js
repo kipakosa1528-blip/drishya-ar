@@ -1,4 +1,4 @@
-// Admin app flows: login via /admin.html (Supabase Auth), dashboard stats,
+// Admin app flows: login via /admin (Supabase Auth), dashboard stats,
 // projects list and project detail for a seeded project.
 
 import { test, expect } from '@playwright/test';
@@ -16,11 +16,11 @@ test.use({ baseURL: 'http://localhost:3000' });
 
 async function uiLogin(page) {
   const { email, password } = getAdminCreds();
-  await page.goto('/admin.html');
+  await page.goto('/admin');
   await page.fill('#email', email);
   await page.fill('#pw', password);
   await page.click('#login-btn');
-  await page.waitForURL('/dashboard.html', { timeout: 15000 });
+  await page.waitForURL('/dashboard', { timeout: 15000 });
 }
 
 test.describe('admin app', () => {
@@ -40,7 +40,7 @@ test.describe('admin app', () => {
 
   test('login page rejects wrong password and accepts correct one', async ({ page }) => {
     const { email } = getAdminCreds();
-    await page.goto('/admin.html');
+    await page.goto('/admin');
     await page.fill('#email', email);
     await page.fill('#pw', 'definitely-wrong-password');
     await page.click('#login-btn');
@@ -49,12 +49,12 @@ test.describe('admin app', () => {
 
     await page.fill('#pw', getAdminCreds().password);
     await page.click('#login-btn');
-    await page.waitForURL('/dashboard.html', { timeout: 15000 });
+    await page.waitForURL('/dashboard', { timeout: 15000 });
   });
 
   test('unauthenticated dashboard redirects to admin login', async ({ page }) => {
-    await page.goto('/dashboard.html');
-    await page.waitForURL(/\/admin\.html/, { timeout: 10000 });
+    await page.goto('/dashboard');
+    await page.waitForURL(/\/admin/, { timeout: 10000 });
   });
 
   test('dashboard shows seeded project across pages', async ({ page }) => {
@@ -64,12 +64,12 @@ test.describe('admin app', () => {
     await expect(page.locator('#st-total')).not.toHaveText('0');
 
     // Projects list contains the seeded project
-    await page.goto('/projects.html');
+    await page.goto('/projects');
     await expect(page.locator('#proj-body')).toContainText('Playwright Wedding Frame');
     await expect(page.locator('#proj-body')).toContainText('Saugat & Co');
 
     // Project detail renders its fields
-    await page.goto(`/project.html?id=${seeded.id}`);
+    await page.goto(`/project?id=${seeded.id}`);
     await expect(page.locator('#p-title')).toHaveText('Playwright Wedding Frame');
     await expect(page.locator('#p-client')).toHaveText('Saugat & Co');
   });
@@ -77,7 +77,7 @@ test.describe('admin app', () => {
   test('create wizard navigation works after login', async ({ page }) => {
     await uiLogin(page);
 
-    await page.goto('/create.html');
+    await page.goto('/create');
     await expect(page.locator('#sb-1')).toBeVisible();
 
     await page.fill('#f-name', 'Test AR Project');

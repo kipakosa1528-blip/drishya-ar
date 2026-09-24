@@ -23,23 +23,23 @@
       <div>Kipakosa <span>AR</span></div>
     </div>
 
-    <a class="nav-link" data-page="dashboard" href="dashboard.html">
+    <a class="nav-link" data-page="dashboard" href="dashboard">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Dashboard
     </a>
-    <a class="nav-link active" data-page="projects" href="projects.html">
+    <a class="nav-link active" data-page="projects" href="projects">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
       Living Frames
     </a>
-    <a class="nav-link" data-page="magazines" href="magnizes.html">
+    <a class="nav-link" data-page="magazines" href="magnizes">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
       Magazines
     </a>
-    <a class="nav-link" data-page="create" href="create.html">
+    <a class="nav-link" data-page="create" href="create">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
       + New Frame
     </a>
-    <a class="nav-link" data-page="create-magazine" href="createMagzine.html">
+    <a class="nav-link" data-page="create-magazine" href="createMagzine">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
       + New Magazine
     </a>
@@ -49,7 +49,7 @@
   </aside>
 
   <main class="main">
-    <a href="projects.html" style="font-size:13px;color:var(--text-secondary);display:inline-flex;align-items:center;gap:4px;margin-bottom:16px">← Projects</a>
+    <a href="projects" style="font-size:13px;color:var(--text-secondary);display:inline-flex;align-items:center;gap:4px;margin-bottom:16px">← Projects</a>
 
     <div class="page-header">
       <div class="page-title" id="p-title"></div>
@@ -62,7 +62,7 @@
     <div id="not-found" class="panel" style="display:none;text-align:center;padding:40px">
       <div style="font-size:18px;font-weight:600;margin-bottom:8px">Project Not Found</div>
       <p style="color:var(--text-secondary);margin-bottom:16px">This project may have been deleted or the link is incorrect.</p>
-      <a href="projects.html" class="btn btn-primary">Back to Projects</a>
+      <a href="projects" class="btn btn-primary">Back to Projects</a>
     </div>
 
     <div id="detail-grid" style="display:grid;grid-template-columns:1fr 340px;gap:24px">
@@ -417,7 +417,7 @@
       </div>
     </div>
 
-    <div id="not-found" style="display:none" class="empty">Project not found. <a href="projects.html">Back to projects</a></div>
+    <div id="not-found" style="display:none" class="empty">Project not found. <a href="projects">Back to projects</a></div>
   </main>
 </div>
 
@@ -486,7 +486,7 @@
   initNav('projects');
 
   const id = new URLSearchParams(location.search).get('id');
-  if (!id) location.replace('/projects.html');
+  if (!id) location.replace('/projects');
 
   let currentProject = null;
   let editExpMode = 'time';
@@ -956,7 +956,7 @@
     if (confirm(`Delete project "${currentProject.name}"?`)) {
       await deleteProject(id);
       toast('Project deleted', 'success');
-      location.replace('/projects.html');
+      location.replace('/projects');
     }
   };
 

@@ -1,22 +1,18 @@
 {
   "version": 2,
+  "cleanUrls": true,
   "redirects": [
-    { "source": "/", "destination": "/landing.html", "permanent": false }
+    { "source": "/", "destination": "/landing", "permanent": false }
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/ar", "destination": "/api" },
     { "source": "/magAr", "destination": "/api" },
-    { "source": "/createMagzine", "destination": "/createMagzine.html" },
-    { "source": "/createmagzine", "destination": "/createMagzine.html" },
-    { "source": "/createMagazine", "destination": "/createMagzine.html" },
-    { "source": "/createmagazine", "destination": "/createMagzine.html" },
-    { "source": "/magnizes", "destination": "/magnizes.html" },
-    { "source": "/magazines", "destination": "/magnizes.html" },
-    { "source": "/magazine", "destination": "/magazine.html" },
-    { "source": "/magzine", "destination": "/magazine.html" },
-    { "source": "/landing", "destination": "/landing.html" },
-    { "source": "/", "destination": "/landing.html" }
+    { "source": "/createmagzine", "destination": "/createMagzine" },
+    { "source": "/createMagazine", "destination": "/createMagzine" },
+    { "source": "/createmagazine", "destination": "/createMagzine" },
+    { "source": "/magazines", "destination": "/magnizes" },
+    { "source": "/magzine", "destination": "/magazine" }
   ],
   "crons": [
     {

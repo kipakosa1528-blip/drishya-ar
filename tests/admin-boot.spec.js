@@ -52,7 +52,7 @@ test.describe('admin-boot', () => {
     expect(html).not.toContain('<img src=x');
     expect(html).toContain('&lt;img');
     expect(html).toContain('A &amp; B');
-    expect(html).toContain('project.html?id=');
+    expect(html).toContain('project?id=');
     expect(html).not.toContain('</script>');
   });
 
@@ -94,30 +94,30 @@ test.describe('admin-boot', () => {
         document.body.appendChild(a);
         a.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
       };
-      mk('/projects.html');
-      mk('/dashboard.html');
-      mk('https://evil.example/dashboard.html');
+      mk('/projects');
+      mk('/dashboard');
+      mk('https://evil.example/dashboard');
     });
-    expect(await page.locator('link[rel="prefetch"][href="/projects.html"]').count()).toBe(1);
-    expect(await page.locator('link[rel="prefetch"][href="/dashboard.html"]').count()).toBe(1);
+    expect(await page.locator('link[rel="prefetch"][href="/projects"]').count()).toBe(1);
+    expect(await page.locator('link[rel="prefetch"][href="/dashboard"]').count()).toBe(1);
     expect(await page.locator('link[rel="prefetch"]').count()).toBe(2); // external ignored
   });
 
   test('admin shells ship the boot script and hydration snippet', async ({ request }) => {
-    for (const pagePath of ['/dashboard.html', '/projects.html', '/project.html', '/create.html']) {
+    for (const pagePath of ['/dashboard', '/projects', '/project', '/create']) {
       const res = await request.get(pagePath);
       expect(res.status(), pagePath).toBe(200);
       const html = await res.text();
       expect(html, pagePath).toContain('js/admin-boot.js');
     }
-    const dash = await (await request.get('/dashboard.html')).text();
+    const dash = await (await request.get('/dashboard')).text();
     expect(dash).toContain('KBoot.readCache()');
-    const proj = await (await request.get('/project.html')).text();
+    const proj = await (await request.get('/project')).text();
     expect(proj).toContain("location.search).get('id')");
   });
 
   test('every page ships the full favicon link set', async ({ request }) => {
-    for (const pagePath of ['/', '/landing', '/index.html', '/admin.html', '/create.html', '/dashboard.html', '/projects.html', '/project.html']) {
+    for (const pagePath of ['/', '/landing', '/index', '/admin', '/create', '/dashboard', '/projects', '/project']) {
       const res = await request.get(pagePath);
       expect(res.status(), pagePath).toBe(200);
       const html = await res.text();

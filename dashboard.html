@@ -64,23 +64,23 @@
       <div>Kipakosa <span>AR</span></div>
     </div>
 
-    <a class="nav-link active" data-page="dashboard" href="dashboard.html">
+    <a class="nav-link active" data-page="dashboard" href="dashboard">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Dashboard
     </a>
-    <a class="nav-link" data-page="projects" href="projects.html">
+    <a class="nav-link" data-page="projects" href="projects">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
       Living Frames
     </a>
-    <a class="nav-link" data-page="magazines" href="magnizes.html">
+    <a class="nav-link" data-page="magazines" href="magnizes">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
       Magazines
     </a>
-    <a class="nav-link" data-page="create" href="create.html">
+    <a class="nav-link" data-page="create" href="create">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
       + New Frame
     </a>
-    <a class="nav-link" data-page="create-magazine" href="createMagzine.html">
+    <a class="nav-link" data-page="create-magazine" href="createMagzine">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
       + New Magazine
     </a>
@@ -97,8 +97,8 @@
         <div style="font-size:13px;color:var(--text-secondary);margin-top:2px">Real-time performance, multi-product analytics, and infrastructure costs</div>
       </div>
       <div style="display:flex;gap:8px">
-        <a href="create.html" class="btn btn-default">+ New Frame</a>
-        <a href="createMagzine.html" class="btn btn-primary">+ New Magazine</a>
+        <a href="create" class="btn btn-default">+ New Frame</a>
+        <a href="createMagzine" class="btn btn-primary">+ New Magazine</a>
       </div>
     </div>
 
@@ -261,7 +261,7 @@
     <div class="panel" style="margin-top:24px">
       <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
         <span>Recent Living Frames</span>
-        <a href="projects.html" style="font-size:12px;color:var(--accent)">View all frames →</a>
+        <a href="projects" style="font-size:12px;color:var(--accent)">View all frames →</a>
       </div>
       <div class="table-wrap">
         <table>
@@ -295,7 +295,7 @@
           KBoot.setText('st-active', list.length - expired);
           var recent = list.slice().sort(KBoot.byCreatedDesc).slice(0, 5);
           body.innerHTML = recent.length ? recent.map(KBoot.rowHTML).join('')
-            : '<tr><td colspan="7" class="empty">No projects yet. <a href="create.html" style="color:var(--accent);font-weight:600">Create one</a></td></tr>';
+            : '<tr><td colspan="7" class="empty">No projects yet. <a href="create" style="color:var(--accent);font-weight:600">Create one</a></td></tr>';
         })();
       </script>
     </div>
@@ -304,7 +304,7 @@
     <div class="panel" style="margin-top:24px">
       <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
         <span>Recent Multi-Target Magazines</span>
-        <a href="magnizes.html" style="font-size:12px;color:var(--accent)">View all magazines →</a>
+        <a href="magnizes" style="font-size:12px;color:var(--accent)">View all magazines →</a>
       </div>
       <div class="table-wrap">
         <table>
@@ -651,7 +651,7 @@
     const recent = projects.slice(0, 5);
     const body = document.getElementById('recent-body');
     if (!recent.length) {
-      body.innerHTML = '<tr><td colspan="7" class="empty">No frames yet. <a href="create.html" style="color:var(--accent);font-weight:600">Create one</a></td></tr>';
+      body.innerHTML = '<tr><td colspan="7" class="empty">No frames yet. <a href="create" style="color:var(--accent);font-weight:600">Create one</a></td></tr>';
       return;
     }
     body.innerHTML = recent.map(p => `
@@ -659,14 +659,14 @@
         <td style="width:70px">
           ${p.imageUrl ? `<img class="td-thumb" src="${p.imageUrl}" />` : `<div class="td-thumb-placeholder"></div>`}
         </td>
-        <td><a href="project.html?id=${p.id}" style="font-weight:600;color:var(--text)">${esc(p.name)}</a></td>
+        <td><a href="project?id=${p.id}" style="font-weight:600;color:var(--text)">${esc(p.name)}</a></td>
         <td style="color:var(--text-secondary)">${esc(p.client || '—')}</td>
         <td><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--accent)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ${p.viewsCount || p.views_count || 0}</span></td>
         <td>${statusBadge(p)}</td>
         <td style="color:var(--text-secondary)">${fmt(p.expiresAt || p.expires_at)}</td>
         <td style="text-align:right">
           <div class="actions" style="display:flex;gap:6px;justify-content:flex-end">
-            <a href="project.html?id=${p.id}" class="btn btn-sm btn-default">View</a>
+            <a href="project?id=${p.id}" class="btn btn-sm btn-default">View</a>
             <button class="btn btn-sm btn-danger" onclick="delProj('${p.id}', '${esc(p.name).replace(/'/g, "\\'")}')">Delete</button>
           </div>
         </td>
@@ -677,7 +677,7 @@
     const recent = magazines.slice(0, 5);
     const body = document.getElementById('recent-mags-body');
     if (!recent.length) {
-      body.innerHTML = '<tr><td colspan="7" class="empty">No magazines yet. <a href="createMagzine.html" style="color:var(--accent);font-weight:600">Create one</a></td></tr>';
+      body.innerHTML = '<tr><td colspan="7" class="empty">No magazines yet. <a href="createMagzine" style="color:var(--accent);font-weight:600">Create one</a></td></tr>';
       return;
     }
     body.innerHTML = recent.map(m => {
@@ -689,14 +689,14 @@
         <td style="width:70px">
           ${coverUrl ? `<img class="td-thumb" src="${coverUrl}" />` : `<div class="td-thumb-placeholder">📖</div>`}
         </td>
-        <td><a href="magazine.html?id=${m.id}" style="font-weight:600;color:var(--text)">${esc(m.title || m.name || 'Untitled Magazine')}</a></td>
+        <td><a href="magazine?id=${m.id}" style="font-weight:600;color:var(--text)">${esc(m.title || m.name || 'Untitled Magazine')}</a></td>
         <td style="color:var(--text-secondary)">${esc(m.client || '—')}</td>
         <td><span class="badge badge-blue">${targets.length} Page${targets.length !== 1 ? 's' : ''}</span></td>
         <td><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--accent)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ${m.viewsCount || m.views_count || 0}</span></td>
         <td style="color:var(--text-secondary)">${fmt(m.createdAt || m.created_at)}</td>
         <td style="text-align:right">
           <div class="actions" style="display:flex;gap:6px;justify-content:flex-end">
-            <a href="magazine.html?id=${m.id}" class="btn btn-sm btn-default">View</a>
+            <a href="magazine?id=${m.id}" class="btn btn-sm btn-default">View</a>
             <button class="btn btn-sm btn-danger" onclick="delMag('${m.id}', '${esc(m.title || m.name || 'Magazine').replace(/'/g, "\\'")}')">Delete</button>
           </div>
         </td>

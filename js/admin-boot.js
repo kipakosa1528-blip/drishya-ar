@@ -74,12 +74,12 @@
     return '' +
       '<tr>' +
         '<td style="width:70px">' + thumb + '</td>' +
-        '<td><a href="project.html?id=' + esc(p.id) + '" style="font-weight:600;color:var(--text)">' + esc(p.name) + '</a></td>' +
+        '<td><a href="project?id=' + esc(p.id) + '" style="font-weight:600;color:var(--text)">' + esc(p.name) + '</a></td>' +
         '<td style="color:var(--text-secondary)">' + esc(p.client || '') + '</td>' +
         '<td><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--accent)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ' + scans + '</span></td>' +
         '<td>' + statusBadge(p) + '</td>' +
         '<td style="color:var(--text-secondary)">' + fmtDate(p.expiresAt || p.expires_at) + '</td>' +
-        '<td style="text-align:right"><a href="project.html?id=' + esc(p.id) + '" class="btn btn-sm btn-default">View</a></td>' +
+        '<td style="text-align:right"><a href="project?id=' + esc(p.id) + '" class="btn btn-sm btn-default">View</a></td>' +
       '</tr>';
   }
 
@@ -111,7 +111,7 @@
       var t = e.target && e.target.closest ? e.target.closest('a[href]') : null;
       if (!t) return;
       var href = t.getAttribute('href') || '';
-      if (!/^\/?(dashboard|projects|project|create|admin)\.html([?#].*)?$/.test(href)) return;
+      if (!/^\/?(dashboard|projects|project|create|admin)(\.html)?([?#].*)?$/.test(href)) return;
       if (document.querySelector('link[rel="prefetch"][href="' + href + '"]')) return;
       var link = document.createElement('link');
       link.rel = 'prefetch';

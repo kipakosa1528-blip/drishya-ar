@@ -42,7 +42,7 @@
   try {
     const sb = await getSupabase();
     const { data } = await sb.auth.getSession();
-    if (data?.session) window.location.replace('/dashboard.html');
+    if (data?.session) window.location.replace('/dashboard');
     if (window.__kipakosaAdminEmail) {
       document.getElementById('email').value = window.__kipakosaAdminEmail;
       document.getElementById('pw').focus();
@@ -58,7 +58,7 @@
     btn.disabled = true;
     try {
       await login(document.getElementById('email').value.trim(), document.getElementById('pw').value);
-      window.location.replace('/dashboard.html');
+      window.location.replace('/dashboard');
     } catch {
       document.getElementById('err-msg').style.display = 'block';
       btn.disabled = false;

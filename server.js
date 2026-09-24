@@ -35,13 +35,54 @@ app.use((req, res, next) => {
   next();
 });
 
-// ── Pages ─────────────────────────────────────────────────────────────────────
-for (const route of ['/', '/landing']) {
-  app.get(route, (req, res) => {
-    res.setHeader('Cache-Control', 'public, max-age=60');
-    res.sendFile(path.join(__dirname, 'landing.html'));
-  });
+// ── Pages (clean URLs, no .html) ──────────────────────────────────────────────
+// Canonical page names served WITHOUT the .html extension, e.g. /dashboard.
+const PAGE_MAP = {
+  landing: 'landing.html',
+  index: 'index.html',
+  admin: 'admin.html',
+  create: 'create.html',
+  dashboard: 'dashboard.html',
+  projects: 'projects.html',
+  project: 'project.html',
+  createMagzine: 'createMagzine.html',
+  magnizes: 'magnizes.html',
+  magazine: 'magazine.html',
+  earth_3d_test: 'earth_3d_test.html',
+};
+
+// Alias paths (alternate spellings) → canonical page file.
+const PAGE_ALIASES = {
+  createmagzine: 'createMagzine.html',
+  createMagazine: 'createMagzine.html',
+  createmagazine: 'createMagzine.html',
+  magazines: 'magnizes.html',
+  magzine: 'magazine.html',
+};
+
+function sendPage(res, file) {
+  res.setHeader('Cache-Control', 'public, max-age=60');
+  res.sendFile(path.join(__dirname, file));
 }
+
+// 1) Legacy .html URLs → 301 redirect to the clean path (keeps old links working)
+app.get(/\.html$/, (req, res) => {
+  const qs = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
+  const clean = req.path.replace(/\/index\.html$/, '/').replace(/\.html$/, '');
+  res.redirect(301, (clean || '/') + qs);
+});
+
+// 2) Canonical clean routes
+app.get('/', (req, res) => sendPage(res, 'landing.html'));
+for (const [name, file] of Object.entries(PAGE_MAP)) {
+  if (name === 'index') continue; // /index is handled by the .html redirect below
+  app.get(`/${name}`, (req, res) => sendPage(res, file));
+}
+for (const [alias, file] of Object.entries(PAGE_ALIASES)) {
+  app.get(`/${alias}`, (req, res) => sendPage(res, file));
+}
+// /index → / (the index page is a redirect shim)
+app.get('/index', (req, res) => res.redirect(301, '/'));
 
 // Static assets served ONLY from whitelisted directories — never the repo root,
 // so local files like .env / server source are not exposed over HTTP.
@@ -54,40 +95,6 @@ for (const dir of ['assets', 'css', 'js', 'external']) {
       res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=86400');
     },
   }));
-}
-
-// Explicit routes for each page (keeps bookmarked .html URLs working)
-for (const page of [
-  'landing.html', 'index.html', 'admin.html', 'create.html',
-  'dashboard.html', 'projects.html', 'project.html', 'ar.html',
-  'createMagzine.html', 'magnizes.html', 'magazine.html', 'earth_3d_test.html'
-]) {
-  app.get(`/${page}`, (req, res) => {
-    res.setHeader('Cache-Control', 'public, max-age=60');
-    res.sendFile(path.join(__dirname, page));
-  });
-}
-
-// Internal magazine routes (direct URL access only)
-for (const route of ['/createMagzine', '/createmagzine', '/createMagazine', '/createmagazine']) {
-  app.get(route, (req, res) => {
-    res.setHeader('Cache-Control', 'public, max-age=60');
-    res.sendFile(path.join(__dirname, 'createMagzine.html'));
-  });
-}
-
-for (const route of ['/magnizes', '/magazines']) {
-  app.get(route, (req, res) => {
-    res.setHeader('Cache-Control', 'public, max-age=60');
-    res.sendFile(path.join(__dirname, 'magnizes.html'));
-  });
-}
-
-for (const route of ['/magazine', '/magzine']) {
-  app.get(route, (req, res) => {
-    res.setHeader('Cache-Control', 'public, max-age=60');
-    res.sendFile(path.join(__dirname, 'magazine.html'));
-  });
 }
 
 // Explicit logo route with correct image/svg+xml header

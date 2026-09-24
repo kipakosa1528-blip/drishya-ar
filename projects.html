@@ -41,23 +41,23 @@
       <div>Kipakosa <span>AR</span></div>
     </div>
 
-    <a class="nav-link" data-page="dashboard" href="dashboard.html">
+    <a class="nav-link" data-page="dashboard" href="dashboard">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Dashboard
     </a>
-    <a class="nav-link active" data-page="projects" href="projects.html">
+    <a class="nav-link active" data-page="projects" href="projects">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
       Living Frames
     </a>
-    <a class="nav-link" data-page="magazines" href="magnizes.html">
+    <a class="nav-link" data-page="magazines" href="magnizes">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
       Magazines
     </a>
-    <a class="nav-link" data-page="create" href="create.html">
+    <a class="nav-link" data-page="create" href="create">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
       + New Frame
     </a>
-    <a class="nav-link" data-page="create-magazine" href="createMagzine.html">
+    <a class="nav-link" data-page="create-magazine" href="createMagzine">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
       + New Magazine
     </a>
@@ -69,7 +69,7 @@
   <main class="main">
     <div class="page-header">
       <div class="page-title">Projects <span id="count" style="font-size:13px;font-weight:400;color:var(--muted)"></span></div>
-      <a href="create.html" class="btn btn-primary">+ New Project</a>
+      <a href="create" class="btn btn-primary">+ New Project</a>
     </div>
 
     <div class="filter-bar">
@@ -187,7 +187,7 @@
         var sorted = list.slice().sort(KBoot.byCreatedDesc);
         document.getElementById('count').textContent = '(' + sorted.length + ')';
         body.innerHTML = sorted.length ? sorted.map(KBoot.rowHTML).join('')
-          : '<tr><td colspan="7" class="empty">No projects yet. <a href="create.html" style="color:var(--accent);font-weight:600">Create one</a></td></tr>';
+          : '<tr><td colspan="7" class="empty">No projects yet. <a href="create" style="color:var(--accent);font-weight:600">Create one</a></td></tr>';
       })();
     </script>
   </main>
@@ -317,7 +317,7 @@
     document.getElementById('count').textContent = `(${data.length})`;
     const body = document.getElementById('proj-body');
     if (!data.length) {
-      body.innerHTML = `<tr><td colspan="7" class="empty">${all.length ? 'No matching projects found' : 'No projects yet. <a href="create.html" style="color:var(--accent);font-weight:600">Create one</a>'}</td></tr>`;
+      body.innerHTML = `<tr><td colspan="7" class="empty">${all.length ? 'No matching projects found' : 'No projects yet. <a href="create" style="color:var(--accent);font-weight:600">Create one</a>'}</td></tr>`;
       return;
     }
     body.innerHTML = data.map(p => {
@@ -327,7 +327,7 @@
         <td style="width:70px">
           ${p.imageUrl ? `<img class="td-thumb" src="${p.imageUrl}" />` : `<div class="td-thumb-placeholder"></div>`}
         </td>
-        <td><a href="project.html?id=${p.id}" style="font-weight:600;color:var(--text)">${p.name}</a></td>
+        <td><a href="project?id=${p.id}" style="font-weight:600;color:var(--text)">${p.name}</a></td>
         <td style="color:var(--text-secondary)">${p.client || '—'}</td>
         <td>
           <span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--accent)">
@@ -343,7 +343,7 @@
 
         <td style="text-align:right">
           <div class="actions" style="display:flex;gap:6px;justify-content:flex-end">
-            <a href="project.html?id=${p.id}" class="btn btn-sm btn-default">View</a>
+            <a href="project?id=${p.id}" class="btn btn-sm btn-default">View</a>
             <button class="btn btn-sm btn-danger" onclick="delProj('${p.id}', '${p.name.replace(/'/g, "\\'")}')">Delete</button>
           </div>
         </td>
