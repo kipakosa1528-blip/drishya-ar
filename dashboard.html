@@ -219,7 +219,7 @@
           <span class="kpi-chip-val" style="color:var(--accent)" id="kpi-val-2">0</span>
         </div>
         <div class="kpi-chip">
-          <span class="kpi-chip-title" id="kpi-title-3">Stored Video</span>
+          <span class="kpi-chip-title" id="kpi-title-3">Stored Size</span>
           <span class="kpi-chip-val" id="kpi-val-3">0 mins</span>
         </div>
         <div class="kpi-chip">
@@ -498,14 +498,22 @@
     }
 
     // Update Dynamic KPI Chips
-    let totalScans = 0, totalOverlays = 0, totalStoredMins = 0, totalDeliveredMins = 0, totalDeliveryCost = 0, totalR2MB = 0;
+    let totalScans = 0, totalOverlays = 0, totalStoredGb = 0, totalDeliveredMins = 0, totalDeliveryCost = 0, totalR2MB = 0;
 
     selectedItems.forEach(item => {
       const cost = calcDeliveryCost(item);
       const views = Number(item.viewsCount || item.views_count || 0);
       totalScans += views;
-      totalOverlays += (cost.videoCount || 1);
-      totalStoredMins += cost.durationMin;
+      // Count only actual video overlays (magazines: their video targets;
+      // frames: 1 only if the overlay is a video).
+      if (item._type === 'mag') {
+        totalOverlays += (cost.videoCount || 0);
+      } else {
+        const ot = item.overlayType || item.overlay_type;
+        const isVideo = ot === 'video' || (!ot && (item.videoUrl || item.optimizedVideoUrl || item.optimized_video_url));
+        totalOverlays += isVideo ? 1 : 0;
+      }
+      totalStoredGb += cost.storedGb;
       totalDeliveredMins += cost.minutesDelivered;
       totalDeliveryCost += cost.totalCost;
 
@@ -519,7 +527,7 @@
 
     document.getElementById('kpi-val-1').textContent = totalScans.toLocaleString();
     document.getElementById('kpi-val-2').textContent = totalOverlays;
-    document.getElementById('kpi-val-3').textContent = totalStoredMins.toFixed(1) + ' mins';
+    document.getElementById('kpi-val-3').textContent = totalStoredGb.toFixed(2) + ' GB';
     document.getElementById('kpi-val-4').textContent = totalDeliveredMins.toFixed(1) + ' mins';
     document.getElementById('kpi-val-5').textContent = totalDeliveryCost === 0 ? '$0.00' : (totalDeliveryCost < 0.01 ? '<$0.01' : `$${totalDeliveryCost.toFixed(2)}`);
     document.getElementById('kpi-val-6').textContent = `~${totalR2MB} MB (${(totalR2MB/1024).toFixed(2)} GB)`;
