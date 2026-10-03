@@ -49,6 +49,14 @@ const PAGE_MAP = {
   magnizes: 'magnizes.html',
   magazine: 'magazine.html',
   earth_3d_test: 'earth_3d_test.html',
+  order: 'order.html',
+  demo: 'demo.html',
+  bio: 'bio.html',
+  privacy: 'privacy.html',
+  terms: 'terms.html',
+  refund: 'refund.html',
+  cookies: 'cookies.html',
+  'acceptable-use': 'acceptable-use.html',
 };
 
 // Alias paths (alternate spellings) → canonical page file.
@@ -58,6 +66,10 @@ const PAGE_ALIASES = {
   createmagazine: 'createMagzine.html',
   magazines: 'magnizes.html',
   magzine: 'magazine.html',
+  pricing: 'order.html',
+  prices: 'order.html',
+  acceptableuse: 'acceptable-use.html',
+  tos: 'terms.html',
 };
 
 function sendPage(res, file) {
@@ -112,6 +124,19 @@ app.get('/favicon.ico', (req, res) => {
   res.setHeader('Content-Type', 'image/png');
   res.setHeader('Cache-Control', 'public, max-age=86400');
   res.sendFile(iconPath);
+});
+
+// SEO routes
+app.get('/robots.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.sendFile(path.join(__dirname, 'robots.txt'));
+});
+
+app.get('/sitemap.xml', (req, res) => {
+  res.setHeader('Content-Type', 'application/xml');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.sendFile(path.join(__dirname, 'sitemap.xml'));
 });
 
 // ── API + AR viewer ───────────────────────────────────────────────────────────

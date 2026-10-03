@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Live AR Demo — Test Kipakosa Living Frame</title>
+  <meta name="description" content="Experience augmented reality living photos instantly in your browser. Scan the sample target with your phone camera — zero app downloads required." />
+  <link rel="canonical" href="https://kipakosa.vercel.app/demo" />
+
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/css/landing.css" />
+  <style>
+    .demo-page-container {
+      padding: 130px 24px 80px;
+      max-width: 1080px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .demo-headline {
+      font-family: var(--font-serif);
+      font-size: clamp(34px, 5vw, 52px);
+      color: var(--text-primary);
+      margin-bottom: 14px;
+    }
+    .demo-subtext {
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto 40px;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .demo-experience-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      background: rgba(16, 20, 29, 0.85);
+      border: 1px solid rgba(201, 169, 110, 0.3);
+      border-radius: 12px;
+      padding: 40px;
+      text-align: left;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+    }
+    .demo-target-img {
+      width: 100%;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .qr-card {
+      background: #ffffff;
+      padding: 16px;
+      border-radius: 8px;
+      display: inline-block;
+      margin: 16px 0;
+    }
+    .qr-card img {
+      width: 160px;
+      height: 160px;
+      display: block;
+    }
+    .btn-launch-cam {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--gold-primary);
+      color: #000;
+      font-weight: 700;
+      padding: 16px 28px;
+      border-radius: 9999px;
+      font-size: 15px;
+      margin-top: 20px;
+      transition: all 0.25s ease;
+    }
+    .btn-launch-cam:hover {
+      background: var(--gold-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(201, 169, 110, 0.4);
+    }
+    @media (max-width: 768px) {
+      .demo-experience-grid {
+        grid-template-columns: 1fr;
+        padding: 24px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header-floating">
+    <div class="header-inner">
+      <a href="/" class="brand-anchor" aria-label="Kipakosa home">
+        <img src="/assets/logo.svg" alt="Kipakosa" class="brand-monogram" />
+        <span class="brand-name">Kipakosa</span>
+      </a>
+      <nav class="header-nav-capsule">
+        <a href="/" class="nav-capsule-item">Home</a>
+        <a href="/demo" class="nav-capsule-item active" style="color:var(--gold-primary)">Live Demo</a>
+        <a href="/order" class="nav-capsule-item">Pricing &amp; Order</a>
+        <a href="https://m.me/61593639387711" target="_blank" rel="noopener noreferrer" class="nav-capsule-item nav-capsule-cta">Order in DM ↗</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="demo-page-container">
+    <span class="intro-tag">WEBXR AUGMENTED REALITY</span>
+    <h1 class="demo-headline">Experience the Magic in 2 Taps</h1>
+    <p class="demo-subtext">
+      Point your phone camera at the photo target below. The still photo will instantly unlock into fluid, playing motion directly on your screen.
+    </p>
+
+    <div class="demo-experience-grid">
+      <!-- Target Photo -->
+      <div>
+        <h3 style="font-family:var(--font-serif);font-size:22px;color:#fff;margin-bottom:8px">1. The Physical Target Photo</h3>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">Point your smartphone camera at this image:</p>
+        <img src="/assets/tiktok-demos/7689462708898417926-poster.jpg" alt="Living Target Demo" class="demo-target-img" />
+      </div>
+
+      <!-- AR Scanner Launcher -->
+      <div style="display:flex;flex-direction:column;justify-content:center">
+        <h3 style="font-family:var(--font-serif);font-size:22px;color:#fff;margin-bottom:8px">2. Open Live AR Camera</h3>
+        <p style="color:var(--text-secondary);font-size:14px;line-height:1.6">
+          If you are on a computer, scan this QR code with your phone:
+        </p>
+
+        <div>
+          <div class="qr-card">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https%3A%2F%2Fkipakosa.vercel.app%2Fv%2F46b29dbf-e91a-4b64-a263-574007439087" alt="Scan QR code for AR demo" />
+          </div>
+        </div>
+
+        <p style="color:var(--text-muted);font-size:13px">Or if you are browsing from your phone right now:</p>
+        <div>
+          <a href="/v/46b29dbf-e91a-4b64-a263-574007439087" class="btn-launch-cam">
+            <span>📷 Launch AR Camera Demo →</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div style="margin-top:50px">
+      <a href="/order" class="magnetic-btn btn-luxury-hollow" style="display:inline-flex;padding:14px 28px;border-radius:9999px;border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:14px">
+        <span>View Size &amp; Pricing Menu →</span>
+      </a>
+    </div>
+  </main>
+
+  <footer class="footer-cinematic">
+    <div class="container footer-bottom-strip" style="border-top:1px solid rgba(255,255,255,0.08);padding-top:24px">
+      <div class="footer-strip-flex">
+        <span>© 2026 KIPAKOSA · KATHMANDU, NEPAL</span>
+        <div class="footer-sub-links">
+          <a href="/">Home</a>
+          <a href="/order">Pricing</a>
+          <a href="/privacy">Privacy</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

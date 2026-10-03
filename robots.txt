@@ -1,0 +1,35 @@
+User-agent: *
+Allow: /
+Allow: /landing
+Allow: /order
+Allow: /demo
+Allow: /bio
+Allow: /privacy
+Allow: /terms
+Allow: /refund
+Allow: /cookies
+Allow: /acceptable-use
+Allow: /assets/
+Allow: /css/
+Allow: /js/
+
+# Disallow private administrative & creator endpoints
+Disallow: /admin
+Disallow: /admin.html
+Disallow: /dashboard
+Disallow: /dashboard.html
+Disallow: /projects
+Disallow: /projects.html
+Disallow: /magnizes
+Disallow: /magnizes.html
+Disallow: /create
+Disallow: /create.html
+Disallow: /createMagzine
+Disallow: /createMagzine.html
+Disallow: /project
+Disallow: /project.html
+Disallow: /magazine
+Disallow: /magazine.html
+Disallow: /api/
+
+Sitemap: https://kipakosa.vercel.app/sitemap.xml

@@ -382,8 +382,14 @@
           <tr><td style="color:var(--muted);padding:8px 0;font-weight:600">Expiration</td><td id="r-exp"></td></tr>
           <tr><td style="color:var(--muted);padding:8px 0;font-weight:600">Scan Limit</td><td id="r-scans"></td></tr>
         </table>
+        <div style="margin-top:16px;padding:12px 14px;background:rgba(212,168,83,0.06);border:1px solid rgba(212,168,83,0.22);border-radius:8px">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:12.5px;color:var(--text);line-height:1.5">
+            <input type="checkbox" id="f-consent-check-mag" checked style="margin-top:2px;accent-color:var(--accent)" />
+            <span><strong>Client Media Consent &amp; Rights Release:</strong> I certify that the customer has granted permission to upload, compress, transcode, and host these media files for AR playback under Kipakosa's <a href="/terms" target="_blank" style="color:var(--accent);text-decoration:underline">Terms of Service</a> &amp; <a href="/acceptable-use" target="_blank" style="color:var(--accent);text-decoration:underline">Acceptable Use Policy</a>.</span>
+          </label>
+        </div>
         <div style="margin-top:16px">
-          <button class="btn btn-primary" id="compile-btn" onclick="startCompile()">Compile & Publish Magazine 🚀</button>
+          <button class="btn btn-primary" id="compile-btn" onclick="startCompile()">Compile &amp; Publish Magazine 🚀</button>
         </div>
       </div>
 
@@ -1194,6 +1200,12 @@
   window.activeCompileMagId = null;
 
   window.startCompile = async function() {
+    const consentCheck = document.getElementById('f-consent-check-mag');
+    if (consentCheck && !consentCheck.checked) {
+      alert('Please confirm customer media consent and release before compiling.');
+      return;
+    }
+
     const name = document.getElementById('f-name').value.trim();
     const client = document.getElementById('f-client').value.trim();
     const notes = document.getElementById('f-notes').value.trim();

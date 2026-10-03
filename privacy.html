@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy Policy — Kipakosa</title>
+  <meta name="description" content="Kipakosa Privacy Policy explaining data collection, camera stream handling, media processing, and Cloudflare R2 storage practices." />
+  <link rel="canonical" href="https://kipakosa.vercel.app/privacy" />
+
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/css/landing.css" />
+  <style>
+    .policy-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 140px 24px 80px;
+    }
+    .policy-title {
+      font-family: var(--font-serif);
+      font-size: clamp(32px, 4vw, 48px);
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .policy-meta {
+      font-size: 13px;
+      color: var(--gold-primary);
+      margin-bottom: 40px;
+      display: block;
+    }
+    .policy-content h2 {
+      font-family: var(--font-serif);
+      font-size: 24px;
+      color: #fff;
+      margin: 36px 0 12px;
+    }
+    .policy-content p, .policy-content li {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      margin-bottom: 16px;
+    }
+    .policy-content ul {
+      padding-left: 20px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header-floating">
+    <div class="header-inner">
+      <a href="/" class="brand-anchor" aria-label="Kipakosa home">
+        <img src="/assets/logo.svg" alt="Kipakosa" class="brand-monogram" />
+        <span class="brand-name">Kipakosa</span>
+      </a>
+      <nav class="header-nav-capsule">
+        <a href="/" class="nav-capsule-item">Home</a>
+        <a href="/order" class="nav-capsule-item">Pricing &amp; Order</a>
+        <a href="/demo" class="nav-capsule-item">Live Demo</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="policy-container">
+    <h1 class="policy-title">Privacy Policy</h1>
+    <span class="policy-meta">Last Updated: October 3, 2026 · Effective Date: October 3, 2026</span>
+
+    <div class="policy-content">
+      <p>
+        At <strong>Kipakosa</strong> ("we", "our", or "us"), operating out of Kathmandu, Nepal, we value and respect your privacy. This Privacy Policy outlines how we handle data when you browse our website (<a href="https://kipakosa.vercel.app">kipakosa.vercel.app</a>), order our Living Photo Frames, or use our WebAR camera scanners.
+      </p>
+
+      <h2>1. Camera Usage &amp; Local Processing</h2>
+      <p>
+        Our Augmented Reality (AR) viewer requests temporary camera access solely to detect the physical image target in real time.
+      </p>
+      <ul>
+        <li><strong>On-Device Analysis:</strong> All camera image processing and target matching occurs locally on your device hardware within your web browser.</li>
+        <li><strong>No Video Recording:</strong> We do not record, transmit, or store video feeds from your smartphone camera during AR scanning.</li>
+      </ul>
+
+      <h2>2. Customer-Uploaded Media &amp; Photos</h2>
+      <p>
+        When you submit photographs and video recordings for custom living frames or magazines:
+      </p>
+      <ul>
+        <li><strong>Storage:</strong> Uploaded media is securely stored on Cloudflare R2 distributed object storage.</li>
+        <li><strong>Transcoding &amp; Target Generation:</strong> Still photos are analyzed to generate luminance target matrices for spatial tracking; video streams are compressed and formatted for smooth browser playback.</li>
+        <li><strong>Access Control:</strong> Your projects are linked to unique randomized project identifiers. We do not sell or share your personal photographs with third parties.</li>
+      </ul>
+
+      <h2>3. Analytics &amp; Cookies</h2>
+      <p>
+        We use privacy-respecting analytics tools (such as Google Analytics 4) to monitor general website traffic, page visits, and error diagnostics. These analytics collect anonymized data such as browser type, approximate geography, and referring URLs.
+      </p>
+
+      <h2>4. Data Retention &amp; Deletion Requests</h2>
+      <p>
+        You have the right to request deletion of your uploaded media or project records at any time. Simply contact us via email at <a href="mailto:kipakosa1528@gmail.com" style="color:var(--gold-primary)">kipakosa1528@gmail.com</a> or message our official social channels, and we will purge your media files from our storage buckets within 48 hours.
+      </p>
+
+      <h2>5. Contact Information</h2>
+      <p>
+        If you have any questions regarding this Privacy Policy, please reach out to us:
+      </p>
+      <p>
+        <strong>Kipakosa</strong><br />
+        Email: <a href="mailto:kipakosa1528@gmail.com" style="color:var(--gold-primary)">kipakosa1528@gmail.com</a><br />
+        Location: Kathmandu, Nepal
+      </p>
+    </div>
+  </main>
+
+  <footer class="footer-cinematic">
+    <div class="container footer-bottom-strip" style="border-top:1px solid rgba(255,255,255,0.08);padding-top:24px">
+      <div class="footer-strip-flex">
+        <span>© 2026 KIPAKOSA · KATHMANDU, NEPAL</span>
+        <div class="footer-sub-links">
+          <a href="/">Home</a>
+          <a href="/terms">Terms</a>
+          <a href="/refund">Refunds</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
