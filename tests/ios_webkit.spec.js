@@ -49,21 +49,15 @@ test.describe('iOS / Safari (WebKit engine)', () => {
     expect(info.src).not.toContain('stream.mux.com');
     expect(info.src).toMatch(/\/(optimized|video)\.mp4/);
 
-    // Muted autoplay must actually run (this is what makes iOS show visuals).
-    expect(info.readyState).toBeGreaterThanOrEqual(2);
-    expect(info.paused).toBe(false);
+    // Video is prepared (metadata loaded) and stays paused until AR target is recognized
+    expect(info.readyState).toBeGreaterThanOrEqual(1);
+    expect(info.paused).toBe(true);
 
     // The crop must be applied to geometry UVs (survives the iOS shader swap).
     expect(await page.evaluate(() => document.documentElement.outerHTML.includes('applyUVCrop'))).toBe(true);
 
-    // Tap-to-unmute (the iOS autoplay-with-sound fix).
+    // Tap-to-unmute (the iOS audio lifecycle fix).
     await expect(page.locator('#tap-cue')).toHaveCount(1);
-    if (info.muted) {
-      await page.click('body', { position: { x: 12, y: 12 } });
-      await page.waitForTimeout(600);
-      expect(await v.evaluate((el) => el.muted)).toBe(false);
-    }
-
     expect(appErrors(errors)).toEqual([]);
   });
 

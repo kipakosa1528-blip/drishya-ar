@@ -13,6 +13,8 @@ const SECTIONS = [
   '.asymmetric-gallery-section',
   '.living-magazines-section',
   '.optical-stage-section',
+  '.demo-live-section',
+  '.pricing-section-home',
   '.manifesto-section',
 ];
 
@@ -92,6 +94,26 @@ test.describe('Kipakosa AR landing', () => {
     expect(await page.locator('.horizontal-reel-canvas').count()).toBe(0);
   });
 
+  test('interactive live demo and pricing section render with interactive tabs', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('#demo')).toBeAttached();
+    await expect(page.locator('#pricing')).toBeAttached();
+
+    // Check header capsule contains live demo and pricing links
+    await expect(page.locator('header .header-nav-capsule a[href="#demo"]')).toBeVisible();
+    await expect(page.locator('header .header-nav-capsule a[href="#pricing"]')).toBeVisible();
+
+    // Test demo tab switching
+    const targetImg = page.locator('#landing-demo-target-display');
+    await expect(targetImg).toHaveAttribute('src', /demo-target-46b29dbf/);
+
+    await page.click('#landing-tab-appu');
+    await expect(targetImg).toHaveAttribute('src', /demo-target-appu/);
+
+    // Check pricing table rendered
+    await expect(page.locator('.pricing-table-home')).toBeVisible();
+  });
+
   test('luxury CTA buttons render on hero + scanner sections', async ({ page }) => {
     await page.goto('/');
     const heroCta = page.locator('text=Order Your Living Frame');
@@ -115,3 +137,4 @@ test.describe('Kipakosa AR landing', () => {
     await ctx.close();
   });
 });
+

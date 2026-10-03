@@ -192,7 +192,9 @@
         <a href="#exhibition" class="nav-capsule-item">Exhibition</a>
         <a href="#works" class="nav-capsule-item">Living Works</a>
         <a href="#magazines" class="nav-capsule-item">Magazines</a>
-        <a href="#scanner" class="nav-capsule-item">How It Works</a>
+        <a href="#demo" class="nav-capsule-item">Live Demo</a>
+        <a href="#pricing" class="nav-capsule-item">Pricing</a>
+        <a href="#faq" class="nav-capsule-item">FAQ</a>
         <a href="https://m.me/61593639387711" target="_blank" rel="noopener noreferrer" class="nav-capsule-item nav-capsule-cta magnetic-btn" style="display:inline-flex;align-items:center;gap:6px">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.145 2 11.258c0 2.909 1.455 5.503 3.734 7.159V22l3.443-1.89c.895.248 1.843.382 2.823.382 5.523 0 10-4.145 10-9.258C22 6.145 17.523 2 12 2zm1.002 12.443l-2.56-2.73-4.996 2.73 5.496-5.834 2.623 2.73 4.933-2.73-5.496 5.834z"/></svg>
           <span>Order / Message</span>
@@ -212,7 +214,9 @@
       <a href="#exhibition" class="drawer-link">EXHIBITION</a>
       <a href="#works" class="drawer-link">LIVING WORKS</a>
       <a href="#magazines" class="drawer-link">LIVING MAGAZINES</a>
-      <a href="#scanner" class="drawer-link">HOW IT WORKS</a>
+      <a href="#demo" class="drawer-link">LIVE DEMO</a>
+      <a href="#pricing" class="drawer-link">PRICING &amp; SIZES</a>
+      <a href="#faq" class="drawer-link">FAQ</a>
       <a href="https://m.me/61593639387711" target="_blank" rel="noopener noreferrer" class="drawer-link drawer-link-gold" style="display:inline-flex;align-items:center;gap:8px">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.145 2 11.258c0 2.909 1.455 5.503 3.734 7.159V22l3.443-1.89c.895.248 1.843.382 2.823.382 5.523 0 10-4.145 10-9.258C22 6.145 17.523 2 12 2zm1.002 12.443l-2.56-2.73-4.996 2.73 5.496-5.834 2.623 2.73 4.933-2.73-5.496 5.834z"/></svg>
         <span>MESSAGE US (MESSENGER)</span>
@@ -655,7 +659,261 @@
     </section>
 
     <!-- ══════════════════════════════════════
-         ACT IV.B — SEO FAQ & KNOWLEDGE BASE
+         ACT IV.A — INTERACTIVE LIVE WEBAR DEMO
+    ══════════════════════════════════════ -->
+    <section class="demo-live-section" id="demo" aria-label="Interactive Live Demo">
+      <div class="container demo-live-container">
+
+        <div style="text-align:center;margin-bottom:32px">
+          <span class="intro-tag">INTERACTIVE WEBAR EXPERIENCE</span>
+          <h2 class="editorial-display-heading" style="margin-top:10px">Experience The Magic Right Now.</h2>
+          <p style="color:var(--text-secondary);max-width:680px;margin:12px auto 0;font-size:15.5px;line-height:1.6">
+            Keep the sample target photograph open on your screen (or print it). Scan the QR code with your smartphone camera to launch the WebAR viewer — zero app downloads needed!
+          </p>
+        </div>
+
+        <!-- Demo Switcher Tabs -->
+        <div class="demo-tabs-wrap">
+          <div class="demo-tabs">
+            <button class="demo-tab-btn active" id="landing-tab-travel" onclick="switchLandingDemo('travel')">⛰️ Travel Memory Demo</button>
+            <button class="demo-tab-btn" id="landing-tab-appu" onclick="switchLandingDemo('appu')">🎨 Appu Character Demo</button>
+          </div>
+        </div>
+
+        <div class="demo-experience-grid">
+          <!-- Target Photo Card -->
+          <div class="target-photo-card">
+            <div class="instruction-step">
+              <span class="step-num-pill">1</span>
+              <div>
+                <h3 style="font-family:var(--font-serif);font-size:20px;color:#fff;margin:0 0 4px">Sample Target Photo</h3>
+                <p style="color:var(--text-muted);font-size:13px;margin:0">Display this image clearly on your monitor or screen:</p>
+              </div>
+            </div>
+
+            <img id="landing-demo-target-display" src="/assets/demo-target-46b29dbf.jpg" alt="Living Target Demo" class="demo-target-img" />
+
+            <div style="margin-top:14px;text-align:center">
+              <a id="landing-demo-target-dl" href="/assets/demo-target-46b29dbf.jpg" target="_blank" rel="noopener noreferrer" style="font-size:13px;color:var(--gold-primary);text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                <span>Open Full-Resolution Target in New Tab ↗</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Scanner / QR Launcher -->
+          <div style="display:flex;flex-direction:column;justify-content:center">
+            <div class="instruction-step">
+              <span class="step-num-pill">2</span>
+              <div>
+                <h3 style="font-family:var(--font-serif);font-size:20px;color:#fff;margin:0 0 4px">Scan With Phone Camera</h3>
+                <p style="color:var(--text-secondary);font-size:13.5px;line-height:1.5;margin:0">
+                  Open your smartphone camera or QR scanner and scan below to launch the living camera:
+                </p>
+              </div>
+            </div>
+
+            <div style="text-align:center">
+              <div class="qr-card-box">
+                <img id="landing-demo-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&amp;data=https%3A%2F%2Fkipakosa.vercel.app%2Fv%2F46b29dbf-e91a-4b64-a263-574007439087" alt="Scan QR code for WebAR live demo" />
+              </div>
+
+              <div style="margin-top:10px">
+                <p style="color:var(--text-muted);font-size:13px;margin-bottom:8px">Testing on your mobile device right now?</p>
+                <a id="landing-demo-direct-link" href="/v/46b29dbf-e91a-4b64-a263-574007439087" class="magnetic-btn btn-luxury-gold" style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border-radius:9999px;font-size:14px">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 9a3 3 0 100 6 3 3 0 000-6zm0-2a5 5 0 110 10 5 5 0 010-10zm-7.5 1h-2a.5.5 0 00-.5.5v11a.5.5 0 00.5.5h19a.5.5 0 00.5-.5v-11a.5.5 0 00-.5-.5h-2l-1.5-2h-12L4.5 8z"/></svg>
+                  <span>Launch WebAR Camera Demo →</span>
+                </a>
+              </div>
+            </div>
+
+            <div class="instruction-step" style="margin-top:24px">
+              <span class="step-num-pill">3</span>
+              <div>
+                <h3 style="font-family:var(--font-serif);font-size:18px;color:#fff;margin:0 0 2px">Point &amp; Relive the Memory</h3>
+                <p style="color:var(--text-muted);font-size:13px;margin:0">
+                  Aim your phone camera at the photo in Step 1. Tap the screen to unmute sound and experience the living memory.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════
+         ACT IV.B — SIZES & TRANSPARENT PRICING
+    ══════════════════════════════════════ -->
+    <section class="pricing-section-home" id="pricing" aria-label="Sizes and Pricing">
+      <div class="container" style="max-width:1100px;margin:0 auto">
+
+        <div style="text-align:center;margin-bottom:32px">
+          <span class="intro-tag">HANDCRAFTED SIZES &amp; PRICING</span>
+          <h2 class="editorial-display-heading" style="margin-top:10px">Transparent Frame Menu Nepal.</h2>
+          <p style="color:var(--text-secondary);max-width:680px;margin:12px auto 0;font-size:15.5px;line-height:1.6">
+            Every living frame includes fine art archival printing, handcrafted wooden framing, lifetime WebAR hosting, and zero-app instant scanning across Nepal.
+          </p>
+        </div>
+
+        <!-- Price Matrix Table -->
+        <div class="pricing-table-container-home">
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:12px">
+            <div>
+              <span style="font-family:var(--font-mono);font-size:11px;color:var(--gold-primary);letter-spacing:0.15em;text-transform:uppercase">NEPAL RATE CARD</span>
+              <h3 style="font-family:var(--font-serif);font-size:26px;color:#fff;margin-top:4px">All Dimensions &amp; Prices</h3>
+            </div>
+            <div style="font-size:12.5px;color:var(--gold-primary);font-family:var(--font-mono)">
+              ✓ Handcrafted Frame + Archival Print + Lifetime AR Included
+            </div>
+          </div>
+
+          <table class="pricing-table-home">
+            <thead>
+              <tr>
+                <th>Frame Size</th>
+                <th>Dimension Type</th>
+                <th>Print + Frame</th>
+                <th>AR Digital Setup</th>
+                <th>Total Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>4 × 6</strong></td>
+                <td>Standard Tabletop</td>
+                <td>Rs. 190</td>
+                <td>Included</td>
+                <td class="price-val" style="color:var(--gold-primary);font-weight:700">Rs. 230</td>
+              </tr>
+              <tr>
+                <td><strong>5 × 7</strong></td>
+                <td>Classic Desk / Shelf</td>
+                <td>Rs. 260</td>
+                <td>Included</td>
+                <td class="price-val" style="color:var(--gold-primary);font-weight:700">Rs. 310</td>
+              </tr>
+              <tr>
+                <td><strong>A5 (5.8 × 8.3)</strong></td>
+                <td>Medium Journal Size</td>
+                <td>Rs. 230</td>
+                <td>Included</td>
+                <td class="price-val" style="color:var(--gold-primary);font-weight:700">Rs. 280</td>
+              </tr>
+              <tr>
+                <td><strong>6 × 8</strong></td>
+                <td>Portrait Standard</td>
+                <td>Rs. 400</td>
+                <td>Included</td>
+                <td class="price-val" style="color:var(--gold-primary);font-weight:700">Rs. 480</td>
+              </tr>
+              <tr>
+                <td><strong>8 × 8</strong></td>
+                <td>Square Fine Art</td>
+                <td>Rs. 350</td>
+                <td>Included</td>
+                <td class="price-val" style="color:var(--gold-primary);font-weight:700">Rs. 420</td>
+              </tr>
+              <tr>
+                <td><strong>A4 (8.3 × 11.7)</strong></td>
+                <td>Popular Wall / Desk Standard</td>
+                <td>Rs. 390</td>
+                <td>Included</td>
+                <td class="price-val" style="color:var(--gold-primary);font-weight:700">Rs. 470</td>
+              </tr>
+              <tr>
+                <td><strong>8 × 10</strong></td>
+                <td>Large Portrait</td>
+                <td>Rs. 600</td>
+                <td>Included</td>
+                <td class="price-val" style="color:var(--gold-primary);font-weight:700">Rs. 720</td>
+              </tr>
+              <tr>
+                <td><strong>A3 (11.7 × 16.5)</strong></td>
+                <td>Exhibition Gallery Poster</td>
+                <td>Rs. 750</td>
+                <td>Included</td>
+                <td class="price-val" style="color:var(--gold-primary);font-weight:700">Rs. 900</td>
+              </tr>
+              <tr>
+                <td><strong>10 × 12</strong></td>
+                <td>Statement Wall Frame</td>
+                <td>Rs. 850</td>
+                <td>Included</td>
+                <td class="price-val" style="color:var(--gold-primary);font-weight:700">Rs. 1,020</td>
+              </tr>
+              <tr>
+                <td><strong>12 × 16</strong></td>
+                <td>Master Living Canvas</td>
+                <td>Rs. 1,150</td>
+                <td>Included</td>
+                <td class="price-val" style="color:var(--gold-primary);font-weight:700">Rs. 1,380</td>
+              </tr>
+              <tr>
+                <td><strong>15 × 21</strong></td>
+                <td>Grand Architectural Living Frame</td>
+                <td>Rs. 1,700</td>
+                <td>Included</td>
+                <td class="price-val" style="color:var(--gold-primary);font-weight:700">Rs. 2,040</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Payment Badges -->
+        <div class="payment-grid-home">
+          <div class="payment-card-home">
+            <h4 style="color:#60bb46;font-size:17px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+              <span>💚</span> eSewa Mobile Wallet
+            </h4>
+            <p style="font-size:13.5px;color:var(--text-secondary);line-height:1.6">
+              Direct instant transfer to our verified eSewa account. Simply include your name or DM handle in the remarks.
+            </p>
+          </div>
+          <div class="payment-card-home">
+            <h4 style="color:#a855f7;font-size:17px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+              <span>💜</span> Khalti Digital Wallet
+            </h4>
+            <p style="font-size:13.5px;color:var(--text-secondary);line-height:1.6">
+              Fast wallet-to-wallet transfer with zero transaction delays and instant digital order confirmation.
+            </p>
+          </div>
+          <div class="payment-card-home">
+            <h4 style="color:var(--gold-primary);font-size:17px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+              <span>🏦</span> Fonepay / Bank Transfer
+            </h4>
+            <p style="font-size:13.5px;color:var(--text-secondary);line-height:1.6">
+              Inter-bank QR payment across all commercial banks in Nepal via ConnectIPS or mobile banking app.
+            </p>
+          </div>
+        </div>
+
+        <!-- 1-Tap DM Order Row -->
+        <div style="text-align:center;margin-top:40px">
+          <h3 style="font-family:var(--font-serif);font-size:26px;color:#fff;margin-bottom:8px">Ready to order? Send your photo &amp; video</h3>
+          <p style="color:var(--text-muted);font-size:14.5px;margin-bottom:20px">Choose your preferred chat app below to begin:</p>
+
+          <div class="order-dm-cta-row">
+            <a href="https://m.me/61593639387711" target="_blank" rel="noopener noreferrer" class="order-dm-pill">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.145 2 11.258c0 2.909 1.455 5.503 3.734 7.159V22l3.443-1.89c.895.248 1.843.382 2.823.382 5.523 0 10-4.145 10-9.258C22 6.145 17.523 2 12 2zm1.002 12.443l-2.56-2.73-4.996 2.73 5.496-5.834 2.623 2.73 4.933-2.73-5.496 5.834z"/></svg>
+              <span>Message on Messenger</span>
+            </a>
+            <a href="https://www.instagram.com/kipa.kosa_ar/" target="_blank" rel="noopener noreferrer" class="order-dm-pill">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+              <span>DM on Instagram</span>
+            </a>
+            <a href="https://www.tiktok.com/@kipa.kosa" target="_blank" rel="noopener noreferrer" class="order-dm-pill">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.97v7.41c0 2.73-.85 5.5-2.87 7.22-2.02 1.73-4.88 2.22-7.46 1.63-2.58-.59-4.85-2.45-5.91-4.88-1.07-2.43-.88-5.38.48-7.63 1.37-2.26 3.9-3.71 6.55-3.79.16 0 .32 0 .48.01v4.11c-1.39.05-2.77.78-3.43 2-.65 1.22-.52 2.78.33 3.86.85 1.08 2.37 1.55 3.69 1.15 1.33-.4 2.23-1.63 2.23-3.03V.02z"/></svg>
+              <span>Message on TikTok</span>
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════
+         ACT IV.C — SEO FAQ & KNOWLEDGE BASE
     ══════════════════════════════════════ -->
     <section class="faq-section" id="faq" aria-label="Frequently Asked Questions">
       <div class="container" style="max-width:860px;margin:0 auto;padding:90px 24px 60px">
@@ -775,12 +1033,12 @@
       <div class="footer-columns-group">
         <div class="footer-col">
           <h4 class="footer-label">EXPERIENCE</h4>
-          <a href="/order" class="footer-link">How to Order &amp; Pricing →</a>
-          <a href="/demo" class="footer-link">Try Live AR Demo →</a>
-          <a href="/bio" class="footer-link">Link-in-Bio Tree</a>
-          <a href="#exhibition" class="footer-link">Exhibition Reel</a>
+          <a href="#demo" class="footer-link">Live AR Demo →</a>
+          <a href="#pricing" class="footer-link">Frame Sizes &amp; Pricing →</a>
+          <a href="#exhibition" class="footer-link">Exhibition Gallery</a>
           <a href="#works" class="footer-link">Living Works</a>
           <a href="#magazines" class="footer-link">Living Magazines</a>
+          <a href="/bio" class="footer-link">Link-in-Bio Tree</a>
         </div>
         <div class="footer-col">
           <h4 class="footer-label">LEGAL &amp; POLICIES</h4>
@@ -806,6 +1064,8 @@
       <div class="container footer-strip-flex">
         <span>© 2026 KIPAKOSA. ALL RIGHTS RESERVED. · KATHMANDU, NEPAL</span>
         <div class="footer-sub-links">
+          <a href="#pricing">Pricing</a>
+          <a href="#demo">Live Demo</a>
           <a href="/privacy">Privacy</a>
           <a href="/terms">Terms</a>
           <a href="/refund">Refunds</a>
@@ -820,6 +1080,38 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
   <script src="/js/moments-rail.js"></script>
   <script src="/js/landing.js"></script>
+  <script>
+    window.DEMO_PROJECTS = {
+      travel: {
+        id: '46b29dbf-e91a-4b64-a263-574007439087',
+        targetSrc: '/assets/demo-target-46b29dbf.jpg'
+      },
+      appu: {
+        id: '3d4c1b30-0cdb-45af-9d00-07f119f3bb10',
+        targetSrc: '/assets/demo-target-appu.jpg'
+      }
+    };
+
+    window.switchLandingDemo = function(key) {
+      const p = window.DEMO_PROJECTS[key];
+      if (!p) return;
+      const tabTravel = document.getElementById('landing-tab-travel');
+      const tabAppu = document.getElementById('landing-tab-appu');
+      if (tabTravel) tabTravel.classList.toggle('active', key === 'travel');
+      if (tabAppu) tabAppu.classList.toggle('active', key === 'appu');
+
+      const targetImg = document.getElementById('landing-demo-target-display');
+      const targetDl = document.getElementById('landing-demo-target-dl');
+      if (targetImg) targetImg.src = p.targetSrc;
+      if (targetDl) targetDl.href = p.targetSrc;
+
+      const viewerUrl = 'https://kipakosa.vercel.app/v/' + p.id;
+      const qrImg = document.getElementById('landing-demo-qr-img');
+      const directLink = document.getElementById('landing-demo-direct-link');
+      if (qrImg) qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(viewerUrl);
+      if (directLink) directLink.href = '/v/' + p.id;
+    };
+  </script>
 
 </body>
 </html>
