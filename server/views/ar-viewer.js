@@ -232,7 +232,7 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
            camera starts instantly instead of waiting for the whole GLB. -->
       ` : `
       <video id="ar-video" src="${esc(videoUrl)}"
-        preload="metadata" loop playsinline webkit-playsinline x5-playsinline crossorigin="anonymous" autoplay>
+        preload="metadata" loop playsinline webkit-playsinline x5-playsinline crossorigin="anonymous">
       </video>
       `}
     </a-assets>
@@ -461,9 +461,11 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
       captureTargetDetail(ev && ev.detail);
     });
 
-    // Attempt audio playback immediately with full sound
+    var targetActive = false;
+
+    // Attempt audio playback immediately with full sound ONLY when target is detected
     function playVideo() {
-      if (!video) return;
+      if (!video || !targetActive) return;
       video.muted = false;
       var p = video.play();
       if (p && p.catch) {
@@ -472,9 +474,10 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
           hideTapCue();
         }).catch(function(err) {
           console.warn('Direct unmuted play blocked by browser, falling back to muted + cue:', err);
+          if (!targetActive) { video.pause(); return; }
           video.muted = true;
           video.play().catch(function() {});
-          if (!audioUnlocked) showTapCue();
+          if (!audioUnlocked && targetActive) showTapCue();
         });
       } else {
         audioUnlocked = true;
@@ -487,8 +490,8 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
       if (!video) return;
       audioUnlocked = true;
       video.muted = false;
-      if (video.paused) {
-        video.play().catch(function() {});
+      if (targetActive && video.paused) {
+        playVideo();
       }
       hideTapCue();
     }
@@ -500,6 +503,7 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
     sceneEl.addEventListener('xrimagefound', function(ev) {
       if (!ev || !ev.detail || ev.detail.name !== 'target0') return;
 
+      targetActive = true;
       captureTargetDetail(ev.detail);
 
       // Haptic double-buzz — feels like a "lock-on" confirmation
@@ -523,6 +527,8 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
 
     sceneEl.addEventListener('xrimagelost', function(ev) {
       if (!ev || !ev.detail || ev.detail.name !== 'target0') return;
+
+      targetActive = false;
 
       // Show scanning reticle again
       if (scanOverlay) scanOverlay.classList.remove('hidden');

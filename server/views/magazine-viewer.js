@@ -189,7 +189,7 @@ export function renderMagazineArPage({ title, magId, targets = [], debug = false
         if (t.overlayType === 'image') {
           return `<img id="ov-img-${idx}" src="${esc(t.overlayUrl)}" crossorigin="anonymous" />`;
         } else {
-          return `<video id="ov-vid-${idx}" src="${esc(t.overlayUrl)}" preload="metadata" loop playsinline webkit-playsinline x5-playsinline crossorigin="anonymous" muted autoplay></video>`;
+          return `<video id="ov-vid-${idx}" src="${esc(t.overlayUrl)}" preload="metadata" loop playsinline webkit-playsinline x5-playsinline crossorigin="anonymous"></video>`;
         }
       }).join('\n      ')}
     </a-assets>
