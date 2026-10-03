@@ -110,8 +110,9 @@ test.describe('Kipakosa AR landing', () => {
     await page.click('#landing-tab-appu');
     await expect(targetImg).toHaveAttribute('src', /demo-target-appu/);
 
-    // Check pricing table rendered
-    await expect(page.locator('.pricing-table-home')).toBeVisible();
+    // Check pricing section rendered
+    await expect(page.locator('.pricing-section-home')).toBeVisible();
+    await expect(page.locator('.ar-plans-monolith').first()).toBeVisible();
   });
 
   test('luxury CTA buttons render on hero + scanner sections', async ({ page }) => {
