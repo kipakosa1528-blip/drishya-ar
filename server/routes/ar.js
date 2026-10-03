@@ -1,4 +1,4 @@
-// Server-rendered public AR viewer route: /ar?id=<projectId>
+// Server-rendered public AR viewer route: /ar?id=<projectId> or /v/<projectId>
 // Public by design — visitors scan a printed QR and land here.
 
 import { supabase, r2Url } from '../lib/clients.js';
@@ -31,8 +31,8 @@ export function cacheBust(id) {
 
 export function registerArRoute(app) {
   const arHandler = async (req, res) => {
-    const id = req.query.id || req.query.magId;
-    if (!id) return res.status(400).send('<h2>Missing ?id= parameter</h2>');
+    const id = req.params.id || req.query.id || req.query.magId;
+    if (!id) return res.status(400).send('<h2>Missing project ID (e.g. /v/:id or /ar?id=...)</h2>');
 
     // Opt-in diagnostics only: the debug HUD is server-rendered ONLY when this
     // is true, so normal customer scans never contain it.
@@ -66,8 +66,13 @@ export function registerArRoute(app) {
   };
 
   app.get('/ar', arHandler);
+  app.get('/ar/:id', arHandler);
+  app.get('/v', arHandler);
+  app.get('/v/:id', arHandler);
   app.get('/magAr', arHandler);
+  app.get('/magAr/:id', arHandler);
   app.get('/magar', arHandler);
+  app.get('/magar/:id', arHandler);
 }
 
 async function handleProjectAr(project, id, res, debug = false) {
