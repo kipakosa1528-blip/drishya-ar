@@ -103,11 +103,8 @@ test.describe('Kipakosa AR landing', () => {
     await expect(page.locator('header .header-nav-capsule a[href="#demo"]')).toBeVisible();
     await expect(page.locator('header .header-nav-capsule a[href="#pricing"]')).toBeVisible();
 
-    // Test demo tab switching
+    // Test demo target is Appu
     const targetImg = page.locator('#landing-demo-target-display');
-    await expect(targetImg).toHaveAttribute('src', /demo-target-46b29dbf/);
-
-    await page.click('#landing-tab-appu');
     await expect(targetImg).toHaveAttribute('src', /demo-target-appu/);
 
     // Check pricing section rendered
