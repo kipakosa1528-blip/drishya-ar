@@ -401,54 +401,6 @@
   }
 
   /* ─────────────────────────────────────────
-     9. TIKTOK DEMO VIDEO CONTROLS
-  ───────────────────────────────────────── */
-  function initTikTokDemos() {
-    const cards = document.querySelectorAll('.tiktok-card');
-    cards.forEach(card => {
-      const wrapper = card.querySelector('.tiktok-video-wrapper');
-      const video = card.querySelector('.tiktok-player');
-      const playBtn = card.querySelector('.tiktok-play-btn');
-      const muteBtn = card.querySelector('.tiktok-mute-btn');
-      const iconMuted = card.querySelector('.icon-muted');
-      const iconUnmuted = card.querySelector('.icon-unmuted');
-
-      if (!wrapper || !video) return;
-
-      function togglePlay() {
-        if (video.paused) {
-          // Pause other tiktok videos
-          document.querySelectorAll('.tiktok-player').forEach(v => {
-            if (v !== video && !v.paused) {
-              v.pause();
-              v.closest('.tiktok-video-wrapper')?.classList.remove('is-playing');
-            }
-          });
-          video.play().then(() => {
-            wrapper.classList.add('is-playing');
-          }).catch(() => {});
-        } else {
-          video.pause();
-          wrapper.classList.remove('is-playing');
-        }
-      }
-
-      function toggleMute(e) {
-        e.stopPropagation();
-        video.muted = !video.muted;
-        if (iconMuted && iconUnmuted) {
-          iconMuted.style.display = video.muted ? 'block' : 'none';
-          iconUnmuted.style.display = video.muted ? 'none' : 'block';
-        }
-      }
-
-      wrapper.addEventListener('click', togglePlay);
-      if (playBtn) playBtn.addEventListener('click', (e) => { e.stopPropagation(); togglePlay(); });
-      if (muteBtn) muteBtn.addEventListener('click', toggleMute);
-    });
-  }
-
-  /* ─────────────────────────────────────────
      INIT
   ───────────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', () => {
@@ -459,7 +411,6 @@
     initBgVideoScroll();
     initContinuousParallax();
     initMagneticButtons();
-    initTikTokDemos();
 
     setTimeout(() => {
       ScrollTrigger.refresh();
