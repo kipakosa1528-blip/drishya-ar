@@ -28,57 +28,115 @@
     }
     .demo-subtext {
       color: var(--text-secondary);
-      max-width: 600px;
-      margin: 0 auto 40px;
+      max-width: 680px;
+      margin: 0 auto 36px;
       font-size: 15px;
       line-height: 1.6;
+    }
+    .demo-tabs {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 9999px;
+      padding: 4px;
+      margin-bottom: 30px;
+      gap: 4px;
+    }
+    .demo-tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px 20px;
+      border-radius: 9999px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .demo-tab-btn.active {
+      background: var(--gold-primary);
+      color: #000;
+      box-shadow: 0 4px 14px rgba(201, 169, 110, 0.3);
     }
     .demo-experience-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 32px;
+      gap: 36px;
       background: rgba(16, 20, 29, 0.85);
       border: 1px solid rgba(201, 169, 110, 0.3);
-      border-radius: 12px;
+      border-radius: 16px;
       padding: 40px;
       text-align: left;
       box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+      align-items: start;
+    }
+    .target-photo-card {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px;
     }
     .demo-target-img {
       width: 100%;
-      border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      max-height: 440px;
+      object-fit: contain;
+      border-radius: 8px;
+      background: #090d16;
+      border: 1px solid rgba(201, 169, 110, 0.3);
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      display: block;
     }
     .qr-card {
       background: #ffffff;
       padding: 16px;
-      border-radius: 8px;
+      border-radius: 12px;
       display: inline-block;
       margin: 16px 0;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
     }
     .qr-card img {
-      width: 160px;
-      height: 160px;
+      width: 170px;
+      height: 170px;
       display: block;
     }
     .btn-launch-cam {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
       background: var(--gold-primary);
       color: #000;
       font-weight: 700;
-      padding: 16px 28px;
+      padding: 14px 24px;
       border-radius: 9999px;
-      font-size: 15px;
-      margin-top: 20px;
+      font-size: 14.5px;
+      margin-top: 14px;
       transition: all 0.25s ease;
+      text-decoration: none;
     }
     .btn-launch-cam:hover {
       background: var(--gold-hover);
       transform: translateY(-2px);
       box-shadow: 0 10px 30px rgba(201, 169, 110, 0.4);
+    }
+    .instruction-step {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(201, 169, 110, 0.15);
+      border: 1px solid var(--gold-primary);
+      color: var(--gold-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
     }
     @media (max-width: 768px) {
       .demo-experience-grid {
@@ -110,35 +168,58 @@
     <span class="intro-tag">WEBXR AUGMENTED REALITY</span>
     <h1 class="demo-headline">Experience the Magic in 2 Taps</h1>
     <p class="demo-subtext">
-      Point your phone camera at the photo target below. The still photo will instantly unlock into fluid, playing motion directly on your screen.
+      Keep the physical target image below open on your screen (or print it). Scan the QR code with your phone camera — the still photo will instantly unlock into fluid, playing memory!
     </p>
+
+    <!-- Demo Project Switcher -->
+    <div class="demo-tabs">
+      <button class="demo-tab-btn active" id="tab-travel" onclick="switchDemo('travel')">⛰️ Travel Memory Demo</button>
+      <button class="demo-tab-btn" id="tab-appu" onclick="switchDemo('appu')">🎨 Appu Character Demo</button>
+    </div>
 
     <div class="demo-experience-grid">
       <!-- Target Photo -->
-      <div>
-        <h3 style="font-family:var(--font-serif);font-size:22px;color:#fff;margin-bottom:8px">1. The Physical Target Photo</h3>
-        <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">Point your smartphone camera at this image:</p>
-        <img src="/assets/tiktok-demos/7689462708898417926-poster.jpg" alt="Living Target Demo" class="demo-target-img" />
+      <div class="target-photo-card">
+        <div class="instruction-step">
+          <span class="step-num">1</span>
+          <div>
+            <h3 style="font-family:var(--font-serif);font-size:20px;color:#fff;margin:0 0 4px">The Target Photo</h3>
+            <p style="color:var(--text-muted);font-size:13px;margin:0">Display this photo clearly on your screen:</p>
+          </div>
+        </div>
+
+        <img id="demo-target-display" src="/assets/demo-target-46b29dbf.jpg" alt="Living Target Demo" class="demo-target-img" />
+
+        <div style="margin-top:12px;text-align:center">
+          <a id="demo-target-dl" href="/assets/demo-target-46b29dbf.jpg" target="_blank" style="font-size:12px;color:var(--gold-primary);text-decoration:none">
+            🔍 Open Photo Fullscreen in New Tab ↗
+          </a>
+        </div>
       </div>
 
       <!-- AR Scanner Launcher -->
       <div style="display:flex;flex-direction:column;justify-content:center">
-        <h3 style="font-family:var(--font-serif);font-size:22px;color:#fff;margin-bottom:8px">2. Open Live AR Camera</h3>
-        <p style="color:var(--text-secondary);font-size:14px;line-height:1.6">
-          If you are on a computer, scan this QR code with your phone:
-        </p>
-
-        <div>
-          <div class="qr-card">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https%3A%2F%2Fkipakosa.vercel.app%2Fv%2F46b29dbf-e91a-4b64-a263-574007439087" alt="Scan QR code for AR demo" />
+        <div class="instruction-step">
+          <span class="step-num">2</span>
+          <div>
+            <h3 style="font-family:var(--font-serif);font-size:20px;color:#fff;margin:0 0 4px">Open Live AR Camera</h3>
+            <p style="color:var(--text-secondary);font-size:13.5px;line-height:1.5;margin:0">
+              Scan this QR code with your smartphone camera to launch the WebAR viewer:
+            </p>
           </div>
         </div>
 
-        <p style="color:var(--text-muted);font-size:13px">Or if you are browsing from your phone right now:</p>
-        <div>
-          <a href="/v/46b29dbf-e91a-4b64-a263-574007439087" class="btn-launch-cam">
-            <span>📷 Launch AR Camera Demo →</span>
-          </a>
+        <div style="text-align:center">
+          <div class="qr-card">
+            <img id="demo-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=https%3A%2F%2Fkipakosa.vercel.app%2Fv%2F46b29dbf-e91a-4b64-a263-574007439087" alt="Scan QR code for AR demo" />
+          </div>
+
+          <div style="margin-top:8px">
+            <p style="color:var(--text-muted);font-size:12.5px;margin-bottom:6px">Already on your phone with a second screen?</p>
+            <a id="demo-direct-link" href="/v/46b29dbf-e91a-4b64-a263-574007439087" class="btn-launch-cam">
+              <span>📷 Launch AR Camera Directly →</span>
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -146,7 +227,7 @@
     <!-- Actions -->
     <div style="margin-top:50px">
       <a href="/order" class="magnetic-btn btn-luxury-hollow" style="display:inline-flex;padding:14px 28px;border-radius:9999px;border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:14px">
-        <span>View Size &amp; Pricing Menu →</span>
+        <span>Ready to order? View Size &amp; Pricing Menu →</span>
       </a>
     </div>
   </main>
@@ -159,10 +240,39 @@
           <a href="/">Home</a>
           <a href="/order">Pricing</a>
           <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
         </div>
       </div>
     </div>
   </footer>
+
+  <script>
+    const DEMO_PROJECTS = {
+      travel: {
+        id: '46b29dbf-e91a-4b64-a263-574007439087',
+        targetSrc: '/assets/demo-target-46b29dbf.jpg'
+      },
+      appu: {
+        id: '3d4c1b30-0cdb-45af-9d00-07f119f3bb10',
+        targetSrc: '/assets/demo-target-appu.jpg'
+      }
+    };
+
+    function switchDemo(key) {
+      const p = DEMO_PROJECTS[key];
+      if (!p) return;
+
+      document.getElementById('tab-travel').classList.toggle('active', key === 'travel');
+      document.getElementById('tab-appu').classList.toggle('active', key === 'appu');
+
+      document.getElementById('demo-target-display').src = p.targetSrc;
+      document.getElementById('demo-target-dl').href = p.targetSrc;
+
+      const viewerUrl = window.location.origin + '/v/' + p.id;
+      document.getElementById('demo-qr-img').src = 'https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=' + encodeURIComponent(viewerUrl);
+      document.getElementById('demo-direct-link').href = '/v/' + p.id;
+    }
+  </script>
 
 </body>
 </html>
