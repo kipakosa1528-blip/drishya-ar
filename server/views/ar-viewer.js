@@ -212,9 +212,8 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
     <p class="scan-hint">Point camera at the photo</p>
   </div>
 
-  <!-- Audio unlock cue: shown until the first tap on iOS (see unlockAudio) -->
-  <div id="tap-cue" style="display:none;position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:600;background:rgba(9,13,22,0.82);border:1px solid rgba(56,189,248,0.5);color:#f8fafc;font:600 13px/1 system-ui,-apple-system,sans-serif;padding:10px 16px;border-radius:9999px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none">🔊 Tap to play &amp; enable sound</div>
-
+  <!-- Audio unlock cue: shown only if strict browser policy blocked unmuted autoplay -->
+  <div id="tap-cue" style="display:none;position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:600;background:rgba(9,13,22,0.85);border:1px solid rgba(212,168,83,0.6);color:#f8fafc;font:600 13px/1 system-ui,-apple-system,sans-serif;padding:10px 18px;border-radius:9999px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.5)">🔊 Tap anywhere for sound</div>
 
   <script>
     var targetData = ${jsonForScript(targetData)};
@@ -233,7 +232,7 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
            camera starts instantly instead of waiting for the whole GLB. -->
       ` : `
       <video id="ar-video" src="${esc(videoUrl)}"
-        preload="metadata" loop playsinline webkit-playsinline x5-playsinline crossorigin="anonymous" muted autoplay>
+        preload="metadata" loop playsinline webkit-playsinline x5-playsinline crossorigin="anonymous" autoplay>
       </video>
       `}
     </a-assets>
@@ -253,7 +252,6 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
 
   ${debug ? `<div id="ar-debug" style="position:fixed;left:8px;top:8px;z-index:99999;max-width:92vw;background:rgba(0,0,0,0.78);color:#7dd3fc;font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;padding:10px 12px;border-radius:8px;border:1px solid rgba(56,189,248,0.4);white-space:pre-wrap;pointer-events:none"></div>` : ''}
 
-
   <script>
     var video = document.getElementById('ar-video');
     var plane = document.getElementById('ar-plane');
@@ -269,11 +267,9 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
     // Never let the overlay bleed past the print: shave a hair off the plane.
     var PLANE_INSET = 0.995;
 
-    // iOS blocks unmuted playback without a user gesture, so we start muted
-    // (autoplay-muted is allowed) and unmute on the first tap.
     var audioUnlocked = false;
     var tapCue = document.getElementById('tap-cue');
-    function showTapCue() { if (tapCue) tapCue.style.display = 'block'; }
+    function showTapCue() { if (tapCue && !audioUnlocked) tapCue.style.display = 'block'; }
     function hideTapCue() { if (tapCue) tapCue.style.display = 'none'; }
 
     function updateDebugHUD() {
@@ -286,14 +282,13 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
         'scaledW/H: ' + (lastInfo.scaledWidth != null ? lastInfo.scaledWidth : '-') + ' / ' + (lastInfo.scaledHeight != null ? lastInfo.scaledHeight : '-'),
         'scale: ' + (lastInfo.scale != null ? lastInfo.scale : '-'),
         'props W/H: ' + (p.width != null ? p.width : '-') + ' / ' + (p.height != null ? p.height : '-'),
-        'plane W/H: ' + plane.getAttribute('width') + ' / ' + plane.getAttribute('height'),
+        'plane W/H: ' + (plane ? plane.getAttribute('width') + ' / ' + plane.getAttribute('height') : '-'),
         'video W/H: ' + (video ? video.videoWidth + ' / ' + video.videoHeight : '-'),
         'framing: ' + (f.ratio || 'target') + '  zoom ' + (f.zoom || 1) + '  pan ' + (f.panX || 0) + ',' + (f.panY || 0) + '  fit ' + (f.fit != null ? f.fit : 1),
         'target aspect: ' + (targetGeom && targetGeom.scaledHeight ? (targetGeom.scaledWidth / targetGeom.scaledHeight).toFixed(4) : '-')
       ];
       debugEl.textContent = lines.join('\\n');
     }
-
 
     function parseRatio(r) {
       if (r == null) return NaN;
@@ -356,7 +351,6 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
       var panY = Number(framing.panY) || 0;
 
       // Cover-crop the video to the chosen aspect, then zoom + pan.
-      // Positive pan reveals the left/top so the user keeps important areas in frame.
       var repX = 1, repY = 1;
       if (vAspect > frameAspect) {
         repX = frameAspect / vAspect;
@@ -379,10 +373,6 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
       offX = Number(offX.toFixed(6));
       offY = Number(offY.toFixed(6));
 
-      // Crop by rewriting the plane's UVs. This is the only method that works
-      // on every shader path: A-Frame swaps to its ios10hls shader on iOS,
-      // which hardcodes texture repeat/offset to (1,1)/(0,0) and reads geometry
-      // UVs only - so texture.repeat/offset is silently ignored on iPhones.
       applyUVCrop(repX, repY, offX, offY);
       [80, 400, 1200].forEach(function(ms) {
         setTimeout(function() { applyUVCrop(repX, repY, offX, offY); }, ms);
@@ -411,7 +401,6 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
     }
 
     if (plane) plane.addEventListener('materialtextureloaded', updatePlaneMapping);
-
 
     if (video) {
       if (video.readyState >= 1) {
@@ -449,7 +438,6 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
 
     // Scan overlay reference
     var scanOverlay = document.getElementById('scan-overlay');
-
     var sceneEl = document.querySelector('a-scene');
 
     function captureTargetDetail(detail) {
@@ -473,6 +461,42 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
       captureTargetDetail(ev && ev.detail);
     });
 
+    // Attempt audio playback immediately with full sound
+    function playVideo() {
+      if (!video) return;
+      video.muted = false;
+      var p = video.play();
+      if (p && p.catch) {
+        p.then(function() {
+          audioUnlocked = true;
+          hideTapCue();
+        }).catch(function(err) {
+          console.warn('Direct unmuted play blocked by browser, falling back to muted + cue:', err);
+          video.muted = true;
+          video.play().catch(function() {});
+          if (!audioUnlocked) showTapCue();
+        });
+      } else {
+        audioUnlocked = true;
+        hideTapCue();
+      }
+    }
+
+    // User gesture unmute handler
+    function unlockAudio() {
+      if (!video) return;
+      audioUnlocked = true;
+      video.muted = false;
+      if (video.paused) {
+        video.play().catch(function() {});
+      }
+      hideTapCue();
+    }
+
+    window.addEventListener('pointerdown', unlockAudio, { passive: true });
+    window.addEventListener('touchstart', unlockAudio, { passive: true });
+    window.addEventListener('click', unlockAudio);
+
     sceneEl.addEventListener('xrimagefound', function(ev) {
       if (!ev || !ev.detail || ev.detail.name !== 'target0') return;
 
@@ -481,12 +505,10 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
       // Haptic double-buzz — feels like a "lock-on" confirmation
       if (navigator.vibrate) navigator.vibrate([40, 50, 40]);
 
-
       // Hide scanning reticle
       if (scanOverlay) scanOverlay.classList.add('hidden');
 
       if (model) {
-        // Load the GLB only now (target found) so the camera isn't blocked at startup.
         if (AR_MODEL_URL && !model.getAttribute('gltf-model')) {
           model.setAttribute('gltf-model', 'url(' + AR_MODEL_URL + ')');
         }
@@ -494,10 +516,8 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
       }
 
       if (video) {
-        video.muted = !audioUnlocked;
-        playVideo();
         if (plane) plane.setAttribute('visible', 'true');
-        if (!audioUnlocked) showTapCue();
+        playVideo();
       }
     });
 
@@ -517,28 +537,7 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
       }
       hideTapCue();
     });
-
-    // Start muted (works everywhere, incl. iOS) — visuals always appear.
-    function playVideo() {
-      if (!video) return;
-      try {
-        var p = video.play();
-        if (p && p.catch) p.catch(showTapCue);
-      } catch (e) { showTapCue(); }
-    }
-    // First user gesture → unmute with sound (iOS-legal) and keep playing.
-    function unlockAudio() {
-      if (!video) return;
-      audioUnlocked = true;
-      video.muted = false;
-      playVideo();
-      hideTapCue();
-    }
-    document.addEventListener('touchstart', unlockAudio, { passive: true });
-    document.addEventListener('click', unlockAudio);
   </script>
 </body>
 </html>`;
 }
-
-
