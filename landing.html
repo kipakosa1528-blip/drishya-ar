@@ -701,13 +701,13 @@
                   <span class="bracket br"></span>
                 </div>
               </div>
-              <div class="frame-meta-strip" style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+              <div class="frame-meta-strip">
                 <div class="meta-title-col">
-                  <span class="meta-name" id="demo-meta-title">Annapurna Golden Sunset · Target</span>
-                  <span class="meta-coords">Keep open on screen or print</span>
+                  <span class="meta-name" id="demo-meta-title">Annapurna Travel Target</span>
+                  <span class="meta-coords">Keep open or print to test</span>
                 </div>
                 <a id="landing-demo-target-dl" href="/assets/demo-target-46b29dbf.jpg" target="_blank" rel="noopener noreferrer" class="meta-dl-link">
-                  <span>View Target ↗</span>
+                  <span>View ↗</span>
                 </a>
               </div>
             </div>
@@ -1175,8 +1175,14 @@
 
       const targetImg = document.getElementById('landing-demo-target-display');
       const targetDl = document.getElementById('landing-demo-target-dl');
+      const metaTitle = document.getElementById('demo-meta-title');
       if (targetImg) targetImg.src = p.targetSrc;
       if (targetDl) targetDl.href = p.targetSrc;
+      if (metaTitle) {
+        metaTitle.textContent = key === 'travel'
+          ? 'Annapurna Travel Target'
+          : 'Appu Character Target';
+      }
 
       const viewerUrl = 'https://kipakosa.vercel.app/v/' + p.id;
       const qrImg = document.getElementById('landing-demo-qr-img');
