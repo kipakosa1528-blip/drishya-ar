@@ -1513,3 +1513,118 @@ body.cursor-hovered .cursor-ring {
   .rail-arrow { display: none; }
   .moments-rail-section { padding: 90px 0 100px; }
 }
+
+/* ══════════════════════════════════════════════
+   TIKTOK REAL-LIFE DEMOS GRID
+   ══════════════════════════════════════════════ */
+.tiktok-demos-section {
+  padding: 100px 0 120px;
+  position: relative;
+  z-index: 10;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.tiktok-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+.tiktok-card {
+  background: rgba(16, 20, 29, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.tiktok-card:hover {
+  transform: translateY(-6px);
+  border-color: rgba(201, 169, 110, 0.35);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+.tiktok-video-wrapper {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  width: 100%;
+  background: #000;
+  overflow: hidden;
+  cursor: pointer;
+}
+.tiktok-player {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tiktok-overlay-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.2);
+  transition: background 0.25s ease;
+}
+.tiktok-video-wrapper.is-playing .tiktok-overlay-controls {
+  background: transparent;
+}
+.tiktok-play-btn {
+  pointer-events: auto;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(9, 13, 22, 0.85);
+  border: 1px solid rgba(201, 169, 110, 0.5);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.tiktok-video-wrapper.is-playing .tiktok-play-btn {
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
+}
+.tiktok-card:hover .tiktok-video-wrapper.is-playing .tiktok-play-btn {
+  opacity: 0.8;
+  pointer-events: auto;
+}
+.tiktok-mute-btn {
+  pointer-events: auto;
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.tiktok-mute-btn:hover {
+  background: rgba(201, 169, 110, 0.8);
+  color: #000;
+}
+
+@media (max-width: 1024px) {
+  .tiktok-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+@media (max-width: 640px) {
+  .tiktok-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
