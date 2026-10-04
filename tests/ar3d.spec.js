@@ -33,4 +33,48 @@ test.describe('3D model optimisation', () => {
       expect(p.transcodeStatus).toBe('ready');
     }
   });
+
+  test('AR 3D viewer supports conditional animated rotation (spin-axis)', async () => {
+    const { renderArPage } = await import('../server/views/ar-viewer.js');
+
+    // 1. Earth model demo keeps animated rotation by default
+    const earthHtml = renderArPage({
+      name: 'Earth Demo',
+      overlayType: '3d',
+      modelUrl: 'https://r2.mock/earth/model.glb',
+      targetData: { model_path: '051d27da-9b16-4698-9257-7f0c396d91da/model.glb' },
+      planeW: 1.0, planeH: 1.0
+    });
+    expect(earthHtml).toMatch(/id="ar-model"[^>]*spin-axis/);
+
+    // 2. Standard 3D model (e.g. photoframe, car, character) does NOT spin involuntarily
+    const staticModelHtml = renderArPage({
+      name: 'Product Showcase',
+      overlayType: '3d',
+      modelUrl: 'https://r2.mock/product/model.glb',
+      targetData: { model_path: 'mock/product.glb' },
+      planeW: 1.0, planeH: 1.0
+    });
+    expect(staticModelHtml).not.toMatch(/id="ar-model"[^>]*spin-axis/);
+
+    // 3. Explicit auto_rotate: true enables spin-axis on any model
+    const explicitSpinHtml = renderArPage({
+      name: 'Custom Rotating Product',
+      overlayType: '3d',
+      modelUrl: 'https://r2.mock/product/model.glb',
+      targetData: { auto_rotate: true, rotation_speed: 45 },
+      planeW: 1.0, planeH: 1.0
+    });
+    expect(explicitSpinHtml).toContain('spin-axis="speed: 45"');
+
+    // 4. Configurable model container rotation
+    const customRotHtml = renderArPage({
+      name: 'Flat Lay Model',
+      overlayType: '3d',
+      modelUrl: 'https://r2.mock/product/model.glb',
+      targetData: { model_settings: { rotation: '0 0 0' } },
+      planeW: 1.0, planeH: 1.0
+    });
+    expect(customRotHtml).toContain('rotation="0 0 0"');
+  });
 });

@@ -88,6 +88,37 @@ test.describe('Tabletop Living Frame WebAR Automated Test Suite', () => {
     expect(modelGeometry.height).toBeGreaterThan(0.2); // Sizable tabletop frame
     expect(modelGeometry.scale).toBeCloseTo(1.35, 1);
 
+    // Verify Authored PBR Materials are PRESERVED and NOT clobbered by photoMat
+    const materialChecks = await page.evaluate(() => {
+      const el = document.getElementById('living-frame');
+      const comp = el.components['tabletop-living-frame'];
+      const matNames = [];
+      let videoMatFound = false;
+
+      comp.modelPivot.traverse((child) => {
+        if (child.isMesh) {
+          const mats = Array.isArray(child.material) ? child.material : [child.material];
+          mats.forEach(m => {
+            matNames.push(m.name || 'unnamed');
+            if (m.map === comp.videoTexture) videoMatFound = true;
+          });
+        }
+      });
+
+      return {
+        matNames,
+        videoMatFound,
+        hasCeramic: matNames.some(n => n.includes('CeramicPotteryGlazed')),
+        hasAsphalt: matNames.some(n => n.includes('CityStreetAsphaltGenericClean')),
+        videoTextureIsSRGB: comp.videoTexture.colorSpace === THREE.SRGBColorSpace || comp.videoTexture.encoding === THREE.sRGBEncoding
+      };
+    });
+
+    expect(materialChecks.hasCeramic).toBe(true);
+    expect(materialChecks.hasAsphalt).toBe(true);
+    expect(materialChecks.videoMatFound).toBe(true);
+    expect(materialChecks.videoTextureIsSRGB).toBe(true);
+
     // 4. Verify Tap-to-Place Accuracy at Exact Ground Intersection
     const placementResult = await page.evaluate(() => {
       const ground = document.getElementById('ground');

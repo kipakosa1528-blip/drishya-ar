@@ -29,6 +29,17 @@ export function renderMessagePage({ icon = '', color = '#38bdf8', title = '', bo
  */
 export function renderArPage({ name, overlayType = 'video', modelUrl = '', videoUrl = '', r2VideoUrl, targetData, planeW, planeH, tW, tH, debug = false }) {
   const is3D = overlayType === '3d' && Boolean(modelUrl);
+  const tdSettings = (targetData && (targetData.model_settings || targetData.properties)) || {};
+  const isEarthModel = Boolean(
+    (name && /earth|globe/i.test(name)) ||
+    (modelUrl && /earth|globe/i.test(modelUrl)) ||
+    (targetData && (targetData.model_path === '051d27da-9b16-4698-9257-7f0c396d91da/model.glb' || targetData.optimized_model_path === '051d27da-9b16-4698-9257-7f0c396d91da/optimized.glb'))
+  );
+  const autoRotate = tdSettings.auto_rotate !== undefined
+    ? Boolean(tdSettings.auto_rotate)
+    : (targetData?.auto_rotate !== undefined ? Boolean(targetData.auto_rotate) : isEarthModel);
+  const spinSpeed = Number(tdSettings.rotation_speed || targetData?.rotation_speed || 28);
+  const modelRotation = tdSettings.rotation || targetData?.model_rotation || '90 0 0';
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -64,6 +75,19 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
             obj.position.set(0, 0, 0);
             obj.scale.set(1, 1, 1);
             obj.updateMatrixWorld(true);
+
+            // Ensure proper material handling: transparent textures (e.g. clouds, glass)
+            // have depthWrite = false so they do not occlude geometry behind them
+            obj.traverse(function(child) {
+              if (child.isMesh && child.material) {
+                var mats = Array.isArray(child.material) ? child.material : [child.material];
+                mats.forEach(function(mat) {
+                  if (mat && mat.transparent) {
+                    mat.depthWrite = false;
+                  }
+                });
+              }
+            });
 
             var bbox = new THREE.Box3().setFromObject(obj);
             var size = bbox.getSize(new THREE.Vector3());
@@ -239,8 +263,8 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
     <a-camera position="0 0 0"></a-camera>
     <xrextras-named-image-target name="target0">
       ${is3D ? `
-      <a-entity id="ar-model-container" position="0 0 0" rotation="90 0 0">
-        <a-entity id="ar-model" fit-model="targetSize: ${Number(planeW) || 1.0}" spin-axis visible="false"></a-entity>
+      <a-entity id="ar-model-container" position="0 0 0" rotation="${esc(modelRotation)}">
+        <a-entity id="ar-model" fit-model="targetSize: ${Number(planeW) || 1.0}" ${autoRotate ? `spin-axis="speed: ${spinSpeed}"` : ''} visible="false"></a-entity>
       </a-entity>
       ` : `
       <a-plane id="ar-plane" width="${Number(planeW)}" height="${Number(planeH)}" position="0 0 0.001" visible="false"

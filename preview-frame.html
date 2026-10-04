@@ -232,7 +232,8 @@
       schema: {
         modelSrc: { default: '/assets/models/appu_photoframe.glb' },
         videoSrc: { default: 'https://pub-f2ad2c43aa344d4bb911e991b04b1fbd.r2.dev/3d4c1b30-0cdb-45af-9d00-07f119f3bb10/optimized.mp4' },
-        targetPhoto: { default: '/assets/demo-target-appu.jpg' }
+        targetPhoto: { default: '/assets/demo-target-appu.jpg' },
+        modelRotationY: { default: 90 }
       },
 
       init: function() {
@@ -297,8 +298,18 @@
         this.videoTexture.minFilter = THREE.LinearFilter;
         this.videoTexture.magFilter = THREE.LinearFilter;
         this.videoTexture.format = THREE.RGBAFormat;
+        if (THREE.SRGBColorSpace) {
+          this.videoTexture.colorSpace = THREE.SRGBColorSpace;
+        } else if (THREE.sRGBEncoding) {
+          this.videoTexture.encoding = THREE.sRGBEncoding;
+        }
 
         this.photoTexture = new THREE.TextureLoader().load(this.data.targetPhoto);
+        if (THREE.SRGBColorSpace) {
+          this.photoTexture.colorSpace = THREE.SRGBColorSpace;
+        } else if (THREE.sRGBEncoding) {
+          this.photoTexture.encoding = THREE.sRGBEncoding;
+        }
       },
 
       loadModel: function() {
@@ -309,8 +320,9 @@
           // Pivot container
           this.modelPivot = new THREE.Group();
 
-          // Correct 90° yaw from Blender so front video/photo faces camera (+Z)
-          model.rotation.y = Math.PI / 2;
+          // Apply configurable model yaw rotation (default 90° for appu_photoframe)
+          const yawDeg = Number(this.data.modelRotationY) || 0;
+          model.rotation.y = yawDeg * (Math.PI / 180);
 
           // Traverse meshes and setup materials
           model.traverse((child) => {
@@ -322,13 +334,14 @@
               mats.forEach((mat, idx) => {
                 if (!mat) return;
 
-                // Glass Plane (Material.003) -> Live Video Stream
-                if (mat.name === 'Material.003') {
+                // Glass Plane (Material.003 / Screen / Photo) -> Live Video Stream
+                if (mat.name === 'Material.003' || mat.name === 'Screen' || mat.name === 'Photo' || mat.name === 'Display') {
                   const geom = child.geometry;
                   if (geom && geom.attributes.position && geom.attributes.uv) {
                     const pos = geom.attributes.position;
                     const uvs = geom.attributes.uv;
-                    if (pos.count === 4) {
+                    // Fallback quad UV initialization only if vertices are collapsed
+                    if (pos.count === 4 && (uvs.getX(0) === uvs.getX(1) && uvs.getY(0) === uvs.getY(1))) {
                       uvs.setXY(0, 0, 1);
                       uvs.setXY(1, 0, 0);
                       uvs.setXY(2, 1, 1);
@@ -339,8 +352,8 @@
 
                   const videoMat = new THREE.MeshBasicMaterial({
                     map: this.videoTexture,
-                    transparent: true,
-                    opacity: 0.96,
+                    transparent: false,
+                    opacity: 1.0,
                     side: THREE.DoubleSide
                   });
 
@@ -350,18 +363,8 @@
                     child.material = videoMat;
                   }
                 }
-                // Backing Canvas -> Static Portrait Photo
-                else if (mat.name === '' || mat.name === 'NO_MATERIAL' || idx === 1) {
-                  const photoMat = new THREE.MeshBasicMaterial({
-                    map: this.photoTexture,
-                    side: THREE.FrontSide
-                  });
-                  if (Array.isArray(child.material)) {
-                    child.material[idx] = photoMat;
-                  } else {
-                    child.material = photoMat;
-                  }
-                }
+                // Do NOT touch other materials! Poliigon_CeramicPotteryGlazed and
+                // CityStreetAsphaltGenericClean keep their authored textures, normals, and gloss!
               });
             }
           });

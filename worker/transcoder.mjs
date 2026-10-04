@@ -97,11 +97,24 @@ async function optimizeModel(sourceKey, outKey) {
     const img = tex.getImage();
     if (!img) continue;
     try {
-      const out = await sharp(Buffer.from(img))
-        .resize(MODEL_MAX_TEX, MODEL_MAX_TEX, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: MODEL_JPEG_Q })
-        .toBuffer();
-      tex.setImage(out).setMimeType('image/jpeg');
+      const meta = await sharp(Buffer.from(img)).metadata();
+      let out;
+      let mime = 'image/jpeg';
+      // If the texture has transparency/alpha (e.g. Earth clouds, glass, decals),
+      // DO NOT force JPEG (which strips alpha and turns transparency into solid black!)
+      if (meta.hasAlpha) {
+        out = await sharp(Buffer.from(img))
+          .resize(MODEL_MAX_TEX, MODEL_MAX_TEX, { fit: 'inside', withoutEnlargement: true })
+          .png({ compressionLevel: 8 })
+          .toBuffer();
+        mime = 'image/png';
+      } else {
+        out = await sharp(Buffer.from(img))
+          .resize(MODEL_MAX_TEX, MODEL_MAX_TEX, { fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: MODEL_JPEG_Q })
+          .toBuffer();
+      }
+      tex.setImage(out).setMimeType(mime);
       resized++;
     } catch { /* keep original texture on failure */ }
   }
