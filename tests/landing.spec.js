@@ -134,5 +134,12 @@ test.describe('Kipakosa AR landing', () => {
     expect(consoleErrors, consoleErrors.join('\n')).toEqual([]);
     await ctx.close();
   });
+
+  test('/preview-frame serves standalone tabletop AR experience', async ({ page }) => {
+    const response = await page.goto('/preview-frame');
+    expect(response.status()).toBe(200);
+    await expect(page.locator('#ar-watermark')).toBeVisible();
+    await expect(page.locator('#placement-overlay')).toBeVisible();
+  });
 });
 

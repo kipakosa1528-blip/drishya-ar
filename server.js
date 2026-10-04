@@ -57,6 +57,7 @@ const PAGE_MAP = {
   refund: 'refund.html',
   cookies: 'cookies.html',
   'acceptable-use': 'acceptable-use.html',
+  'preview-frame': 'preview-frame.html',
 };
 
 // Alias paths (alternate spellings) → canonical page file.

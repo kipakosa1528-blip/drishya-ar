@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Appu Living Frame — Tabletop WebAR | Kipakosa</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=1">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1">
+
+  <!-- A-Frame & 8th Wall SLAM Engine -->
+  <script crossorigin="anonymous" src="/external/8frame-1.5.0.min.js"></script>
+  <script src="/external/xr/xr.js" async crossorigin="anonymous" data-preload-chunks="slam"></script>
+  <script defer src="/external/xrextras.js" crossorigin="anonymous"></script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      touch-action: none;
+      background: #08090c;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .a-enter-vr, .a-enter-vr-button { display: none !important; }
+
+    /* Suppress 8th Wall branding logos */
+    .poweredby, .powered-by, .poweredby-8thwall, .xrextras-powered-by,
+    .xrextras-loading-footer, .loading-footer, #poweredBy8thWall, #poweredby,
+    [id*="poweredBy" i], [class*="poweredBy" i], [class*="powered-by" i] {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
+    /* Watermark Monolith */
+    #ar-watermark {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      background: rgba(9, 13, 22, 0.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 7px 16px 7px 10px;
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55);
+      pointer-events: none;
+    }
+    #ar-watermark img {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+    }
+    #ar-watermark span {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #f8fafc;
+      text-transform: uppercase;
+    }
+    #ar-watermark span span {
+      color: #c9a96e;
+      font-size: 10px;
+      font-weight: 800;
+      margin-left: 3px;
+    }
+
+    /* Top Action Pill (Back to Website) */
+    #back-pill {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 9999;
+      background: rgba(9, 13, 22, 0.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 7px 14px;
+      border-radius: 9999px;
+      border: 1px solid rgba(201, 169, 110, 0.4);
+      color: #f5f5f7;
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Reticle Placement Cue Overlay */
+    #placement-overlay {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      pointer-events: none;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      width: 90%;
+      max-width: 360px;
+      text-align: center;
+    }
+    #placement-overlay.placed {
+      opacity: 0;
+      transform: translateX(-50%) translateY(20px);
+      pointer-events: none;
+    }
+    .instruction-card {
+      background: rgba(9, 13, 22, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(201, 169, 110, 0.45);
+      border-radius: 20px;
+      padding: 14px 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      color: #f8fafc;
+    }
+    .instruction-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin: 0 0 4px 0;
+      color: #f5f5f7;
+    }
+    .instruction-sub {
+      font-size: 12.5px;
+      color: rgba(255, 255, 255, 0.7);
+      margin: 0;
+      line-height: 1.45;
+    }
+
+    /* Placed Controls Panel */
+    #placed-controls {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      gap: 12px;
+    }
+    .ar-action-btn {
+      background: rgba(9, 13, 22, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(201, 169, 110, 0.5);
+      color: #f5f5f7;
+      padding: 11px 20px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      touch-action: manipulation;
+    }
+    .ar-action-btn.active {
+      background: #c9a96e;
+      color: #0b0c10;
+      border-color: #c9a96e;
+    }
+
+    /* Reticle indicator in 2D UI for initial aiming */
+    #aim-crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 48px;
+      height: 48px;
+      border: 2px dashed rgba(201, 169, 110, 0.55);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 500;
+      transition: opacity 0.3s ease;
+      animation: aim-pulse 2.2s infinite ease-in-out;
+    }
+    @keyframes aim-pulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+      50% { transform: translate(-50%, -50%) scale(1.15); opacity: 0.95; }
+    }
+    #aim-crosshair.hidden { display: none; }
+  </style>
+
+  <script>
+    // Register custom A-Frame component for Surface Tap-To-Place and Video Projection
+    AFRAME.registerComponent('surface-photo-frame', {
+      schema: {
+        modelSrc: { default: '/assets/models/appu_photoframe.glb' },
+        videoSrc: { default: 'https://pub-f2ad2c43aa344d4bb911e991b04b1fbd.r2.dev/3d4c1b30-0cdb-45af-9d00-07f119f3bb10/optimized.mp4' },
+        targetPhoto: { default: '/assets/demo-target-appu.jpg' }
+      },
+
+      init: function() {
+        this.placed = false;
+        this.frameGroup = new THREE.Group();
+        this.el.object3D.add(this.frameGroup);
+        this.frameGroup.visible = false;
+
+        // Hidden HTML5 Video element for texture
+        this.video = document.createElement('video');
+        this.video.src = this.data.videoSrc;
+        this.video.crossOrigin = 'anonymous';
+        this.video.loop = true;
+        this.video.playsInline = true;
+        this.video.webkitPlaysInline = true;
+        this.video.muted = true; // Auto-play requires muted on mobile
+        this.video.preload = 'auto';
+
+        this.videoTexture = new THREE.VideoTexture(this.video);
+        this.videoTexture.minFilter = THREE.LinearFilter;
+        this.videoTexture.magFilter = THREE.LinearFilter;
+        this.videoTexture.format = THREE.RGBAFormat;
+
+        this.photoTexture = new THREE.TextureLoader().load(this.data.targetPhoto);
+
+        // Load user's 3D GLB Model
+        this.loadModel();
+
+        // Tap listener on window
+        window.addEventListener('click', (e) => this.onTap(e));
+        window.addEventListener('touchend', (e) => this.onTap(e));
+      },
+
+      loadModel: function() {
+        const loader = new THREE.GLTFLoader();
+        loader.load(this.data.modelSrc, (gltf) => {
+          const model = gltf.scene;
+
+          // Normalize scale: user model has Node 1 scale [0.003, 0.19, 0.025]
+          // The physical model is ~0.4m tall in metric space
+          model.traverse((child) => {
+            if (child.isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+
+              // Inspect materials
+              const mats = Array.isArray(child.material) ? child.material : [child.material];
+              mats.forEach((mat, idx) => {
+                if (!mat) return;
+
+                // 1. Primitive 2 (Glass Plane with Material.003) -> Project Live Video Overlay!
+                if (mat.name === 'Material.003') {
+                  // Ensure planar UV mapping on the glass quad
+                  const geom = child.geometry;
+                  if (geom && geom.attributes.position && geom.attributes.uv) {
+                    const pos = geom.attributes.position;
+                    const uvs = geom.attributes.uv;
+                    if (pos.count === 4) {
+                      uvs.setXY(0, 0, 1);
+                      uvs.setXY(1, 0, 0);
+                      uvs.setXY(2, 1, 1);
+                      uvs.setXY(3, 1, 0);
+                      uvs.needsUpdate = true;
+                    }
+                  }
+
+                  const videoMat = new THREE.MeshBasicMaterial({
+                    map: this.videoTexture,
+                    transparent: true,
+                    opacity: 0.96,
+                    side: THREE.DoubleSide
+                  });
+
+                  if (Array.isArray(child.material)) {
+                    child.material[idx] = videoMat;
+                  } else {
+                    child.material = videoMat;
+                  }
+                }
+
+                // 2. Primitive 1 (Backing Photo Canvas with no material) -> Static Appu Portrait
+                else if (mat.name === '' || mat.name === 'NO_MATERIAL' || idx === 1) {
+                  const photoMat = new THREE.MeshBasicMaterial({
+                    map: this.photoTexture,
+                    side: THREE.FrontSide
+                  });
+                  if (Array.isArray(child.material)) {
+                    child.material[idx] = photoMat;
+                  }
+                }
+              });
+            }
+          });
+
+          this.model = model;
+          this.frameGroup.add(model);
+        }, undefined, (err) => {
+          console.error('[Kipakosa AR] Error loading 3D frame:', err);
+        });
+      },
+
+      onTap: function(e) {
+        // Prevent tapping buttons from triggering placement
+        if (e.target.closest('#placed-controls') || e.target.closest('#back-pill')) return;
+
+        if (!this.placed) {
+          this.placeFrameOnTable();
+        }
+      },
+
+      placeFrameOnTable: function() {
+        const camera = this.el.sceneEl.camera;
+        if (!camera) return;
+
+        // Position frame 0.85m in front of camera at slight tabletop angle
+        const camPos = new THREE.Vector3();
+        camera.getWorldPosition(camPos);
+
+        const camDir = new THREE.Vector3();
+        camera.getWorldDirection(camDir);
+
+        // Place on table plane ~0.35m below camera height and 0.8m forward
+        const targetPos = camPos.clone().add(camDir.clone().multiplyScalar(0.75));
+        targetPos.y = camPos.y - 0.35; // table height relative to holding phone
+
+        this.frameGroup.position.copy(targetPos);
+
+        // Look at camera horizontally
+        this.frameGroup.lookAt(camPos.x, targetPos.y, camPos.z);
+
+        this.frameGroup.visible = true;
+        this.placed = true;
+
+        // Start video playback
+        this.video.play().catch(() => {});
+
+        // UI Updates
+        const overlay = document.getElementById('placement-overlay');
+        const crosshair = document.getElementById('aim-crosshair');
+        const controls = document.getElementById('placed-controls');
+
+        if (overlay) overlay.classList.add('placed');
+        if (crosshair) crosshair.classList.add('hidden');
+        if (controls) controls.style.display = 'flex';
+      },
+
+      reposition: function() {
+        this.placed = false;
+        this.frameGroup.visible = false;
+
+        const overlay = document.getElementById('placement-overlay');
+        const crosshair = document.getElementById('aim-crosshair');
+        const controls = document.getElementById('placed-controls');
+
+        if (overlay) overlay.classList.remove('placed');
+        if (crosshair) crosshair.classList.remove('hidden');
+        if (controls) controls.style.display = 'none';
+      },
+
+      toggleAudio: function() {
+        if (!this.video) return false;
+        this.video.muted = !this.video.muted;
+        return !this.video.muted;
+      }
+    });
+
+    window.resetPlacement = function() {
+      const el = document.getElementById('surface-anchor');
+      if (el && el.components['surface-photo-frame']) {
+        el.components['surface-photo-frame'].reposition();
+      }
+    };
+
+    window.toggleSound = function() {
+      const el = document.getElementById('surface-anchor');
+      const soundBtn = document.getElementById('sound-toggle-btn');
+      if (el && el.components['surface-photo-frame']) {
+        const isUnmuted = el.components['surface-photo-frame'].toggleAudio();
+        if (soundBtn) {
+          soundBtn.classList.toggle('active', isUnmuted);
+          soundBtn.innerHTML = isUnmuted ? '<span>🔊 Sound: On</span>' : '<span>🔇 Sound: Muted</span>';
+        }
+      }
+    };
+  </script>
+</head>
+<body>
+
+  <!-- Watermark Badge -->
+  <div id="ar-watermark">
+    <img src="/assets/logo.svg" alt="Logo" />
+    <span>Kipakosa<span>AR</span></span>
+  </div>
+
+  <!-- Back Link -->
+  <a id="back-pill" href="/landing#demo">
+    <span>← Back to Website</span>
+  </a>
+
+  <!-- Aim crosshair (shown prior to placement) -->
+  <div id="aim-crosshair"></div>
+
+  <!-- Reticle Placement Instructions -->
+  <div id="placement-overlay">
+    <div class="instruction-card">
+      <h3 class="instruction-title">Place Living Frame in Room</h3>
+      <p class="instruction-sub">Aim your camera at a table or flat desk surface, then <strong>tap screen</strong> to place your handcrafted living frame.</p>
+    </div>
+  </div>
+
+  <!-- Post-placement Controls -->
+  <div id="placed-controls">
+    <button class="ar-action-btn" id="sound-toggle-btn" onclick="toggleSound()">
+      <span>🔇 Tap for Sound</span>
+    </button>
+    <button class="ar-action-btn" onclick="resetPlacement()">
+      <span>↺ Reposition</span>
+    </button>
+  </div>
+
+  <!-- 8th Wall SLAM Scene -->
+  <a-scene
+    xrextras-loading
+    xrextras-runtime-error
+    renderer="colorManagement:true;alpha:true;antialias:true"
+    xrweb="allowedDevices: any">
+
+    <a-camera position="0 1.2 0"></a-camera>
+
+    <!-- Ambient Lighting for 3D PBR Materials -->
+    <a-entity light="type: ambient; color: #ffffff; intensity: 1.2"></a-entity>
+    <a-entity light="type: directional; color: #fff8e8; intensity: 1.5; castShadow: true" position="1 4 2"></a-entity>
+
+    <!-- Surface Anchor holding the 3D Living Frame -->
+    <a-entity id="surface-anchor" surface-photo-frame></a-entity>
+
+  </a-scene>
+
+</body>
+</html>
