@@ -39,7 +39,7 @@
       pointer-events: none !important;
     }
 
-    /* Watermark Monolith */
+    /* Kipakosa Watermark Badge */
     #ar-watermark {
       position: fixed;
       top: 16px;
@@ -109,6 +109,41 @@
       border-color: rgba(255, 255, 255, 0.2);
     }
 
+    /* Branded AR Camera Starting Overlay */
+    #camera-loading {
+      position: fixed;
+      inset: 0;
+      z-index: 5000;
+      background: #08090c;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      transition: opacity 0.4s ease;
+    }
+    #camera-loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .camera-pulse-ring {
+      width: 54px;
+      height: 54px;
+      border: 2px solid rgba(201, 169, 110, 0.3);
+      border-top-color: #c9a96e;
+      border-radius: 50%;
+      animation: cam-spin 1s linear infinite;
+    }
+    @keyframes cam-spin {
+      to { transform: rotate(360deg); }
+    }
+    .camera-loading-text {
+      color: #f5f5f7;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
     /* Surface Aim & Placement Instructions */
     #placement-overlay {
       position: fixed;
@@ -173,7 +208,7 @@
       -webkit-backdrop-filter: blur(14px);
       border: 1px solid rgba(201, 169, 110, 0.55);
       color: #f5f5f7;
-      padding: 10px 22px;
+      padding: 10px 24px;
       border-radius: 9999px;
       font-size: 13px;
       font-weight: 600;
@@ -192,8 +227,8 @@
   </style>
 
   <script>
-    // Component for Stable Tabletop SLAM Placement & Smooth Touch Gestures
-    AFRAME.registerComponent('surface-photo-frame', {
+    // ── Official 8th Wall Ground Raycasting & Tabletop Placement Component ──
+    AFRAME.registerComponent('tabletop-living-frame', {
       schema: {
         modelSrc: { default: '/assets/models/appu_photoframe.glb' },
         videoSrc: { default: 'https://pub-f2ad2c43aa344d4bb911e991b04b1fbd.r2.dev/3d4c1b30-0cdb-45af-9d00-07f119f3bb10/optimized.mp4' },
@@ -203,109 +238,49 @@
       init: function() {
         this.placed = false;
         this.isMuted = false;
-        this.currentScale = 1.0;
-        this.estimatedPos = new THREE.Vector3();
+        this.modelLoaded = false;
 
-        // Container holding the 3D frame & shadow
-        this.frameGroup = new THREE.Group();
-        this.el.object3D.add(this.frameGroup);
+        // Container holding the living frame and shadow
+        this.frameGroup = this.el.object3D;
         this.frameGroup.visible = false;
+        this.frameGroup.position.set(0, 0, 0);
 
-        // 3D Surface Reticle
-        this.initReticle();
+        // Reticle entity
+        this.reticleEl = document.getElementById('ground-reticle');
 
-        // Contact shadow plane beneath easel stand
-        this.initContactShadow();
-
-        // Video element for live AR glass projection
+        // Video texture setup
         this.initVideoTexture();
 
-        // Load Handcrafted GLTF Model
+        // Load 3D GLTF Model and normalize pivot so base sits at y = 0
         this.loadModel();
 
-        // Setup touch gestures (Tap, 1-finger horizontal swipe to rotate, 2-finger pinch to scale)
-        this.initTouchGestures();
+        // Listen for raycaster clicks on the ground plane
+        const groundEl = document.getElementById('ground');
+        if (groundEl) {
+          groundEl.addEventListener('click', (e) => this.onGroundClick(e));
+        }
 
-        // Defensive: Dismiss any stuck 8th Wall loading screen once reality starts
-        this.setupLoadingDismissal();
+        // Camera startup dismissal
+        this.setupStartupDismissal();
       },
 
-      setupLoadingDismissal: function() {
-        const dismissLoaders = () => {
-          const loaders = document.querySelectorAll('#loadingContainer, .xrextras-loading, #loadBackground');
-          loaders.forEach(el => {
-            el.style.transition = 'opacity 0.4s ease';
-            el.style.opacity = '0';
-            el.style.pointerEvents = 'none';
-            setTimeout(() => { el.style.display = 'none'; }, 400);
+      setupStartupDismissal: function() {
+        const dismissLoader = () => {
+          const l = document.getElementById('camera-loading');
+          if (l) l.classList.add('hidden');
+          const oldLoaders = document.querySelectorAll('#loadingContainer, .xrextras-loading, #loadBackground');
+          oldLoaders.forEach(el => {
+            el.style.display = 'none';
           });
         };
 
         const scene = this.el.sceneEl;
         if (scene) {
-          scene.addEventListener('realityready', dismissLoaders);
-          scene.addEventListener('loaded', () => setTimeout(dismissLoaders, 1200));
+          scene.addEventListener('realityready', dismissLoader);
+          scene.addEventListener('loaded', () => setTimeout(dismissLoader, 1000));
         }
-        window.addEventListener('xrframestart', dismissLoaders, { once: true });
-        // Fallback safety timeout
-        setTimeout(dismissLoaders, 3500);
-      },
-
-      initReticle: function() {
-        this.reticle = new THREE.Group();
-        this.reticle.visible = false;
-
-        // Outer smooth golden ring
-        const ringGeo = new THREE.RingGeometry(0.09, 0.11, 40);
-        ringGeo.rotateX(-Math.PI / 2);
-        const ringMat = new THREE.MeshBasicMaterial({
-          color: 0xc9a96e,
-          side: THREE.DoubleSide,
-          transparent: true,
-          opacity: 0.85
-        });
-        this.reticleRing = new THREE.Mesh(ringGeo, ringMat);
-        this.reticle.add(this.reticleRing);
-
-        // Center target dot
-        const dotGeo = new THREE.CircleGeometry(0.018, 24);
-        dotGeo.rotateX(-Math.PI / 2);
-        const dotMat = new THREE.MeshBasicMaterial({
-          color: 0xffffff,
-          side: THREE.DoubleSide,
-          transparent: true,
-          opacity: 0.95
-        });
-        this.reticle.add(new THREE.Mesh(dotGeo, dotMat));
-
-        this.el.object3D.add(this.reticle);
-      },
-
-      initContactShadow: function() {
-        const shadowGeo = new THREE.PlaneGeometry(0.40, 0.40);
-        shadowGeo.rotateX(-Math.PI / 2);
-
-        const canvas = document.createElement('canvas');
-        canvas.width = 128;
-        canvas.height = 128;
-        const ctx = canvas.getContext('2d');
-        const grad = ctx.createRadialGradient(64, 64, 8, 64, 64, 60);
-        grad.addColorStop(0, 'rgba(0, 0, 0, 0.65)');
-        grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.25)');
-        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, 128, 128);
-
-        const shadowTex = new THREE.CanvasTexture(canvas);
-        const shadowMat = new THREE.MeshBasicMaterial({
-          map: shadowTex,
-          transparent: true,
-          opacity: 0.75,
-          depthWrite: false
-        });
-        const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
-        shadowMesh.position.y = 0.002;
-        this.frameGroup.add(shadowMesh);
+        window.addEventListener('xrframestart', dismissLoader, { once: true });
+        setTimeout(dismissLoader, 3500);
       },
 
       initVideoTexture: function() {
@@ -316,7 +291,7 @@
         this.video.playsInline = true;
         this.video.webkitPlaysInline = true;
         this.video.preload = 'auto';
-        this.video.muted = false; // Enabled by default on placement tap!
+        this.video.muted = false; // Unmuted on tap
 
         this.videoTexture = new THREE.VideoTexture(this.video);
         this.videoTexture.minFilter = THREE.LinearFilter;
@@ -331,11 +306,13 @@
         loader.load(this.data.modelSrc, (gltf) => {
           const model = gltf.scene;
 
+          // Pivot container
           this.modelPivot = new THREE.Group();
 
-          // Correct 90° orientation mismatch from Blender so front photo & video faces forward (+Z)
+          // Correct 90° yaw from Blender so front video/photo faces camera (+Z)
           model.rotation.y = Math.PI / 2;
 
+          // Traverse meshes and setup materials
           model.traverse((child) => {
             if (child.isMesh) {
               child.castShadow = true;
@@ -345,7 +322,7 @@
               mats.forEach((mat, idx) => {
                 if (!mat) return;
 
-                // Glass Plane (Material.003) -> Live Video Overlay with Dynamic UV Mapping
+                // Glass Plane (Material.003) -> Live Video Stream
                 if (mat.name === 'Material.003') {
                   const geom = child.geometry;
                   if (geom && geom.attributes.position && geom.attributes.uv) {
@@ -373,7 +350,7 @@
                     child.material = videoMat;
                   }
                 }
-                // Backing Canvas -> Static Appu Portrait Photo
+                // Backing Canvas -> Static Portrait Photo
                 else if (mat.name === '' || mat.name === 'NO_MATERIAL' || idx === 1) {
                   const photoMat = new THREE.MeshBasicMaterial({
                     map: this.photoTexture,
@@ -381,6 +358,8 @@
                   });
                   if (Array.isArray(child.material)) {
                     child.material[idx] = photoMat;
+                  } else {
+                    child.material = photoMat;
                   }
                 }
               });
@@ -388,64 +367,91 @@
           });
 
           this.modelPivot.add(model);
+
+          // Boost scale by ~35% for real tabletop presence
+          this.modelPivot.scale.set(1.35, 1.35, 1.35);
+
+          // Compute bounding box and normalize so lowest point sits flush at y = 0
+          this.modelPivot.updateMatrixWorld(true);
+          const box = new THREE.Box3().setFromObject(this.modelPivot);
+          this.modelPivot.position.y = -box.min.y;
+
           this.frameGroup.add(this.modelPivot);
+
+          // Add contact shadow plane flush at y = 0.001
+          this.addContactShadow();
+
+          this.modelLoaded = true;
         }, undefined, (err) => {
           console.error('[Kipakosa AR] Error loading 3D frame:', err);
         });
       },
 
-      // Render loop: Smooth Reticle Animation & Stable Projected Position
-      tick: function(time, timeDelta) {
-        if (this.placed) return;
+      addContactShadow: function() {
+        const shadowGeo = new THREE.PlaneGeometry(0.52, 0.52);
+        shadowGeo.rotateX(-Math.PI / 2);
 
-        // Pulse reticle ring smoothly
-        if (this.reticleRing) {
-          const s = 1.0 + Math.sin(time * 0.005) * 0.07;
-          this.reticleRing.scale.set(s, 1, s);
-        }
+        const canvas = document.createElement('canvas');
+        canvas.width = 128; canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        const grad = ctx.createRadialGradient(64, 64, 10, 64, 64, 60);
+        grad.addColorStop(0, 'rgba(0, 0, 0, 0.65)');
+        grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.25)');
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 128, 128);
 
-        // Project ray 0.75m forward and slightly down relative to camera
-        const camera = this.el.sceneEl.camera;
-        if (camera) {
-          const camPos = new THREE.Vector3();
-          camera.getWorldPosition(camPos);
-          const camDir = new THREE.Vector3();
-          camera.getWorldDirection(camDir);
-
-          this.estimatedPos.copy(camPos).add(camDir.multiplyScalar(0.75));
-          this.estimatedPos.y = camPos.y - 0.35; // Desk level relative to holding phone
-          this.reticle.position.copy(this.estimatedPos);
-          this.reticle.visible = true;
-        }
+        const shadowTex = new THREE.CanvasTexture(canvas);
+        const shadowMat = new THREE.MeshBasicMaterial({
+          map: shadowTex,
+          transparent: true,
+          opacity: 0.75,
+          depthWrite: false
+        });
+        const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+        shadowMesh.position.y = 0.001;
+        this.frameGroup.add(shadowMesh);
       },
 
-      // Place frame on table & start audio playback instantly
-      placeFrame: function(targetPos) {
+      // Official Raycaster Ground Tap Handler
+      onGroundClick: function(e) {
         if (this.placed) return;
 
-        this.frameGroup.position.copy(targetPos);
+        // Ensure intersection point is valid on ground
+        let point = null;
+        if (e && e.detail && e.detail.intersection && e.detail.intersection.point) {
+          point = e.detail.intersection.point;
+        } else if (this.reticleEl && this.reticleEl.object3D.visible) {
+          point = this.reticleEl.object3D.position;
+        }
 
-        // Turn container to face camera horizontally
+        if (!point) return;
+
+        // Place frame directly on the ground plane at y = 0
+        this.frameGroup.position.set(point.x, 0, point.z);
+
+        // Orient container to face camera horizontally
         const camera = this.el.sceneEl.camera;
         if (camera) {
           const camPos = new THREE.Vector3();
           camera.getWorldPosition(camPos);
-          this.frameGroup.lookAt(camPos.x, targetPos.y, camPos.z);
+          this.frameGroup.lookAt(camPos.x, 0, camPos.z);
         }
 
         this.frameGroup.visible = true;
-        this.reticle.visible = false;
         this.placed = true;
 
-        // Recenter 8th Wall SLAM origin for solid world anchor
-        if (window.XR8 && XR8.XrController && XR8.XrController.recenter) {
-          XR8.XrController.recenter();
-        }
+        // Hide ground reticle and instruction card
+        if (this.reticleEl) this.reticleEl.setAttribute('visible', 'false');
+        const overlay = document.getElementById('placement-overlay');
+        const controls = document.getElementById('placed-controls');
+        if (overlay) overlay.classList.add('placed');
+        if (controls) controls.style.display = 'flex';
 
-        // Haptic feedback
+        // Haptic buzz confirmation
         if (navigator.vibrate) navigator.vibrate([35, 45, 35]);
 
-        // UNMUTE AND PLAY IMMEDIATELY on this user gesture tap!
+        // UNMUTE AND PLAY IMMEDIATELY on this user gesture tap
         this.video.muted = false;
         const playPromise = this.video.play();
         if (playPromise && playPromise.catch) {
@@ -453,25 +459,19 @@
             this.isMuted = false;
             this.updateSoundPill();
           }).catch((err) => {
-            console.warn('[Kipakosa AR] Unmuted playback blocked, falling back to muted:', err);
+            console.warn('[Kipakosa AR] Unmuted playback blocked, playing muted fallback:', err);
             this.video.muted = true;
             this.video.play().catch(() => {});
             this.isMuted = true;
             this.updateSoundPill();
           });
         }
-
-        // UI state update
-        const overlay = document.getElementById('placement-overlay');
-        const controls = document.getElementById('placed-controls');
-        if (overlay) overlay.classList.add('placed');
-        if (controls) controls.style.display = 'flex';
       },
 
       reposition: function() {
         this.placed = false;
         this.frameGroup.visible = false;
-        this.reticle.visible = true;
+        if (this.reticleEl) this.reticleEl.setAttribute('visible', 'true');
 
         const overlay = document.getElementById('placement-overlay');
         const controls = document.getElementById('placed-controls');
@@ -498,90 +498,69 @@
             soundPill.innerHTML = '<span>🔊 Sound On</span>';
           }
         }
+      }
+    });
+
+    // ── Official Ground Raycasting Reticle Component ──
+    AFRAME.registerComponent('ground-reticle-tracker', {
+      init: function() {
+        this.groundEl = document.getElementById('ground');
+        this.cameraEl = document.getElementById('camera');
       },
+      tick: function() {
+        const frameEl = document.getElementById('living-frame');
+        const isPlaced = frameEl && frameEl.components['tabletop-living-frame'] && frameEl.components['tabletop-living-frame'].placed;
+        if (isPlaced) {
+          this.el.object3D.visible = false;
+          return;
+        }
 
-      // Touch Gestures: Tap to place, 1-finger horizontal swipe to rotate, 2-finger pinch to scale
-      initTouchGestures: function() {
-        let touchStartPos = { x: 0, y: 0 };
-        let initialPinchDist = 0;
-        let initialScale = 1.0;
-        let isDragging = false;
-        let touchStartTime = 0;
-
-        const isInteractiveUI = (target) => {
-          return target.closest('#placed-controls') ||
-                 target.closest('#top-actions') ||
-                 target.closest('button') ||
-                 target.closest('a');
-        };
-
-        window.addEventListener('touchstart', (e) => {
-          if (isInteractiveUI(e.target)) return;
-
-          touchStartTime = Date.now();
-          if (e.touches.length === 1) {
-            touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            isDragging = true;
-          } else if (e.touches.length === 2 && this.placed) {
-            isDragging = false;
-            initialPinchDist = Math.hypot(
-              e.touches[0].clientX - e.touches[1].clientX,
-              e.touches[0].clientY - e.touches[1].clientY
-            );
-            initialScale = this.currentScale;
+        // Check camera raycaster intersection with ground plane
+        if (this.cameraEl && this.cameraEl.components.raycaster) {
+          const raycaster = this.cameraEl.components.raycaster;
+          const intersection = raycaster.getIntersection(this.groundEl);
+          if (intersection && intersection.point) {
+            this.el.object3D.position.set(intersection.point.x, 0.005, intersection.point.z);
+            this.el.object3D.visible = true;
+            return;
           }
-        }, { passive: true });
+        }
 
-        window.addEventListener('touchmove', (e) => {
-          if (isInteractiveUI(e.target)) return;
+        // Fallback: project ray 0.85m ahead onto ground plane y = 0
+        if (this.cameraEl && this.cameraEl.object3D) {
+          const cam = this.cameraEl.object3D;
+          const dir = new THREE.Vector3();
+          cam.getWorldDirection(dir);
+          const pos = new THREE.Vector3();
+          cam.getWorldPosition(pos);
 
-          if (this.placed) {
-            // 1 Finger: Horizontal swipe rotates frame smoothly around Y
-            if (e.touches.length === 1 && isDragging) {
-              const deltaX = e.touches[0].clientX - touchStartPos.x;
-              this.frameGroup.rotation.y += deltaX * 0.009;
-              touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            }
-            // 2 Fingers: Pinch to scale
-            else if (e.touches.length === 2 && initialPinchDist > 0) {
-              const currentDist = Math.hypot(
-                e.touches[0].clientX - e.touches[1].clientX,
-                e.touches[0].clientY - e.touches[1].clientY
-              );
-              const factor = currentDist / initialPinchDist;
-              this.currentScale = Math.min(Math.max(initialScale * factor, 0.4), 2.5);
-              this.frameGroup.scale.set(this.currentScale, this.currentScale, this.currentScale);
+          // If looking downwards towards the ground plane
+          if (dir.y < -0.05) {
+            const t = -pos.y / dir.y;
+            if (t > 0.2 && t < 10) {
+              const groundX = pos.x + dir.x * t;
+              const groundZ = pos.z + dir.z * t;
+              this.el.object3D.position.set(groundX, 0.005, groundZ);
+              this.el.object3D.visible = true;
+              return;
             }
           }
-        }, { passive: true });
-
-        window.addEventListener('touchend', (e) => {
-          if (isInteractiveUI(e.target)) return;
-
-          const duration = Date.now() - touchStartTime;
-          // Single tap detected (< 280ms and minimal drag)
-          if (!this.placed && duration < 280) {
-            this.placeFrame(this.estimatedPos.clone());
-          }
-
-          isDragging = false;
-          initialPinchDist = 0;
-        });
+        }
       }
     });
 
     // Global action helpers
     window.resetPlacement = function() {
-      const el = document.getElementById('surface-anchor');
-      if (el && el.components['surface-photo-frame']) {
-        el.components['surface-photo-frame'].reposition();
+      const el = document.getElementById('living-frame');
+      if (el && el.components['tabletop-living-frame']) {
+        el.components['tabletop-living-frame'].reposition();
       }
     };
 
     window.toggleSound = function() {
-      const el = document.getElementById('surface-anchor');
-      if (el && el.components['surface-photo-frame']) {
-        el.components['surface-photo-frame'].toggleAudio();
+      const el = document.getElementById('living-frame');
+      if (el && el.components['tabletop-living-frame']) {
+        el.components['tabletop-living-frame'].toggleAudio();
       }
     };
   </script>
@@ -604,6 +583,12 @@
     </a>
   </div>
 
+  <!-- Branded Starting AR Camera Overlay -->
+  <div id="camera-loading">
+    <div class="camera-pulse-ring"></div>
+    <div class="camera-loading-text">Starting AR Camera...</div>
+  </div>
+
   <!-- Pre-placement Cue Overlay -->
   <div id="placement-overlay">
     <div class="instruction-card">
@@ -619,21 +604,53 @@
     </button>
   </div>
 
-  <!-- 8th Wall SLAM World Tracking Scene -->
+  <!-- 8th Wall SLAM Scene with Official Gesture Detector -->
   <a-scene
+    xrextras-gesture-detector
     xrextras-loading
     xrextras-runtime-error
     renderer="colorManagement:true;alpha:true;antialias:true"
     xrweb="allowedDevices: any">
 
-    <a-camera position="0 1.2 0"></a-camera>
+    <!-- Camera configured with Official 8th Wall Ground Raycaster targeting .cantap -->
+    <a-camera
+      id="camera"
+      position="0 1.2 0"
+      raycaster="objects: .cantap"
+      cursor="fuse: false; rayOrigin: mouse;">
+    </a-camera>
 
     <!-- PBR Ambient & Directional Scene Lighting -->
     <a-entity light="type: ambient; color: #ffffff; intensity: 1.2"></a-entity>
     <a-entity light="type: directional; color: #fff8e8; intensity: 1.6; castShadow: true" position="1 4 2"></a-entity>
 
-    <!-- Living Frame Anchor -->
-    <a-entity id="surface-anchor" surface-photo-frame></a-entity>
+    <!-- Official Full-Room Transparent Ground Plane (y = 0) -->
+    <a-entity
+      id="ground"
+      class="cantap"
+      geometry="primitive: box; width: 1000; height: 0.001; depth: 1000"
+      position="0 0 0"
+      material="opacity: 0; transparent: true">
+    </a-entity>
+
+    <!-- 3D Surface Reticle tracking Ground Plane raycast -->
+    <a-entity id="ground-reticle" ground-reticle-tracker visible="false">
+      <!-- Outer smooth golden ring -->
+      <a-ring color="#c9a96e" radius-inner="0.10" radius-outer="0.12" rotation="-90 0 0" material="side: double; transparent: true; opacity: 0.85"></a-ring>
+      <!-- Center target dot -->
+      <a-circle color="#ffffff" radius="0.02" rotation="-90 0 0" material="side: double; transparent: true; opacity: 0.95"></a-circle>
+    </a-entity>
+
+    <!-- Living Frame Entity with Official 8th Wall Gestures (1-finger rotate, pinch scale, drag) -->
+    <a-entity
+      id="living-frame"
+      class="cantap"
+      tabletop-living-frame
+      xrextras-one-finger-rotate="factor: 6"
+      xrextras-two-finger-rotate="factor: 5"
+      xrextras-pinch-scale="min: 0.4; max: 2.5"
+      xrextras-hold-drag>
+    </a-entity>
 
   </a-scene>
 
