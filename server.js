@@ -59,6 +59,8 @@ const PAGE_MAP = {
   'acceptable-use': 'acceptable-use.html',
   'preview-frame': 'preview-frame.html',
   'preview-frame-mv': 'preview-frame-mv.html',
+  'preview-frame-webxr': 'preview-frame-webxr.html',
+  'preview-furniture': 'preview-furniture.html',
 };
 
 // Alias paths (alternate spellings) → canonical page file.

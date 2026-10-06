@@ -371,10 +371,18 @@
 
           this.modelPivot.add(model);
 
-          // Boost scale by ~35% for real tabletop presence
-          this.modelPivot.scale.set(1.35, 1.35, 1.35);
+          // Normalize to authentic physical tabletop dimensions: 18cm (7 inches) tall
+          this.modelPivot.scale.set(1, 1, 1);
+          this.modelPivot.updateMatrixWorld(true);
+          const initialBox = new THREE.Box3().setFromObject(this.modelPivot);
+          const rawHeight = initialBox.max.y - initialBox.min.y;
+          if (rawHeight > 0) {
+            const TARGET_HEIGHT = 0.18; // 18cm standard 5x7 desk photo frame
+            const s = TARGET_HEIGHT / rawHeight;
+            this.modelPivot.scale.set(s, s, s);
+          }
 
-          // Compute bounding box and normalize so lowest point sits flush at y = 0
+          // Compute bounding box after target scale and normalize so lowest point sits flush at y = 0
           this.modelPivot.updateMatrixWorld(true);
           const box = new THREE.Box3().setFromObject(this.modelPivot);
           this.modelPivot.position.y = -box.min.y;
@@ -391,7 +399,7 @@
       },
 
       addContactShadow: function() {
-        const shadowGeo = new THREE.PlaneGeometry(0.52, 0.52);
+        const shadowGeo = new THREE.PlaneGeometry(0.24, 0.24);
         shadowGeo.rotateX(-Math.PI / 2);
 
         const canvas = document.createElement('canvas');
@@ -644,15 +652,12 @@
       <a-circle color="#ffffff" radius="0.02" rotation="-90 0 0" material="side: double; transparent: true; opacity: 0.95"></a-circle>
     </a-entity>
 
-    <!-- Living Frame Entity with Official 8th Wall Gestures (1-finger rotate, pinch scale, drag) -->
+    <!-- Living Frame Entity with Locked 18cm Scale and 1-Finger Horizontal Rotation -->
     <a-entity
       id="living-frame"
       class="cantap"
       tabletop-living-frame
-      xrextras-one-finger-rotate="factor: 6"
-      xrextras-two-finger-rotate="factor: 5"
-      xrextras-pinch-scale="min: 0.4; max: 2.5"
-      xrextras-hold-drag>
+      xrextras-one-finger-rotate="factor: 6">
     </a-entity>
 
   </a-scene>

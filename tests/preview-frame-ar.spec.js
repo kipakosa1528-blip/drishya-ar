@@ -85,8 +85,8 @@ test.describe('Tabletop Living Frame WebAR Automated Test Suite', () => {
 
     // Lowest vertex of model should be flush at y = 0 within 0.005m (NOT floating in mid-air!)
     expect(Math.abs(modelGeometry.minY)).toBeLessThan(0.005);
-    expect(modelGeometry.height).toBeGreaterThan(0.2); // Sizable tabletop frame
-    expect(modelGeometry.scale).toBeCloseTo(1.35, 1);
+    expect(modelGeometry.height).toBeCloseTo(0.18, 2); // Exact 18cm calibrated tabletop frame
+    expect(modelGeometry.scale).toBeGreaterThan(0);
 
     // Verify Authored PBR Materials are PRESERVED and NOT clobbered by photoMat
     const materialChecks = await page.evaluate(() => {

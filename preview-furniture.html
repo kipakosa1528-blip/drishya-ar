@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Kipakosa Living — Modular Sofa 1:1 AR Customizer</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1">
+  <meta name="theme-color" content="#0a0a0c">
+
+  <!-- Google <model-viewer> v3.5.0 -->
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #0a0a0c;
+      --card-bg: rgba(18, 18, 24, 0.78);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --gold: #c9a96e;
+      --text: #f5f5f7;
+      --text-muted: rgba(255, 255, 255, 0.6);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+    }
+
+    #app-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Top Header ── */
+    #top-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px;
+      background: linear-gradient(180deg, rgba(10, 10, 12, 0.85) 0%, rgba(10, 10, 12, 0) 100%);
+      pointer-events: none;
+    }
+
+    .top-action {
+      pointer-events: auto;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 15px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      transition: transform 0.2s;
+    }
+
+    .top-action:active {
+      transform: scale(0.94);
+    }
+
+    .brand-meta {
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .brand-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #fff;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      color: var(--gold);
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Dimensions Badge Card ── */
+    #dimension-card {
+      position: absolute;
+      top: 80px;
+      left: 20px;
+      z-index: 10;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      pointer-events: none;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    .dim-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dim-label {
+      color: var(--text-muted);
+    }
+
+    .dim-val {
+      font-weight: 600;
+      color: #fff;
+    }
+
+    /* ── 3D & Native AR Canvas ── */
+    model-viewer {
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg);
+      --poster-color: transparent;
+      outline: none;
+    }
+
+    /* ── Custom Luxury AR Launch Button ── */
+    .luxury-ar-button {
+      position: absolute;
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, rgba(201, 169, 110, 0.96) 0%, rgba(184, 149, 87, 0.96) 100%);
+      color: #0a0a0c;
+      padding: 14px 30px;
+      border-radius: 9999px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 8px 32px rgba(201, 169, 110, 0.4), 0 4px 12px rgba(0, 0, 0, 0.6);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+
+    .luxury-ar-button:active {
+      transform: translateX(-50%) scale(0.96);
+      box-shadow: 0 4px 16px rgba(201, 169, 110, 0.25);
+    }
+
+    .luxury-ar-button svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
+    /* ── Bottom Material Swatch Customizer ── */
+    #swatch-bar {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 10px 18px;
+      border-radius: 9999px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .swatch-item {
+      position: relative;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .swatch-item:active {
+      transform: scale(0.92);
+    }
+
+    .swatch-item.active {
+      border-color: #fff;
+      transform: scale(1.15);
+      box-shadow: 0 0 14px rgba(255, 255, 255, 0.4);
+    }
+
+    .swatch-tooltip {
+      position: absolute;
+      top: -32px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.85);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .swatch-item:hover .swatch-tooltip {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app-container">
+    <!-- Top Navigation -->
+    <header id="top-bar">
+      <a href="/landing" class="top-action" title="Back">✕</a>
+      <div class="brand-meta">
+        <span class="brand-title">Kipakosa Lounge Sofa</span>
+        <span class="brand-sub">True 1:1 Metric Floor AR</span>
+      </div>
+      <div style="width:42px"></div>
+    </header>
+
+    <!-- Dimension Spec Card -->
+    <div id="dimension-card">
+      <div class="dim-row">
+        <span class="dim-label">Width:</span>
+        <span class="dim-val">190 cm (6'3")</span>
+      </div>
+      <div class="dim-row">
+        <span class="dim-label">Depth:</span>
+        <span class="dim-val">130 cm (4'3")</span>
+      </div>
+      <div class="dim-row">
+        <span class="dim-label">Height:</span>
+        <span class="dim-val">61 cm (2'0")</span>
+      </div>
+      <div class="dim-row" style="margin-top:2px; color:var(--gold); font-weight:600">
+        <span>📐 100% Locked Room Scale</span>
+      </div>
+    </div>
+
+    <!-- Google <model-viewer> Element -->
+    <model-viewer
+      id="furniture-mv"
+      src="/assets/models/sofa.glb"
+      ios-src="/assets/models/sofa.usdz"
+      alt="Kipakosa Luxury Sofa"
+      ar
+      ar-placement="floor"
+      ar-scale="fixed"
+      ar-modes="webxr scene-viewer quick-look"
+      camera-controls
+      touch-action="pan-y"
+      shadow-intensity="1.6"
+      shadow-softness="0.8"
+      exposure="1.0"
+      interaction-prompt="auto"
+      camera-orbit="35deg 70deg 115%">
+
+      <!-- Custom Luxury AR Button Slot -->
+      <button slot="ar-button" class="luxury-ar-button">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 4c0-.55.45-1 1-1h4v2H5v3H3V4zm0 16c0 .55.45 1 1 1h4v-2H5v-3H3v4zm17 0c0 .55-.45 1-1 1h-4v-2h3v-3h2v4zm0-16c0-.55-.45-1-1-1h-4v2h3v3h2V4zM7 9h10v6H7V9z"/>
+        </svg>
+        View in Your Room (1:1)
+      </button>
+
+      <!-- Loading / Progress bar slot -->
+      <div slot="progress-bar" style="display:none"></div>
+    </model-viewer>
+
+    <!-- Material & Color Customizer Swatch Bar -->
+    <div id="swatch-bar">
+      <!-- Emerald Velvet -->
+      <div class="swatch-item active" style="background: #1b4d3e" data-color="#1b4d3e" data-roughness="0.85" title="Emerald Velvet">
+        <span class="swatch-tooltip">Emerald Velvet</span>
+      </div>
+      <!-- Charcoal Slate -->
+      <div class="swatch-item" style="background: #2b2b2e" data-color="#2b2b2e" data-roughness="0.80" title="Charcoal Slate">
+        <span class="swatch-tooltip">Charcoal Slate</span>
+      </div>
+      <!-- Warm Oat Linen -->
+      <div class="swatch-item" style="background: #d1c7b7" data-color="#d1c7b7" data-roughness="0.90" title="Warm Oat Linen">
+        <span class="swatch-tooltip">Warm Oat</span>
+      </div>
+      <!-- Terracotta Leather -->
+      <div class="swatch-item" style="background: #a45a3c" data-color="#a45a3c" data-roughness="0.65" title="Terracotta Leather">
+        <span class="swatch-tooltip">Terracotta</span>
+      </div>
+      <!-- Midnight Navy -->
+      <div class="swatch-item" style="background: #1a2942" data-color="#1a2942" data-roughness="0.85" title="Midnight Navy">
+        <span class="swatch-tooltip">Midnight Navy</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const mv = document.getElementById('furniture-mv');
+    const swatches = document.querySelectorAll('.swatch-item');
+
+    function hexToRgb(hex) {
+      const bigint = parseInt(hex.replace('#', ''), 16);
+      return [
+        ((bigint >> 16) & 255) / 255,
+        ((bigint >> 8) & 255) / 255,
+        (bigint & 255) / 255
+      ];
+    }
+
+    function applyMaterialColor(hex, roughness) {
+      if (!mv.model || !mv.model.materials || mv.model.materials.length === 0) return;
+      
+      const [r, g, b] = hexToRgb(hex);
+      mv.model.materials.forEach(mat => {
+        if (mat && mat.pbrMetallicRoughness) {
+          mat.pbrMetallicRoughness.setBaseColorFactor([r, g, b, 1.0]);
+          mat.pbrMetallicRoughness.setRoughnessFactor(parseFloat(roughness));
+        }
+      });
+    }
+
+    // Swatch click handlers
+    swatches.forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        swatches.forEach(s => s.classList.remove('active'));
+        swatch.classList.add('active');
+
+        const color = swatch.dataset.color;
+        const roughness = swatch.dataset.roughness;
+        applyMaterialColor(color, roughness);
+      });
+    });
+
+    // Apply default color when model loads
+    mv.addEventListener('load', () => {
+      const activeSwatch = document.querySelector('.swatch-item.active');
+      if (activeSwatch) {
+        applyMaterialColor(activeSwatch.dataset.color, activeSwatch.dataset.roughness);
+      }
+    });
+  </script>
+</body>
+</html>
