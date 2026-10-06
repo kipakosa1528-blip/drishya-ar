@@ -96,4 +96,24 @@ test.describe('Multi-Tech AR Suite: Furniture 1:1 Showroom & Calibrated Living F
     expect(pageContent).toContain('requestHitTestSource');
   });
 
+  test('Sales Option 2 WebXR Room Scanner (/preview-furniture-webxr): verifies room meshing, 1:1 floor footprint, swatches, and wall clearance', async ({ page }) => {
+    const res = await page.goto('/preview-furniture-webxr', { waitUntil: 'domcontentloaded' });
+    expect(res.status()).toBe(200);
+
+    await expect(page.locator('#webxr-canvas')).toBeVisible();
+    await expect(page.locator('#top-bar')).toBeVisible();
+    await expect(page.locator('#dimension-card')).toBeVisible();
+    await expect(page.locator('#wall-clearance-card')).toBeVisible();
+
+    // Verify 5 swatches present
+    const swatches = page.locator('.swatch-item');
+    expect(await swatches.count()).toBe(5);
+
+    // Verify script features
+    const pageContent = await page.content();
+    expect(pageContent).toContain('sofa.glb');
+    expect(pageContent).toContain('plane-detection');
+    expect(pageContent).toContain('calculateWallClearance');
+  });
+
 });

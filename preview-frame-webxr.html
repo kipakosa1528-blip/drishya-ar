@@ -596,14 +596,17 @@
       });
     }
 
+    const detectedPlaneMeshes = new Map();
+    const planeWireframeGroup = new THREE.Group();
+
     // ── Start Immersive WebXR Session ──
     async function startWebXRSession() {
       let session = null;
       try {
-        // Attempt session WITH domOverlay on dedicated overlayRoot
+        // Attempt session WITH domOverlay on dedicated overlayRoot & plane-detection
         const sessionInitWithDom = {
           requiredFeatures: ['hit-test'],
-          optionalFeatures: ['dom-overlay', 'light-estimation'],
+          optionalFeatures: ['plane-detection', 'anchors', 'dom-overlay', 'light-estimation'],
           domOverlay: { root: overlayRoot }
         };
         session = await navigator.xr.requestSession('immersive-ar', sessionInitWithDom);
@@ -613,7 +616,7 @@
           // Fallback session without domOverlay
           session = await navigator.xr.requestSession('immersive-ar', {
             requiredFeatures: ['hit-test'],
-            optionalFeatures: ['light-estimation']
+            optionalFeatures: ['plane-detection', 'anchors', 'light-estimation']
           });
         } catch (basicErr) {
           showError(basicErr.message || 'Could not start WebXR session');
@@ -626,11 +629,12 @@
       try {
         await renderer.xr.setSession(session);
         xrSession = session;
+        scene.add(planeWireframeGroup);
 
         btnEnterAr.style.display = 'none';
         btnSound.style.display = 'flex';
         statusToast.style.display = 'flex';
-        statusText.textContent = 'Move camera to find tabletop surface';
+        statusText.textContent = 'Move camera across table to map environment geometry...';
         statusIcon.textContent = '🔍';
 
         const viewerSpace = await xrSession.requestReferenceSpace('viewer');
@@ -659,9 +663,52 @@
       statusText.textContent = 'Session ended';
     }
 
-    // ── XR Frame Render Loop ──
+    // ── XR Frame Render Loop: Environment Meshing & Hit-Test ──
     function renderXR(timestamp, frame) {
-      if (frame && xrHitTestSource && !isPlaced) {
+      if (!frame) return;
+
+      // 1. Process Real-World Detected Planes (Desk, Table, Floor, Walls)
+      if (frame.detectedPlanes) {
+        frame.detectedPlanes.forEach(plane => {
+          const isHorizontal = plane.orientation === 'horizontal';
+          const pose = frame.getPose(plane.planeSpace, xrRefSpace);
+          if (!pose) return;
+
+          let meshObj = detectedPlaneMeshes.get(plane);
+          if (!meshObj) {
+            const polygon = plane.polygon;
+            if (polygon && polygon.length >= 3) {
+              const shape = new THREE.Shape();
+              shape.moveTo(polygon[0].x, polygon[0].z);
+              for (let i = 1; i < polygon.length; i++) {
+                shape.lineTo(polygon[i].x, polygon[i].z);
+              }
+              shape.closePath();
+
+              const geom = new THREE.ShapeGeometry(shape);
+              const edges = new THREE.EdgesGeometry(geom);
+              const matColor = isHorizontal ? 0x00e5ff : 0xc9a96e;
+              const lineMat = new THREE.LineBasicMaterial({
+                color: matColor,
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.6
+              });
+              meshObj = new THREE.LineSegments(edges, lineMat);
+              meshObj.rotation.x = -Math.PI / 2;
+              planeWireframeGroup.add(meshObj);
+              detectedPlaneMeshes.set(plane, meshObj);
+            }
+          }
+
+          if (meshObj) {
+            meshObj.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
+          }
+        });
+      }
+
+      // 2. Hardware Hit-Testing for Precise Desk Anchor Placement
+      if (xrHitTestSource && !isPlaced) {
         const hitTestResults = frame.getHitTestResults(xrHitTestSource);
         if (hitTestResults.length > 0) {
           const hit = hitTestResults[0];

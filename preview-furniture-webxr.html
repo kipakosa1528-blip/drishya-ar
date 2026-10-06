@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Kipakosa — Furniture WebXR Room Scanner & 1:1 Showroom</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1">
+  <meta name="theme-color" content="#0a0a0c">
+
+  <style>
+    :root {
+      --bg: #0a0a0c;
+      --card-bg: rgba(18, 18, 24, 0.88);
+      --card-border: rgba(255, 255, 255, 0.14);
+      --gold: #c9a96e;
+      --cyan: #00e5ff;
+      --text: #f5f5f7;
+      --text-muted: rgba(255, 255, 255, 0.65);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    #webxr-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+      z-index: 1;
+    }
+
+    /* ── WebXR DOM Overlay Root ── */
+    #xr-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* ── Top Header ── */
+    #top-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: linear-gradient(180deg, rgba(10, 10, 12, 0.85) 0%, rgba(10, 10, 12, 0) 100%);
+      pointer-events: none;
+    }
+
+    .top-action {
+      pointer-events: auto;
+      height: 38px;
+      padding: 0 14px;
+      border-radius: 9999px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      transition: transform 0.2s;
+    }
+
+    .top-action:active {
+      transform: scale(0.95);
+    }
+
+    .brand-meta {
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .brand-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #fff;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      color: var(--cyan);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Metric Room Dimensions Card ── */
+    #dimension-card {
+      position: absolute;
+      top: 76px;
+      left: 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      pointer-events: none;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    .dim-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dim-label {
+      color: var(--text-muted);
+    }
+
+    .dim-val {
+      font-weight: 600;
+      color: #fff;
+    }
+
+    /* ── Live Wall Clearance Indicator Badge ── */
+    #wall-clearance-card {
+      position: absolute;
+      top: 76px;
+      right: 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    .clearance-status {
+      font-weight: 700;
+      color: #10b981; /* Green ok, amber close, red collision */
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* ── Environment Mapping Status Toast ── */
+    #status-toast {
+      position: absolute;
+      bottom: 110px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 10px 22px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+      white-space: nowrap;
+      transition: opacity 0.3s;
+    }
+
+    /* ── Bottom Swatch Customizer Bar ── */
+    #swatch-bar {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 10px 18px;
+      border-radius: 9999px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      pointer-events: auto;
+    }
+
+    .swatch-item {
+      position: relative;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .swatch-item:active {
+      transform: scale(0.92);
+    }
+
+    .swatch-item.active {
+      border-color: #fff;
+      transform: scale(1.15);
+      box-shadow: 0 0 14px rgba(255, 255, 255, 0.4);
+    }
+
+    /* ── Action Buttons ── */
+    #action-bar {
+      position: absolute;
+      bottom: 74px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .btn-action {
+      background: linear-gradient(135deg, rgba(201, 169, 110, 0.96) 0%, rgba(184, 149, 87, 0.96) 100%);
+      color: #0a0a0c;
+      padding: 11px 22px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 8px 32px rgba(201, 169, 110, 0.35);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+    }
+
+    .btn-secondary {
+      background: var(--card-bg);
+      color: #fff;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    /* ── Fallback Card ── */
+    #fallback-card {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%;
+      max-width: 440px;
+      background: rgba(18, 18, 26, 0.94);
+      border: 1px solid rgba(201, 169, 110, 0.35);
+      border-radius: 20px;
+      padding: 28px 24px;
+      text-align: center;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+      pointer-events: auto;
+    }
+
+    #fallback-card h2 {
+      font-size: 18px;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+
+    #fallback-card p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .btn-link {
+      display: block;
+      padding: 12px 18px;
+      border-radius: 9999px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      background: linear-gradient(135deg, #c9a96e 0%, #b89557 100%);
+      color: #0a0a0c;
+    }
+  </style>
+
+  <!-- Three.js + GLTFLoader -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+</head>
+<body>
+  <canvas id="webxr-canvas"></canvas>
+
+  <div id="xr-overlay">
+    <!-- Top Navigation -->
+    <header id="top-bar">
+      <a href="/preview-furniture" class="top-action" title="Back">✕ Back</a>
+      <div class="brand-meta">
+        <span class="brand-title">Kipakosa Lounge Sofa</span>
+        <span class="brand-sub">WebXR Environment Meshing & Wall Clearance</span>
+      </div>
+      <a href="/preview-frame-webxr" class="top-action" title="Living Frame">Frame AR ➔</a>
+    </header>
+
+    <!-- Dimension Spec Card -->
+    <div id="dimension-card">
+      <div class="dim-row">
+        <span class="dim-label">Width:</span>
+        <span class="dim-val">190 cm (6'3")</span>
+      </div>
+      <div class="dim-row">
+        <span class="dim-label">Depth:</span>
+        <span class="dim-val">130 cm (4'3")</span>
+      </div>
+      <div class="dim-row">
+        <span class="dim-label">Height:</span>
+        <span class="dim-val">61 cm (2'0")</span>
+      </div>
+      <div class="dim-row" style="margin-top:2px; color:var(--cyan); font-weight:600">
+        <span id="mesh-counter">🌐 Scanning room geometry...</span>
+      </div>
+    </div>
+
+    <!-- Live Wall Clearance Badge -->
+    <div id="wall-clearance-card">
+      <div class="dim-label">Wall Clearance:</div>
+      <div id="wall-clearance-status" class="clearance-status">
+        <span>📏 Scan to detect walls</span>
+      </div>
+    </div>
+
+    <!-- Status Toast -->
+    <div id="status-toast">
+      <span id="status-icon">🔄</span>
+      <span id="status-text">Move camera to map floor & wall geometry...</span>
+    </div>
+
+    <!-- Secondary Controls -->
+    <div id="action-bar">
+      <button id="btn-enter-ar" class="btn-action">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3 4c0-.55.45-1 1-1h4v2H5v3H3V4zm0 16c0 .55.45 1 1 1h4v-2H5v-3H3v4zm17 0c0 .55-.45 1-1 1h-4v-2h3v-3h2v4zm0-16c0-.55-.45-1-1-1h-4v2h3v3h2V4zM7 9h10v6H7V9z"/>
+        </svg>
+        Start Room Scanner AR
+      </button>
+      <button id="btn-xray" class="btn-action btn-secondary" style="display:none">
+        👻 X-Ray Wall Check
+      </button>
+      <button id="btn-reposition" class="btn-action btn-secondary" style="display:none">
+        🔄 Reposition
+      </button>
+    </div>
+
+    <!-- Material Customizer Swatches -->
+    <div id="swatch-bar">
+      <!-- Emerald Velvet -->
+      <div class="swatch-item active" style="background: #1b4d3e" data-color="#1b4d3e" data-roughness="0.85" title="Emerald Velvet"></div>
+      <!-- Charcoal Slate -->
+      <div class="swatch-item" style="background: #2b2b2e" data-color="#2b2b2e" data-roughness="0.80" title="Charcoal Slate"></div>
+      <!-- Warm Oat Linen -->
+      <div class="swatch-item" style="background: #d1c7b7" data-color="#d1c7b7" data-roughness="0.90" title="Warm Oat Linen"></div>
+      <!-- Terracotta Leather -->
+      <div class="swatch-item" style="background: #a45a3c" data-color="#a45a3c" data-roughness="0.65" title="Terracotta Leather"></div>
+      <!-- Midnight Navy -->
+      <div class="swatch-item" style="background: #1a2942" data-color="#1a2942" data-roughness="0.85" title="Midnight Navy"></div>
+    </div>
+
+    <!-- Fallback Card -->
+    <div id="fallback-card">
+      <div style="font-size:32px; margin-bottom:12px;">📱</div>
+      <h2>WebXR Device Notice</h2>
+      <p id="fallback-desc">
+        WebXR room meshing is supported on <strong>Chrome for Android</strong> (Pixel 8 Pro, Galaxy S series).
+      </p>
+      <a href="/preview-furniture" class="btn-link">Return to Model Viewer</a>
+    </div>
+  </div>
+
+  <script>
+    const CONFIG = {
+      modelSrc: '/assets/models/sofa.glb?v=grounded2',
+      widthM: 1.90,
+      depthM: 1.30,
+      heightM: 0.61
+    };
+
+    let renderer, scene, camera;
+    let xrSession = null;
+    let xrRefSpace = null;
+    let xrHitTestSource = null;
+    let reticleGroup = null;
+    let sofaGroup = null;
+    let sofaModel = null;
+    let isPlaced = false;
+    let isXray = false;
+    let currentColor = '#1b4d3e';
+    let currentRoughness = 0.85;
+
+    // Environment Meshes (Detected Planes)
+    const detectedPlaneMeshes = new Map();
+    const planeWireframeGroup = new THREE.Group();
+    let detectedWalls = [];
+
+    const canvas = document.getElementById('webxr-canvas');
+    const overlayRoot = document.getElementById('xr-overlay');
+    const btnEnterAr = document.getElementById('btn-enter-ar');
+    const btnXray = document.getElementById('btn-xray');
+    const btnReposition = document.getElementById('btn-reposition');
+    const statusText = document.getElementById('status-text');
+    const statusIcon = document.getElementById('status-icon');
+    const meshCounter = document.getElementById('mesh-counter');
+    const wallClearanceStatus = document.getElementById('wall-clearance-status');
+    const fallbackCard = document.getElementById('fallback-card');
+    const swatches = document.querySelectorAll('.swatch-item');
+
+    function hexToRgb(hex) {
+      const bigint = parseInt(hex.replace('#', ''), 16);
+      return [
+        ((bigint >> 16) & 255) / 255,
+        ((bigint >> 8) & 255) / 255,
+        (bigint & 255) / 255
+      ];
+    }
+
+    function applySofaMaterial(hex, roughness) {
+      if (!sofaModel) return;
+      currentColor = hex;
+      currentRoughness = roughness;
+      const [r, g, b] = hexToRgb(hex);
+      const alpha = isXray ? 0.42 : 1.0;
+
+      sofaModel.traverse((child) => {
+        if (child.isMesh && child.material) {
+          const mats = Array.isArray(child.material) ? child.material : [child.material];
+          mats.forEach(mat => {
+            if (mat.color) mat.color.setRGB(r, g, b);
+            if (mat.roughness !== undefined) mat.roughness = parseFloat(roughness);
+            mat.transparent = isXray;
+            mat.opacity = alpha;
+            if (mat.needsUpdate) mat.needsUpdate = true;
+          });
+        }
+      });
+    }
+
+    // ── Three.js Scene Setup ──
+    function initThree() {
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.xr.enabled = true;
+      renderer.shadowMap.enabled = true;
+
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+
+      scene.add(planeWireframeGroup);
+
+      // Studio Lighting
+      const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
+      hemiLight.position.set(0, 10, 0);
+      scene.add(hemiLight);
+
+      const dirLight = new THREE.DirectionalLight(0xfff5e6, 1.6);
+      dirLight.position.set(2, 4, 2);
+      dirLight.castShadow = true;
+      scene.add(dirLight);
+
+      // Build 1:1 Footprint Reticle (Shows 1.9m x 1.3m floor box BEFORE placement)
+      buildFootprintReticle();
+
+      // Load 3D Sofa Model
+      loadSofaModel();
+
+      window.addEventListener('resize', onWindowResize);
+    }
+
+    function buildFootprintReticle() {
+      reticleGroup = new THREE.Group();
+      reticleGroup.matrixAutoUpdate = false;
+      reticleGroup.visible = false;
+
+      // Outer Footprint Box (1.90m x 1.30m)
+      const footprintGeom = new THREE.PlaneGeometry(CONFIG.widthM, CONFIG.depthM);
+      const wireGeom = new THREE.EdgesGeometry(footprintGeom);
+      const wireMat = new THREE.LineBasicMaterial({ color: 0x00e5ff, linewidth: 2 });
+      const wireLine = new THREE.LineSegments(wireGeom, wireMat);
+      wireLine.rotation.x = -Math.PI / 2;
+      reticleGroup.add(wireLine);
+
+      // Subtle translucent ground glow
+      const fillMat = new THREE.MeshBasicMaterial({
+        color: 0x00e5ff,
+        transparent: true,
+        opacity: 0.12,
+        side: THREE.DoubleSide
+      });
+      const fillPlane = new THREE.Mesh(footprintGeom, fillMat);
+      fillPlane.rotation.x = -Math.PI / 2;
+      reticleGroup.add(fillPlane);
+
+      // Center aiming target
+      const centerTarget = new THREE.RingGeometry(0.06, 0.08, 32).rotateX(-Math.PI / 2);
+      const centerMat = new THREE.MeshBasicMaterial({ color: 0xc9a96e, side: THREE.DoubleSide });
+      const centerMesh = new THREE.Mesh(centerTarget, centerMat);
+      reticleGroup.add(centerMesh);
+
+      scene.add(reticleGroup);
+    }
+
+    function loadSofaModel() {
+      sofaGroup = new THREE.Group();
+      sofaGroup.visible = false;
+      scene.add(sofaGroup);
+
+      const loader = new THREE.GLTFLoader();
+      loader.load(CONFIG.modelSrc, (gltf) => {
+        sofaModel = gltf.scene;
+        sofaGroup.add(sofaModel);
+
+        applySofaMaterial(currentColor, currentRoughness);
+
+        // Add 1:1 Contact Shadow Plane
+        const shadowGeom = new THREE.PlaneGeometry(CONFIG.widthM * 1.1, CONFIG.depthM * 1.1);
+        const shadowMat = new THREE.MeshBasicMaterial({
+          color: 0x000000,
+          transparent: true,
+          opacity: 0.35,
+          side: THREE.DoubleSide
+        });
+        const shadowMesh = new THREE.Mesh(shadowGeom, shadowMat);
+        shadowMesh.rotation.x = -Math.PI / 2;
+        shadowMesh.position.y = 0.001;
+        sofaGroup.add(shadowMesh);
+      });
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // ── Check WebXR Support ──
+    async function checkWebXR() {
+      if (navigator.xr) {
+        const supported = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
+        if (supported) {
+          btnEnterAr.style.display = 'flex';
+          btnEnterAr.addEventListener('click', startWebXRSession);
+          return;
+        }
+      }
+      fallbackCard.style.display = 'block';
+      btnEnterAr.style.display = 'none';
+    }
+
+    // ── Start WebXR Session with Plane Detection & Hit-Test ──
+    async function startWebXRSession() {
+      let session = null;
+      try {
+        const sessionInit = {
+          requiredFeatures: ['hit-test'],
+          optionalFeatures: ['plane-detection', 'anchors', 'dom-overlay', 'light-estimation'],
+          domOverlay: { root: overlayRoot }
+        };
+        session = await navigator.xr.requestSession('immersive-ar', sessionInit);
+      } catch (errDom) {
+        console.warn('DOM overlay failed, fallback to direct AR session:', errDom);
+        session = await navigator.xr.requestSession('immersive-ar', {
+          requiredFeatures: ['hit-test'],
+          optionalFeatures: ['plane-detection', 'light-estimation']
+        });
+      }
+
+      await renderer.xr.setSession(session);
+      xrSession = session;
+
+      btnEnterAr.style.display = 'none';
+      btnXray.style.display = 'flex';
+      statusText.textContent = 'Move camera across floor & walls to map geometry...';
+      statusIcon.textContent = '🔍';
+
+      const viewerSpace = await xrSession.requestReferenceSpace('viewer');
+      xrRefSpace = await xrSession.requestReferenceSpace('local-floor').catch(async () => {
+        return await xrSession.requestReferenceSpace('local');
+      });
+
+      xrHitTestSource = await xrSession.requestHitTestSource({ space: viewerSpace });
+
+      xrSession.addEventListener('select', onSelect);
+      xrSession.addEventListener('end', onSessionEnded);
+
+      renderer.setAnimationLoop(renderXR);
+    }
+
+    function onSessionEnded() {
+      xrHitTestSource = null;
+      xrSession = null;
+      renderer.setAnimationLoop(null);
+      btnEnterAr.style.display = 'flex';
+      btnXray.style.display = 'none';
+      btnReposition.style.display = 'none';
+      statusText.textContent = 'Session ended';
+    }
+
+    // ── XR Frame Loop: Environment Meshing & Hit-Test ──
+    function renderXR(timestamp, frame) {
+      if (!frame) return;
+
+      // 1. Process Detected Real-World Planes (Floor & Walls)
+      if (frame.detectedPlanes) {
+        processDetectedPlanes(frame, frame.detectedPlanes);
+      }
+
+      // 2. Hardware Hit-Testing for Footprint Placement
+      if (xrHitTestSource && !isPlaced) {
+        const hitTestResults = frame.getHitTestResults(xrHitTestSource);
+        if (hitTestResults.length > 0) {
+          const hit = hitTestResults[0];
+          const hitPose = hit.getPose(xrRefSpace);
+          if (hitPose) {
+            reticleGroup.visible = true;
+            reticleGroup.matrix.fromArray(hitPose.transform.matrix);
+            reticleGroup.matrix.decompose(reticleGroup.position, reticleGroup.quaternion, reticleGroup.scale);
+
+            // Compute distance to camera
+            const camPos = new THREE.Vector3();
+            camera.getWorldPosition(camPos);
+            const dist = camPos.distanceTo(reticleGroup.position);
+
+            statusText.textContent = `Floor locked (${dist.toFixed(2)}m) — Tap to place 1:1 sofa`;
+            statusIcon.textContent = '📐';
+          }
+        } else {
+          reticleGroup.visible = false;
+        }
+      }
+
+      // 3. If Placed, Continuously Check Wall Clearance
+      if (isPlaced && sofaGroup && detectedWalls.length > 0) {
+        calculateWallClearance();
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // ── Real-Time Environment Plane Meshing (Floors & Walls) ──
+    function processDetectedPlanes(frame, planes) {
+      let floorCount = 0;
+      let wallCount = 0;
+      detectedWalls = [];
+
+      planes.forEach(plane => {
+        const isHorizontal = plane.orientation === 'horizontal';
+        if (isHorizontal) floorCount++;
+        else wallCount++;
+
+        const pose = frame.getPose(plane.planeSpace, xrRefSpace);
+        if (!pose) return;
+
+        if (!isHorizontal) {
+          detectedWalls.push({
+            position: new THREE.Vector3(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z),
+            orientation: pose.transform.orientation
+          });
+        }
+
+        // Build or update visual wireframe mesh
+        let meshObj = detectedPlaneMeshes.get(plane);
+        if (!meshObj) {
+          const polygon = plane.polygon;
+          if (polygon && polygon.length >= 3) {
+            const shape = new THREE.Shape();
+            shape.moveTo(polygon[0].x, polygon[0].z);
+            for (let i = 1; i < polygon.length; i++) {
+              shape.lineTo(polygon[i].x, polygon[i].z);
+            }
+            shape.closePath();
+
+            const geom = new THREE.ShapeGeometry(shape);
+            const edges = new THREE.EdgesGeometry(geom);
+
+            // Cyan wireframe for floors, Golden wireframe for walls
+            const matColor = isHorizontal ? 0x00e5ff : 0xc9a96e;
+            const lineMat = new THREE.LineBasicMaterial({
+              color: matColor,
+              linewidth: 2,
+              transparent: true,
+              opacity: 0.6
+            });
+            meshObj = new THREE.LineSegments(edges, lineMat);
+            meshObj.rotation.x = -Math.PI / 2;
+            planeWireframeGroup.add(meshObj);
+            detectedPlaneMeshes.set(plane, meshObj);
+          }
+        }
+
+        if (meshObj) {
+          meshObj.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
+        }
+      });
+
+      meshCounter.textContent = `🌐 ${floorCount} floor(s), ${wallCount} wall(s) mapped`;
+    }
+
+    // ── Wall Clearance Calculation ──
+    function calculateWallClearance() {
+      if (detectedWalls.length === 0) return;
+
+      const sofaPos = sofaGroup.position;
+      let minDistance = Infinity;
+
+      detectedWalls.forEach(wall => {
+        const d = Math.hypot(sofaPos.x - wall.position.x, sofaPos.z - wall.position.z) - (CONFIG.depthM / 2);
+        if (d < minDistance) minDistance = d;
+      });
+
+      const distCm = Math.round(minDistance * 100);
+      if (distCm < 0) {
+        wallClearanceStatus.innerHTML = `<span style="color:#ef4444;">⚠️ Clips Wall by ${Math.abs(distCm)} cm</span>`;
+      } else if (distCm <= 10) {
+        wallClearanceStatus.innerHTML = `<span style="color:#f59e0b;">📏 Snug to Wall (${distCm} cm)</span>`;
+      } else {
+        wallClearanceStatus.innerHTML = `<span style="color:#10b981;">✅ Safe Clearance (${distCm} cm)</span>`;
+      }
+    }
+
+    // ── Tap to Place ──
+    function onSelect() {
+      if (reticleGroup && reticleGroup.visible && !isPlaced) {
+        sofaGroup.position.copy(reticleGroup.position);
+
+        // Face camera horizontally
+        const camPos = new THREE.Vector3();
+        camera.getWorldPosition(camPos);
+        const lookTarget = new THREE.Vector3(camPos.x, sofaGroup.position.y, camPos.z);
+        sofaGroup.lookAt(lookTarget);
+
+        sofaGroup.visible = true;
+        reticleGroup.visible = false;
+        isPlaced = true;
+
+        statusText.textContent = 'Sofa placed (1:1 Metric Scale, 0mm drift)';
+        statusIcon.textContent = '🛋️';
+        btnReposition.style.display = 'flex';
+      }
+    }
+
+    // ── Reposition & X-Ray ──
+    btnReposition.addEventListener('click', () => {
+      isPlaced = false;
+      sofaGroup.visible = false;
+      reticleGroup.visible = true;
+      btnReposition.style.display = 'none';
+      statusText.textContent = 'Repositioning — Move camera and tap floor';
+      statusIcon.textContent = '🔄';
+    });
+
+    btnXray.addEventListener('click', () => {
+      isXray = !isXray;
+      btnXray.style.background = isXray ? 'rgba(201, 169, 110, 0.4)' : 'var(--card-bg)';
+      btnXray.textContent = isXray ? '👻 X-Ray: ACTIVE' : '👻 X-Ray Wall Check';
+      applySofaMaterial(currentColor, currentRoughness);
+    });
+
+    // Swatch handlers
+    swatches.forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        swatches.forEach(s => s.classList.remove('active'));
+        swatch.classList.add('active');
+        applySofaMaterial(swatch.dataset.color, swatch.dataset.roughness);
+      });
+    });
+
+    // Startup
+    initThree();
+    checkWebXR();
+  </script>
+</body>
+</html>

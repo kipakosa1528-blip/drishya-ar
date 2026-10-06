@@ -61,6 +61,7 @@ const PAGE_MAP = {
   'preview-frame-mv': 'preview-frame-mv.html',
   'preview-frame-webxr': 'preview-frame-webxr.html',
   'preview-furniture': 'preview-furniture.html',
+  'preview-furniture-webxr': 'preview-furniture-webxr.html',
 };
 
 // Alias paths (alternate spellings) → canonical page file.
