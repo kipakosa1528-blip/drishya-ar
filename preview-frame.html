@@ -372,20 +372,7 @@
           this.modelPivot.add(model);
 
           // Normalize to authentic physical tabletop dimensions: 18cm (7 inches) tall
-          this.modelPivot.scale.set(1, 1, 1);
-          this.modelPivot.updateMatrixWorld(true);
-          const initialBox = new THREE.Box3().setFromObject(this.modelPivot);
-          const rawHeight = initialBox.max.y - initialBox.min.y;
-          if (rawHeight > 0) {
-            const TARGET_HEIGHT = 0.18; // 18cm standard 5x7 desk photo frame
-            const s = TARGET_HEIGHT / rawHeight;
-            this.modelPivot.scale.set(s, s, s);
-          }
-
-          // Compute bounding box after target scale and normalize so lowest point sits flush at y = 0
-          this.modelPivot.updateMatrixWorld(true);
-          const box = new THREE.Box3().setFromObject(this.modelPivot);
-          this.modelPivot.position.y = -box.min.y;
+          this.setTargetHeight(0.18);
 
           this.frameGroup.add(this.modelPivot);
 
@@ -396,6 +383,21 @@
         }, undefined, (err) => {
           console.error('[Kipakosa AR] Error loading 3D frame:', err);
         });
+      },
+
+      setTargetHeight: function(targetH) {
+        if (!this.modelPivot) return;
+        this.modelPivot.scale.set(1, 1, 1);
+        this.modelPivot.updateMatrixWorld(true);
+        const initialBox = new THREE.Box3().setFromObject(this.modelPivot);
+        const rawHeight = initialBox.max.y - initialBox.min.y;
+        if (rawHeight > 0) {
+          const s = targetH / rawHeight;
+          this.modelPivot.scale.set(s, s, s);
+        }
+        this.modelPivot.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(this.modelPivot);
+        this.modelPivot.position.y = -box.min.y;
       },
 
       addContactShadow: function() {
@@ -561,6 +563,17 @@
     });
 
     // Global action helpers
+    let currentHeightM = 0.18;
+    window.adjustScale = function(delta) {
+      const el = document.getElementById('living-frame');
+      if (el && el.components['tabletop-living-frame']) {
+        currentHeightM = Math.max(0.10, Math.min(0.45, Number((currentHeightM + delta).toFixed(2))));
+        el.components['tabletop-living-frame'].setTargetHeight(currentHeightM);
+        const lbl = document.getElementById('scale-label');
+        if (lbl) lbl.textContent = Math.round(currentHeightM * 100) + ' cm';
+      }
+    };
+
     window.resetPlacement = function() {
       const el = document.getElementById('living-frame');
       if (el && el.components['tabletop-living-frame']) {
@@ -608,9 +621,18 @@
     </div>
   </div>
 
-  <!-- Post-placement Single Clean Action Pill -->
-  <div id="placed-controls">
-    <button class="ar-reposition-btn" onclick="resetPlacement()">
+  <!-- Post-placement Action Controls: Scale Adjuster + Reposition -->
+  <div id="placed-controls" style="display:none; gap:6px;">
+    <button class="ar-reposition-btn" style="padding:10px 14px; font-weight:700;" onclick="adjustScale(-0.03)" title="Smaller">
+      <span>－</span>
+    </button>
+    <div class="ar-reposition-btn" style="cursor:default; pointer-events:none; padding:10px 16px;">
+      <span id="scale-label">18 cm</span>
+    </div>
+    <button class="ar-reposition-btn" style="padding:10px 14px; font-weight:700;" onclick="adjustScale(0.03)" title="Larger">
+      <span>＋</span>
+    </button>
+    <button id="btn-reposition" class="ar-reposition-btn" onclick="resetPlacement()">
       <span>↺ Reposition</span>
     </button>
   </div>
@@ -623,10 +645,10 @@
     renderer="colorManagement:true;alpha:true;antialias:true"
     xrweb="allowedDevices: any">
 
-    <!-- Camera configured with Official 8th Wall Ground Raycaster targeting .cantap -->
+    <!-- Camera configured with Tabletop Distance Raycaster targeting .cantap -->
     <a-camera
       id="camera"
-      position="0 1.2 0"
+      position="0 0.45 0"
       raycaster="objects: .cantap"
       cursor="fuse: false; rayOrigin: mouse;">
     </a-camera>

@@ -274,15 +274,25 @@
         <span class="dim-val">61 cm (2'0")</span>
       </div>
       <div class="dim-row" style="margin-top:2px; color:var(--gold); font-weight:600">
-        <span>📐 100% Locked Room Scale</span>
+        <span>📐 100% Grounded Floor Scale</span>
       </div>
     </div>
 
-    <!-- Google <model-viewer> Element -->
+    <!-- Wall Clearance / X-Ray & Dimension Controls -->
+    <div style="position:absolute; top:80px; right:20px; z-index:20; display:flex; flex-direction:column; gap:8px;">
+      <button id="btn-xray" class="top-action" style="width:auto; height:34px; font-size:12px; font-weight:600; padding:0 12px; gap:6px;">
+        👻 X-Ray Wall Check
+      </button>
+      <button id="btn-toggle-dims" class="top-action" style="width:auto; height:34px; font-size:12px; font-weight:600; padding:0 12px; gap:6px;">
+        📐 Dimensions: ON
+      </button>
+    </div>
+
+    <!-- Google <model-viewer> Element with Grounded Origin & Hotspots -->
     <model-viewer
       id="furniture-mv"
-      src="/assets/models/sofa.glb"
-      ios-src="/assets/models/sofa.usdz"
+      src="/assets/models/sofa.glb?v=grounded2"
+      ios-src="/assets/models/sofa.usdz?v=grounded2"
       alt="Kipakosa Luxury Sofa"
       ar
       ar-placement="floor"
@@ -295,6 +305,17 @@
       exposure="1.0"
       interaction-prompt="auto"
       camera-orbit="35deg 70deg 115%">
+
+      <!-- Dimension Hotspots -->
+      <button class="hotspot dim-hotspot" slot="hotspot-dim-w" data-position="0 0.65 -0.65" data-normal="0 0 -1" style="background:rgba(18,18,24,0.9); border:1px solid #c9a96e; color:#fff; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; pointer-events:none;">
+        ↔ 190 cm (Width)
+      </button>
+      <button class="hotspot dim-hotspot" slot="hotspot-dim-d" data-position="0.95 0.65 0" data-normal="1 0 0" style="background:rgba(18,18,24,0.9); border:1px solid #c9a96e; color:#fff; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; pointer-events:none;">
+        ↕ 130 cm (Depth)
+      </button>
+      <button class="hotspot dim-hotspot" slot="hotspot-dim-h" data-position="-0.95 0.35 0" data-normal="-1 0 0" style="background:rgba(18,18,24,0.9); border:1px solid #c9a96e; color:#fff; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; pointer-events:none;">
+        ↕ 61 cm (Height)
+      </button>
 
       <!-- Custom Luxury AR Button Slot -->
       <button slot="ar-button" class="luxury-ar-button">
@@ -336,6 +357,10 @@
   <script>
     const mv = document.getElementById('furniture-mv');
     const swatches = document.querySelectorAll('.swatch-item');
+    const btnXray = document.getElementById('btn-xray');
+    const btnToggleDims = document.getElementById('btn-toggle-dims');
+    let isXray = false;
+    let showDims = true;
 
     function hexToRgb(hex) {
       const bigint = parseInt(hex.replace('#', ''), 16);
@@ -350,10 +375,14 @@
       if (!mv.model || !mv.model.materials || mv.model.materials.length === 0) return;
       
       const [r, g, b] = hexToRgb(hex);
+      const alpha = isXray ? 0.42 : 1.0;
       mv.model.materials.forEach(mat => {
         if (mat && mat.pbrMetallicRoughness) {
-          mat.pbrMetallicRoughness.setBaseColorFactor([r, g, b, 1.0]);
+          mat.pbrMetallicRoughness.setBaseColorFactor([r, g, b, alpha]);
           mat.pbrMetallicRoughness.setRoughnessFactor(parseFloat(roughness));
+          if (mat.setAlphaMode) {
+            mat.setAlphaMode(isXray ? 'BLEND' : 'OPAQUE');
+          }
         }
       });
     }
@@ -367,6 +396,27 @@
         const color = swatch.dataset.color;
         const roughness = swatch.dataset.roughness;
         applyMaterialColor(color, roughness);
+      });
+    });
+
+    // X-Ray Wall Check Toggle
+    btnXray.addEventListener('click', () => {
+      isXray = !isXray;
+      btnXray.style.background = isXray ? 'rgba(201, 169, 110, 0.4)' : 'var(--card-bg)';
+      btnXray.textContent = isXray ? '👻 X-Ray: ACTIVE' : '👻 X-Ray Wall Check';
+
+      const activeSwatch = document.querySelector('.swatch-item.active');
+      if (activeSwatch) {
+        applyMaterialColor(activeSwatch.dataset.color, activeSwatch.dataset.roughness);
+      }
+    });
+
+    // Toggle Dimension Hotspots
+    btnToggleDims.addEventListener('click', () => {
+      showDims = !showDims;
+      btnToggleDims.textContent = showDims ? '📐 Dimensions: ON' : '📐 Dimensions: OFF';
+      document.querySelectorAll('.dim-hotspot').forEach(el => {
+        el.style.display = showDims ? 'block' : 'none';
       });
     });
 

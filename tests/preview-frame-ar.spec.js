@@ -186,7 +186,7 @@ test.describe('Tabletop Living Frame WebAR Automated Test Suite', () => {
     expect(uiState.debugButtonsCount).toBe(0); // Zero debug buttons
 
     // Test Reposition click
-    await page.click('.ar-reposition-btn');
+    await page.click('#btn-reposition');
     const resetState = await page.evaluate(() => {
       const livingFrame = document.getElementById('living-frame');
       const comp = livingFrame.components['tabletop-living-frame'];

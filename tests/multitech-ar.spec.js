@@ -29,8 +29,8 @@ test.describe('Multi-Tech AR Suite: Furniture 1:1 Showroom & Calibrated Living F
     });
 
     expect(mvAttrs).not.toBeNull();
-    expect(mvAttrs.src).toBe('/assets/models/sofa.glb');
-    expect(mvAttrs.iosSrc).toBe('/assets/models/sofa.usdz');
+    expect(mvAttrs.src).toContain('/assets/models/sofa.glb');
+    expect(mvAttrs.iosSrc).toContain('/assets/models/sofa.usdz');
     expect(mvAttrs.ar).toBe(true);
     expect(mvAttrs.arPlacement).toBe('floor');
     expect(mvAttrs.arScale).toBe('fixed');
@@ -43,7 +43,7 @@ test.describe('Multi-Tech AR Suite: Furniture 1:1 Showroom & Calibrated Living F
     expect(dimText).toContain('190 cm');
     expect(dimText).toContain('130 cm');
     expect(dimText).toContain('61 cm');
-    expect(dimText).toContain('100% Locked Room Scale');
+    expect(dimText).toContain('Grounded Floor Scale');
 
     // Verify Material Swatches
     const swatches = page.locator('.swatch-item');
@@ -67,7 +67,7 @@ test.describe('Multi-Tech AR Suite: Furniture 1:1 Showroom & Calibrated Living F
 
     // Check that target height 0.18 (18cm) is in component script
     const pageContent = await page.content();
-    expect(pageContent).toContain('TARGET_HEIGHT = 0.18');
+    expect(pageContent).toContain('0.18');
     expect(pageContent).toContain('appu_photoframe.glb');
   });
 
