@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Kipakosa Living Frame — Native Tabletop WebAR</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1">
+  <meta name="theme-color" content="#0a0a0c">
+
+  <!-- Google <model-viewer> v3.5.0 -->
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #0a0a0c;
+      --card-bg: rgba(18, 18, 24, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --gold: #c9a96e;
+      --gold-glow: rgba(201, 169, 110, 0.28);
+      --text: #f5f5f7;
+      --text-muted: rgba(255, 255, 255, 0.55);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+    }
+
+    #app-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Top Luxury Navigation Bar ── */
+    #top-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: linear-gradient(180deg, rgba(10, 10, 12, 0.85) 0%, rgba(10, 10, 12, 0) 100%);
+      pointer-events: none;
+    }
+
+    .top-action {
+      pointer-events: auto;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 15px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .top-action:active {
+      transform: scale(0.94);
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .brand-title {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.9);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .gold-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 8px var(--gold-glow);
+    }
+
+    /* ── 3D & WebAR Viewer Canvas ── */
+    model-viewer {
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg);
+      --poster-color: transparent;
+      outline: none;
+    }
+
+    /* ── Custom AR Launch Button Slot ── */
+    .luxury-ar-button {
+      position: absolute;
+      bottom: 34px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, rgba(201, 169, 110, 0.95) 0%, rgba(184, 149, 87, 0.95) 100%);
+      color: #0a0a0c;
+      padding: 14px 28px;
+      border-radius: 9999px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 8px 32px rgba(201, 169, 110, 0.35), 0 4px 12px rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+
+    .luxury-ar-button:active {
+      transform: translateX(-50%) scale(0.96);
+      box-shadow: 0 4px 16px rgba(201, 169, 110, 0.25);
+    }
+
+    .luxury-ar-button svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
+    /* ── Bottom Info Pill ── */
+    #bottom-info {
+      position: absolute;
+      bottom: 96px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 8px 16px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    #bottom-info strong {
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    /* ── Audio Hidden Player ── */
+    #bg-audio {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="app-container">
+    <!-- Top Bar -->
+    <header id="top-bar">
+      <a href="/landing" class="top-action" title="Back to Kipakosa">
+        ✕
+      </a>
+      <div class="brand-title">
+        <span class="gold-dot"></span>
+        Kipakosa Living Frame
+      </div>
+      <button class="top-action" id="sound-btn" title="Toggle Audio">
+        🔊
+      </button>
+    </header>
+
+    <!-- Info Pill -->
+    <div id="bottom-info">
+      <span>📐 Fixed <strong>1:1 Real Scale</strong></span>
+      <span>•</span>
+      <span>🪑 <strong>Tabletop</strong> Native AR</span>
+    </div>
+
+    <!-- Hidden Video Source for Texture Streaming -->
+    <video
+      id="frame-video"
+      src="https://pub-f2ad2c43aa344d4bb911e991b04b1fbd.r2.dev/3d4c1b30-0cdb-45af-9d00-07f119f3bb10/optimized.mp4"
+      crossorigin="anonymous"
+      loop
+      playsinline
+      webkit-playsinline
+      preload="auto"
+      muted
+      style="display:none">
+    </video>
+
+    <!-- Google <model-viewer> Element -->
+    <model-viewer
+      id="living-frame-mv"
+      src="/assets/models/appu_photoframe.glb"
+      ios-src="/assets/models/appu_photoframe.usdz"
+      alt="Kipakosa Living Photo Frame"
+      ar
+      ar-modes="webxr scene-viewer quick-look"
+      ar-scale="fixed"
+      ar-placement="floor"
+      camera-controls
+      touch-action="pan-y"
+      shadow-intensity="1.5"
+      shadow-softness="0.8"
+      exposure="1.0"
+      interaction-prompt="auto"
+      camera-orbit="0deg 75deg 105%">
+
+      <!-- Custom Luxury AR Button Slot -->
+      <button slot="ar-button" class="luxury-ar-button">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 4c0-.55.45-1 1-1h4v2H5v3H3V4zm0 16c0 .55.45 1 1 1h4v-2H5v-3H3v4zm17 0c0 .55-.45 1-1 1h-4v-2h3v-3h2v4zm0-16c0-.55-.45-1-1-1h-4v2h3v3h2V4zM7 9h10v6H7V9z"/>
+        </svg>
+        View on Your Tabletop
+      </button>
+
+      <!-- Loading / Progress bar slot -->
+      <div slot="progress-bar" style="display:none"></div>
+    </model-viewer>
+  </div>
+
+  <script>
+    const mv = document.getElementById('living-frame-mv');
+    const video = document.getElementById('frame-video');
+    const soundBtn = document.getElementById('sound-btn');
+    let isMuted = true;
+
+    // Toggle Audio on Click
+    soundBtn.addEventListener('click', () => {
+      isMuted = !isMuted;
+      video.muted = isMuted;
+      soundBtn.textContent = isMuted ? '🔇' : '🔊';
+      if (!isMuted && video.paused) {
+        video.play().catch(() => {});
+      }
+    });
+
+    // Start video playback on first interaction
+    window.addEventListener('click', () => {
+      if (video.paused) {
+        video.play().catch(() => {});
+      }
+    }, { once: true });
+
+    // Video Texture Streaming onto Material.003
+    mv.addEventListener('load', async () => {
+      try {
+        if (!mv.model || !mv.model.materials) return;
+        
+        // Find the display glass material
+        const screenMat = mv.model.materials.find(m => 
+          m.name === 'Material.003' || 
+          m.name === 'Screen' || 
+          m.name === 'Display' || 
+          m.name === 'Photo'
+        );
+
+        if (screenMat && mv.createTextureFromElement) {
+          // Play video stream
+          video.play().catch(() => {});
+
+          const canvas = document.createElement('canvas');
+          canvas.width = 720;
+          canvas.height = 1280;
+          const ctx = canvas.getContext('2d');
+
+          const texture = await mv.createTextureFromElement(canvas);
+          if (screenMat.pbrMetallicRoughness && screenMat.pbrMetallicRoughness.baseColorTexture) {
+            screenMat.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+          }
+
+          function renderFrame() {
+            if (video.readyState >= 2) {
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+              if (texture && texture.apply) {
+                texture.apply();
+              }
+            }
+            requestAnimationFrame(renderFrame);
+          }
+          renderFrame();
+        }
+      } catch (err) {
+        console.warn('[Kipakosa MV] Video texture streaming note:', err);
+      }
+    });
+
+    // Unmute when launching AR
+    mv.addEventListener('ar-status', (event) => {
+      if (event.detail.status === 'session-started') {
+        video.muted = false;
+        isMuted = false;
+        soundBtn.textContent = '🔊';
+      }
+    });
+  </script>
+</body>
+</html>

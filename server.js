@@ -58,6 +58,7 @@ const PAGE_MAP = {
   cookies: 'cookies.html',
   'acceptable-use': 'acceptable-use.html',
   'preview-frame': 'preview-frame.html',
+  'preview-frame-mv': 'preview-frame-mv.html',
 };
 
 // Alias paths (alternate spellings) → canonical page file.
