@@ -3,9 +3,8 @@
 // Reads the full Blender export and writes assets/models/web/appu_frame.glb:
 //   1. bakes a yaw so the photo faces +Z and the frame width runs along X,
 //   2. moves the pivot to bottom-centre (min Y = 0),
-//   3. swaps the gravel moulding for a flat PBR walnut material (easy to re-tint at runtime),
-//   4. replaces the transmission glass with cheap alpha-blended glass,
-//   5. resizes textures to 1024 px WebP and prunes everything unused.
+//   3. keeps your authored materials and textures (re-encoded as WebP, photo 2048px, rest 1024px),
+//   4. prunes everything unused.
 // The AR model (assets/models/appu_photoframe.glb) is NOT touched.
 import fs from 'fs';
 import path from 'path';
@@ -50,27 +49,14 @@ for (const child of scene.listChildren()) { scene.removeChild(child); wrapper.ad
 scene.addChild(wrapper);
 console.log('baked yaw:', ((yaw * 180) / Math.PI).toFixed(1), 'deg');
 
-// ── 3/4. Materials ──────────────────────────────────────────────────────────
-for (const mat of root.listMaterials()) {
-  const name = mat.getName();
-  if (name.startsWith('CityStreetAsphalt')) {
-    mat.setName('Moulding_Walnut')
-      .setBaseColorTexture(null).setNormalTexture(null).setMetallicRoughnessTexture(null)
-      .setBaseColorFactor([0.2, 0.115, 0.06, 1]).setMetallicFactor(0).setRoughnessFactor(0.55);
-  }
-  if (name === 'Material.003') {
-    mat.setName('Glass')
-      .setExtension('KHR_materials_transmission', null)
-      .setAlphaMode('BLEND').setBaseColorFactor([1, 1, 1, 0.06])
-      .setMetallicFactor(0).setRoughnessFactor(0.04).setDoubleSided(false);
-  }
-}
-
+// Materials are kept exactly as authored in Blender (real textures, real glass).
 await doc.transform(
   center({ pivot: 'below' }),
   dedup(),
   prune({ keepAttributes: true }),
-  textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [1024, 1024], quality: 82 }),
+  // The printed photo keeps full detail; the tiled frame textures are viewed small, 1024px is plenty.
+  textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [2048, 2048], quality: 86, pattern: /^original$/ }),
+  textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [1024, 1024], quality: 85, pattern: /^(?!original$)/ }),
 );
 
 await io.write(OUT, doc);

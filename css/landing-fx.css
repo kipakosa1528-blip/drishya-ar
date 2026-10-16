@@ -1,0 +1,79 @@
+/* Landing polish: scroll progress line, section rail, reveal-on-scroll.
+   Companion to js/landing-fx.js. */
+
+/* ── Scroll progress ── */
+.fx-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  z-index: 700;
+  pointer-events: none;
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  background: linear-gradient(90deg, rgba(212, 175, 95, 0), #d4af5f 35%, #f3d98c);
+  box-shadow: 0 0 12px rgba(212, 175, 95, 0.6);
+}
+
+/* ── Section rail ── */
+.fx-rail {
+  position: fixed;
+  left: 22px;
+  top: 50%;
+  z-index: 450;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.fx-rail.is-shown { opacity: 1; }
+@media (min-width: 1200px) and (pointer: fine) {
+  .fx-rail { display: flex; }
+}
+.fx-rail a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 4px;
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+}
+.fx-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  transition: transform 0.35s ease, background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+}
+.fx-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.fx-rail a:hover .fx-label,
+.fx-rail a:focus-visible .fx-label { opacity: 1; transform: none; color: #fff; }
+.fx-rail a.is-active .fx-dot {
+  transform: scale(1.5);
+  background: #d4af5f;
+  border-color: #d4af5f;
+  box-shadow: 0 0 10px rgba(212, 175, 95, 0.8);
+}
+.fx-rail a.is-active:hover .fx-label { color: #d4af5f; }
+
+/* ── Reveal on scroll (uses `translate`, so it never fights GSAP or hover transforms) ── */
+.fx-on .fx-reveal {
+  opacity: 0;
+  translate: 0 34px;
+  transition: opacity 0.9s cubic-bezier(0.2, 0.7, 0.2, 1), translate 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.fx-on .fx-reveal.fx-in {
+  opacity: 1;
+  translate: 0 0;
+}

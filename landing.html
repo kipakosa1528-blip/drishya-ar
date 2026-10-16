@@ -157,6 +157,7 @@
 
   <link rel="stylesheet" href="/css/landing.css" />
   <link rel="stylesheet" href="/css/scene3d.css" />
+  <link rel="stylesheet" href="/css/landing-fx.css" />
 </head>
 <body>
 
@@ -323,6 +324,8 @@
     <section class="tiktok-demos-section" id="tiktok-demos" aria-label="Living Demos">
       <div class="container">
         <div class="tiktok-grid">
+          <!-- Slot 1 stays empty: the 3D frame docks here -->
+          <div class="reel-stage" data-stage="reels" aria-hidden="true"></div>
           <!-- Demo 1 -->
           <div class="photo-frame-modern" data-aspect="portrait">
             <div class="frame-glass">
@@ -377,6 +380,14 @@
            aria-label="Rotating gallery of living prints. Drag, scroll sideways, or use arrow keys to rotate; the front frame plays on hover.">
         <div class="rail-viewport">
         <ul class="rail">
+          <!-- The 3D frame joins the ring as one of the pieces; it is drawn by scene3d.js -->
+          <li class="moment-card" data-appu-frame>
+            <div class="moment-frame">
+              <div class="moment-photo-wrap">
+                <img class="moment-poster" src="/assets/demo-target-appu.jpg" alt="Appu living frame" loading="lazy" draggable="false" />
+              </div>
+            </div>
+          </li>
           <li class="moment-card" data-video="/assets/exhibition/nepal-flag.mp4">
             <div class="moment-frame">
               <div class="moment-photo-wrap">
@@ -473,68 +484,42 @@
     <!-- ══════════════════════════════════════
          ACT III — ASYMMETRICAL LIVING WORKS
     ══════════════════════════════════════ -->
-    <section class="asymmetric-gallery-section" id="works" aria-label="Living Gallery">
+    <section class="asymmetric-gallery-section works-simple" id="works" aria-label="Living Gallery">
       <div class="container">
 
-        <div class="editorial-section-intro">
-          <span class="intro-tag">LIVING WORKS</span>
-          <h2 class="editorial-display-heading">Framed for your space.</h2>
+        <div class="works-head">
+          <div class="editorial-section-intro">
+            <span class="intro-tag">LIVING WORKS</span>
+            <h2 class="editorial-display-heading">Framed for your space.</h2>
+          </div>
+          <blockquote class="editorial-pullquote works-quote">
+            “Photography preserved the moment. Kipakosa returns its life and motion.”
+          </blockquote>
         </div>
 
-        <!-- Master Feature: Full-height Boudhanath Stupa with offset text -->
-        <div class="gallery-hero-duo">
-          <div class="duo-media-col photo-frame-modern" data-aspect="portrait">
-            <div class="frame-glass">
-              <img src="/assets/exhibition/boudhanath-stupa-poster.jpg" alt="Boudhanath Holy Stupa" class="frame-photo-base" loading="lazy" />
-              <video src="/assets/exhibition/boudhanath-stupa.mp4" class="frame-video-stream" loop muted playsinline preload="none"></video>
-              <div class="frame-sheen-layer"></div>
+        <!-- Two works, plus a stage where the 3D frame arrives as the third piece -->
+        <div class="works-row">
+          <figure class="work-item">
+            <div class="photo-frame-modern" data-aspect="portrait">
+              <div class="frame-glass">
+                <img src="/assets/exhibition/boudhanath-stupa-poster.jpg" alt="Boudhanath Holy Stupa" class="frame-photo-base" loading="lazy" />
+                <video src="/assets/exhibition/boudhanath-stupa.mp4" class="frame-video-stream" loop muted playsinline preload="none"></video>
+                <div class="frame-sheen-layer"></div>
+              </div>
             </div>
-            <div class="duo-caption">
-              <h3 class="duo-title">Boudhanath Holy Mandala</h3>
-              <p class="duo-desc">Sacred circumambulations preserved in living physical ink.</p>
-            </div>
-          </div>
+          </figure>
 
-          <div class="duo-statement-col">
-            <blockquote class="editorial-pullquote">
-              “Photography preserved the moment. Kipakosa returns its life and motion.”
-            </blockquote>
-            <div class="duo-secondary-media photo-frame-modern" data-aspect="portrait">
+          <figure class="work-item">
+            <div class="photo-frame-modern" data-aspect="portrait">
               <div class="frame-glass">
                 <img src="/assets/exhibition/gurung-dancer-poster.jpg" alt="Cultural Celebration" class="frame-photo-base" loading="lazy" />
                 <video src="/assets/exhibition/gurung-dancer.mp4" class="frame-video-stream" loop muted playsinline preload="none"></video>
                 <div class="frame-sheen-layer"></div>
               </div>
-              <div class="duo-caption">
-                <h3 class="duo-title">Cultural Celebration</h3>
-              </div>
             </div>
-          </div>
-        </div>
+          </figure>
 
-        <!-- Overlapping Panoramas Duo -->
-        <div class="gallery-panoramas-row">
-          <div class="panorama-col-large photo-frame-modern" data-aspect="landscape">
-            <div class="frame-glass">
-              <img src="/assets/exhibition/annapurna-golden-poster.jpg" alt="Annapurna Golden Sunset" class="frame-photo-base" loading="lazy" />
-              <video src="/assets/exhibition/annapurna-golden.mp4" class="frame-video-stream" loop muted playsinline preload="none"></video>
-              <div class="frame-sheen-layer"></div>
-            </div>
-            <div class="duo-caption">
-              <h3 class="duo-title">Annapurna Golden Sunset</h3>
-            </div>
-          </div>
-
-          <div class="panorama-col-offset photo-frame-modern" data-aspect="landscape">
-            <div class="frame-glass">
-              <img src="/assets/exhibition/himalayan-flags-poster.jpg" alt="Mountain Ridge Expeditions" class="frame-photo-base" loading="lazy" />
-              <video src="/assets/exhibition/himalayan-flags.mp4" class="frame-video-stream" loop muted playsinline preload="none"></video>
-              <div class="frame-sheen-layer"></div>
-            </div>
-            <div class="duo-caption">
-              <h3 class="duo-title">Mountain Ridge Expeditions</h3>
-            </div>
-          </div>
+          <div class="work-stage" data-stage="works" aria-hidden="true"></div>
         </div>
 
       </div>
@@ -555,16 +540,16 @@
         </div>
 
         <div class="gallery-hero-duo" style="align-items:center">
-          <div class="duo-media-col photo-frame-modern" data-aspect="landscape">
-            <div class="frame-glass">
-              <img src="/assets/exhibition/pokhara-clouds-poster.jpg" alt="Living Multi-Target Album" class="frame-photo-base" loading="lazy" />
-              <video src="/assets/exhibition/pokhara-clouds.mp4" class="frame-video-stream" loop muted playsinline preload="none"></video>
-              <div class="frame-sheen-layer"></div>
+          <!-- A spread: the magazine clip as a frame, and a stage where the 3D frame arrives beside it -->
+          <div class="mag-spread">
+            <div class="photo-frame-modern" data-aspect="landscape">
+              <div class="frame-glass">
+                <img src="/assets/exhibition/pokhara-clouds-poster.jpg" alt="Living Multi-Target Album" class="frame-photo-base" loading="lazy" />
+                <video src="/assets/exhibition/pokhara-clouds.mp4" class="frame-video-stream" loop muted playsinline preload="none"></video>
+                <div class="frame-sheen-layer"></div>
+              </div>
             </div>
-            <div class="duo-caption">
-              <h3 class="duo-title">Multi-Page Bespoke Editions</h3>
-              <p class="duo-desc">Up to dozens of interactive target pages in a single printed volume.</p>
-            </div>
+            <div class="mag-stage" data-stage="magazines" aria-hidden="true"></div>
           </div>
 
           <div class="duo-statement-col" style="display:flex;flex-direction:column;gap:24px">
@@ -630,6 +615,8 @@
 
         <!-- Phone Mockup with Hover-Playing Edge-to-Edge Video -->
         <div class="optical-visual-col">
+          <!-- The 3D frame takes the phone's place (the phone below is the fallback without 3D) -->
+          <div class="scan-stage" data-stage="scanner" aria-hidden="true"></div>
           <div class="hud-monolith-phone photo-frame-modern" id="scanner-phone-frame">
             <div class="hud-screen">
               <img src="/assets/exhibition/reel-patan-heritage-poster.jpg" alt="Patan Heritage AR Scan" class="hud-feed-bg" />
@@ -676,6 +663,8 @@
         <div class="demo-editorial-grid">
           <!-- Left Column: The Target Photo in an Editorial Frame -->
           <div class="demo-frame-col">
+            <!-- The 3D frame replaces the flat target image (kept below as the fallback without 3D) -->
+            <div class="demo-stage" data-stage="demo" aria-hidden="true"></div>
             <div class="editorial-frame photo-frame-modern" data-aspect="portrait">
               <div class="frame-glass">
                 <img
@@ -760,12 +749,15 @@
     <section class="pricing-editorial-section pricing-section-home" id="pricing" aria-label="Sizes and Pricing">
       <div class="container" style="max-width:1160px;margin:0 auto">
 
-        <div style="text-align:center;margin-bottom:40px">
+        <div class="pricing-head">
+          <div class="pricing-head-text">
           <span class="intro-tag">ACT VI — LIVING PHOTO PRICING</span>
           <h2 class="editorial-display-heading" style="margin-top:10px">Simple Pricing Per Living Photo.</h2>
-          <p style="color:var(--text-secondary);max-width:720px;margin:14px auto 0;font-size:15.5px;line-height:1.6">
+          <p style="color:var(--text-secondary);max-width:720px;margin:14px 0 0;font-size:15.5px;line-height:1.6">
             Each plan is a one-time activation for <strong>1 living photograph + video memory pair</strong>. Point any smartphone camera at your photo to unlock the video memory with zero app downloads.
           </p>
+          </div>
+          <div class="pricing-stage" data-stage="pricing" aria-hidden="true"></div>
         </div>
 
         <!-- Tier Switcher Capsule -->
@@ -1020,6 +1012,7 @@
           <span style="font-size:12px;letter-spacing:0.2em;color:var(--gold-primary);text-transform:uppercase;font-weight:700">Everything You Need To Know</span>
           <h2 style="font-family:var(--font-serif);font-size:clamp(30px, 4vw, 44px);color:#fff;margin:10px 0 14px">AR Photo Frames &amp; Living Prints in Nepal</h2>
           <p style="color:var(--text-secondary);font-size:15px;line-height:1.6">Learn how augmented reality living photo frames work, explore frame sizes, and order custom gifts in Kathmandu and across Nepal.</p>
+          <div class="faq-stage" data-stage="faq" aria-hidden="true"></div>
         </div>
 
         <div class="faq-accordion-list" style="display:flex;flex-direction:column;gap:14px">
@@ -1127,6 +1120,7 @@
         <p class="footer-mission">
           Kipakosa bridges physical tangible prints and digital memory through next-generation web spatial technology.
         </p>
+        <div class="footer-stage" data-stage="footer" aria-hidden="true"></div>
       </div>
 
       <div class="footer-columns-group">
@@ -1180,6 +1174,7 @@
   <script src="/js/moments-rail.js"></script>
   <script src="/js/landing.js"></script>
   <script src="/js/lazy-media.js"></script>
+  <script src="/js/landing-fx.js"></script>
   <script type="module" src="/js/scene3d.js"></script>
   <script>
     window.DEMO_PROJECTS = {

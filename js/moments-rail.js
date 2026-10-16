@@ -109,8 +109,10 @@
         closestIdx = i;
       }
 
-      if (absDiff > maxVisible) {
+      // The Appu frame's card is never hidden: the 3D frame follows it round the ring.
+      if (absDiff > maxVisible && !cards[i].hasAttribute('data-appu-frame')) {
         cards[i].style.display = 'none';
+        cards[i].__rail = null;
         continue;
       }
 
@@ -125,6 +127,7 @@
       const opacity = Math.max(0, 1 - absDiff * 0.22);
       const brightness = Math.max(0.42, 1 - absDiff * 0.15);
       const zIndex = Math.round(100 - absDiff * 10);
+      cards[i].__rail = { ry: rotY, o: opacity, b: brightness, abs: absDiff, diff }; // read by scene3d.js
 
       cards[i].style.zIndex = zIndex;
       cards[i].style.opacity = opacity.toFixed(3);

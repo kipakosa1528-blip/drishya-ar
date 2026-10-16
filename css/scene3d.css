@@ -9,7 +9,10 @@
   z-index: 5;
   pointer-events: none;
   opacity: 0;
+  transition: opacity 0.8s ease;
 }
+
+html.scene3d-ready #scene3d { opacity: 1; }
 
 html.scene3d-off #scene3d { display: none; }
 
@@ -21,8 +24,7 @@ html.lenis, html.lenis body { height: auto; }
 /* While the 3D frame is live, it replaces the flat story frame (same spot,
    same video). Falls back to the flat frame when 3D is off or unavailable. */
 html.scene3d-ready:not(.scene3d-off) .story-frame-col .hero-center-frame {
-  opacity: 0;
-  pointer-events: none;
+  opacity: 0; /* still hoverable: the page's hover code plays its video, the 3D frame mirrors it */
 }
 
 /* Respect visitors who ask for less motion: no decorative animation or
@@ -43,4 +45,142 @@ html.scene3d-ready:not(.scene3d-off) .story-frame-col .hero-center-frame {
   flex-wrap: wrap;
   gap: 10px 22px;
   max-width: 100%;
+}
+
+/* ── Footer stage: the frame's final home, under the tagline ── */
+.footer-stage {
+  position: relative;
+  height: clamp(300px, 30vw, 420px);
+  margin-top: 28px;
+}
+html.scene3d-off .footer-stage { display: none; }
+/* Let the frame show through the footer while 3D is live. */
+html.scene3d-ready:not(.scene3d-off) .footer-cinematic {
+  background: linear-gradient(180deg, rgba(5, 6, 8, 0) 0%, rgba(5, 6, 8, 0.6) 45%, #050608 100%);
+}
+
+/* ── Reels row: five slots, the first one reserved for the 3D frame ── */
+.reel-stage { display: none; cursor: pointer; }
+/* All five slots share one proportion so the row reads as a set (the frame is 5:7). */
+@media (min-width: 1100px) {
+  /* Cards take the 3D frame's 7:10 outline and go invisible: the 3D frame is drawn over each one,
+     and the card stays underneath as the hover target that plays its video. */
+  html.scene3d-ready:not(.scene3d-off) .tiktok-grid .frame-glass { aspect-ratio: 7 / 10; }
+  html.scene3d-ready:not(.scene3d-off) .tiktok-grid .photo-frame-modern { opacity: 0; }
+}
+@media (min-width: 1100px) {
+  html.scene3d-ready:not(.scene3d-off) .tiktok-grid { grid-template-columns: repeat(5, 1fr); }
+  html.scene3d-ready:not(.scene3d-off) .reel-stage { display: block; }
+}
+
+
+/* ── Exhibition ring: every card is drawn as the 3D frame; the DOM cards stay as invisible hit targets ── */
+@media (min-width: 1100px) {
+  html.scene3d-ready:not(.scene3d-off) .moment-card .moment-frame { opacity: 0; }
+}
+
+/* ── Living Works: two works and the quote on one compact row ── */
+.works-simple { padding-top: 90px; padding-bottom: 90px; }
+.works-simple .works-head {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 64px;
+  align-items: end;
+  margin-bottom: 56px;
+}
+.works-simple .works-quote { margin: 0; }
+.works-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 300px));
+  gap: 56px;
+  justify-content: center;
+  align-items: start;
+}
+.work-item { margin: 0; }
+.work-stage { display: none; }
+@media (max-width: 900px) {
+  .works-simple .works-head { grid-template-columns: 1fr; gap: 24px; }
+  .works-row { grid-template-columns: minmax(0, 320px); }
+}
+@media (min-width: 1100px) {
+  html.scene3d-ready:not(.scene3d-off) .works-row { grid-template-columns: repeat(3, minmax(0, 300px)); }
+  html.scene3d-ready:not(.scene3d-off) .work-stage { display: block; aspect-ratio: 7 / 10; cursor: pointer; }
+  html.scene3d-ready:not(.scene3d-off) .works-row .frame-glass { aspect-ratio: 7 / 10; }
+  html.scene3d-ready:not(.scene3d-off) .works-row .photo-frame-modern { opacity: 0; }
+}
+
+/* ── How it works: the 3D frame replaces the phone-scan mockup ── */
+.scan-stage { display: none; }
+@media (min-width: 1100px) {
+  html.scene3d-ready:not(.scene3d-off) .scan-stage {
+    display: block;
+    width: min(100%, 380px);
+    aspect-ratio: 7 / 10;
+    margin: 0 auto;
+    cursor: pointer;
+  }
+  html.scene3d-ready:not(.scene3d-off) #scanner .hud-monolith-phone { display: none; }
+}
+
+/* ── Live demo: the 3D frame replaces the flat target image ── */
+.demo-stage { display: none; }
+@media (min-width: 1100px) {
+  html.scene3d-ready:not(.scene3d-off) .demo-stage {
+    display: block;
+    width: 100%;
+    max-width: 340px;
+    aspect-ratio: 7 / 10;
+    margin: 0 auto 18px;
+  }
+  html.scene3d-ready:not(.scene3d-off) .demo-frame-col .frame-glass { display: none; }
+}
+
+/* ── Magazines: a spread of two frames beside the copy ── */
+.mag-spread { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; max-width: 580px; }
+.mag-stage { display: none; }
+@media (min-width: 1100px) {
+  html.scene3d-ready:not(.scene3d-off) .mag-spread { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html.scene3d-ready:not(.scene3d-off) .mag-stage { display: block; aspect-ratio: 7 / 10; cursor: pointer; }
+  html.scene3d-ready:not(.scene3d-off) .mag-spread .frame-glass { aspect-ratio: 7 / 10; }
+  html.scene3d-ready:not(.scene3d-off) .mag-spread .photo-frame-modern { opacity: 0; }
+}
+
+/* ── Pricing: copy on the left, the frame on the right (centred header without 3D) ── */
+.pricing-head { text-align: center; margin-bottom: 40px; }
+.pricing-head-text p { margin-left: auto; margin-right: auto; }
+.pricing-stage { display: none; }
+@media (min-width: 1100px) {
+  html.scene3d-ready:not(.scene3d-off) .pricing-head {
+    display: grid;
+    grid-template-columns: 1fr 210px;
+    gap: 56px;
+    align-items: center;
+    text-align: left;
+  }
+  html.scene3d-ready:not(.scene3d-off) .pricing-head-text p { margin-left: 0; margin-right: 0; }
+  html.scene3d-ready:not(.scene3d-off) .pricing-stage { display: block; aspect-ratio: 7 / 10; cursor: pointer; }
+}
+
+/* ── FAQ: heading and frame on the left, the questions on the right ── */
+.faq-stage { display: none; }
+@media (min-width: 1100px) {
+  html.scene3d-ready:not(.scene3d-off) .faq-section .container {
+    display: grid;
+    grid-template-columns: 5fr 7fr;
+    gap: 64px;
+    max-width: 1160px !important;
+    align-items: start;
+  }
+  html.scene3d-ready:not(.scene3d-off) .faq-section .container > div:first-child {
+    text-align: left !important;
+    position: sticky;
+    top: 110px;
+  }
+  html.scene3d-ready:not(.scene3d-off) .faq-stage {
+    display: block;
+    width: 230px;
+    aspect-ratio: 7 / 10;
+    margin-top: 56px;
+    cursor: pointer;
+  }
 }
