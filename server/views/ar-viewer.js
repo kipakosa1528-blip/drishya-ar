@@ -50,6 +50,9 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=1">
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1">
+  ${is3D && modelUrl ? `
+  <link rel="preload" as="fetch" href="${esc(modelUrl)}" crossorigin="anonymous">
+  ` : ''}
   ${!is3D && videoUrl ? `
   <!-- NOTE: we deliberately do NOT <link preload as=video> — that would force the
        whole (potentially 100+ MB) file to download before the camera starts. -->
@@ -74,7 +77,7 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
             
             obj.position.set(0, 0, 0);
             obj.scale.set(1, 1, 1);
-            obj.updateMatrixWorld(true);
+            obj.updateMatrix();
 
             // Ensure proper material handling: transparent textures (e.g. clouds, glass)
             // have depthWrite = false so they do not occlude geometry behind them
@@ -89,22 +92,39 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
               }
             });
 
-            var bbox = new THREE.Box3().setFromObject(obj);
-            var size = bbox.getSize(new THREE.Vector3());
-            var center = bbox.getCenter(new THREE.Vector3());
+            // Compute local bounding box strictly relative to obj itself
+            // (invariant to parent rotation, camera distance, or target translation)
+            obj.updateWorldMatrix(false, true);
+            var inv = new THREE.Matrix4().copy(obj.matrixWorld).invert();
+            var localBox = new THREE.Box3();
+            obj.traverse(function(child) {
+              if (child.isMesh && child.geometry) {
+                if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
+                var childToObj = new THREE.Matrix4().multiplyMatrices(inv, child.matrixWorld);
+                localBox.union(child.geometry.boundingBox.clone().applyMatrix4(childToObj));
+              }
+            });
+
+            var size = localBox.getSize(new THREE.Vector3());
+            var center = localBox.getCenter(new THREE.Vector3());
             var maxDim = Math.max(size.x, size.y, size.z);
 
             if (maxDim > 0) {
               var s = this.data.targetSize / maxDim;
               obj.scale.set(s, s, s);
               
-              // Center horizontally over photo target
+              // Center horizontally over photo target in local coordinates
               obj.position.x = -center.x * s;
               obj.position.z = -center.z * s;
               
               // Ground bottom of model so it floats completely ON TOP of the photo surface (>= 0)
-              var bottomY = bbox.min.y;
+              var bottomY = localBox.min.y;
               obj.position.y = -bottomY * s + Number(this.data.hoverGap);
+            }
+
+            // If target is currently active, ensure model is made visible immediately
+            if (typeof targetActive !== 'undefined' && targetActive) {
+              this.el.setAttribute('visible', 'true');
             }
           });
         }
@@ -252,8 +272,7 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
     xrweb="allowedDevices: any; disableWorldTracking: true; disableDefaultEnvironment: true">
     <a-assets>
       ${is3D ? `
-      <!-- 3D model is loaded lazily on target-found (see xrimagefound) so the
-           camera starts instantly instead of waiting for the whole GLB. -->
+      <!-- 3D model preloaded into scene graph for instant display on target detection -->
       ` : `
       <video id="ar-video" src="${esc(videoUrl)}"
         preload="metadata" loop playsinline webkit-playsinline x5-playsinline crossorigin="anonymous">
@@ -261,10 +280,14 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
       `}
     </a-assets>
     <a-camera position="0 0 0"></a-camera>
+    ${is3D ? `
+    <a-entity light="type: ambient; color: #ffffff; intensity: 1.2"></a-entity>
+    <a-entity light="type: directional; color: #ffffff; intensity: 1.5" position="0.5 1 1"></a-entity>
+    ` : ''}
     <xrextras-named-image-target name="target0">
       ${is3D ? `
       <a-entity id="ar-model-container" position="0 0 0" rotation="${esc(modelRotation)}">
-        <a-entity id="ar-model" fit-model="targetSize: ${Number(planeW) || 1.0}" ${autoRotate ? `spin-axis="speed: ${spinSpeed}"` : ''} visible="false"></a-entity>
+        <a-entity id="ar-model" gltf-model="url(${esc(modelUrl)})" fit-model="targetSize: ${Number(planeW) || 1.0}" ${autoRotate ? `spin-axis="speed: ${spinSpeed}"` : ''} visible="false"></a-entity>
       </a-entity>
       ` : `
       <a-plane id="ar-plane" width="${Number(planeW)}" height="${Number(planeH)}" position="0 0 0.001" visible="false"
@@ -537,10 +560,11 @@ export function renderArPage({ name, overlayType = 'video', modelUrl = '', video
       if (scanOverlay) scanOverlay.classList.add('hidden');
 
       if (model) {
-        if (AR_MODEL_URL && !model.getAttribute('gltf-model')) {
+        if (model.getObject3D('mesh')) {
+          model.setAttribute('visible', 'true');
+        } else if (AR_MODEL_URL && !model.getAttribute('gltf-model')) {
           model.setAttribute('gltf-model', 'url(' + AR_MODEL_URL + ')');
         }
-        model.setAttribute('visible', 'true');
       }
 
       if (video) {

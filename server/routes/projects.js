@@ -175,6 +175,8 @@ export function registerProjectsRoutes(app, { requireAuth }) {
         targetData.overlay_type = '3d';
         targetData.model_path = resolvedModelPath;
         targetData.model_url = r2Url(resolvedModelPath);
+        targetData.transcode_status = 'queued';
+        targetData.transcode_error = null;
       } else if (resolvedVideoPath) {
         targetData.overlay_type = 'video';
         // Queue the self-hosted ffmpeg transcode (VM worker).
