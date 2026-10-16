@@ -17,3 +17,10 @@ html.scene3d-off #scene3d { display: none; }
 html.lenis, html.lenis body { height: auto; }
 .lenis.lenis-smooth { scroll-behavior: auto !important; }
 .lenis.lenis-stopped { overflow: hidden; }
+
+/* While the 3D frame is live, it replaces the flat story frame (same spot,
+   same video). Falls back to the flat frame when 3D is off or unavailable. */
+html.scene3d-ready:not(.scene3d-off) .story-frame-col .hero-center-frame {
+  opacity: 0;
+  pointer-events: none;
+}
