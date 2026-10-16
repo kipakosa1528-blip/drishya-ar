@@ -24,3 +24,23 @@ html.scene3d-ready:not(.scene3d-off) .story-frame-col .hero-center-frame {
   opacity: 0;
   pointer-events: none;
 }
+
+/* Respect visitors who ask for less motion: no decorative animation or
+   smooth scrolling (the 3D scene and Lenis are also disabled in JS). */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Footer links wrapped to a single row and pushed the page ~10px wider than
+   the screen on 360-375px phones. */
+.footer-sub-links {
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  max-width: 100%;
+}

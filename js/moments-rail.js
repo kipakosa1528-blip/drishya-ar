@@ -46,7 +46,7 @@
       v.loop = true;
       v.playsInline = true;
       v.setAttribute('playsinline', '');
-      v.preload = 'metadata';
+      v.preload = 'none';
       v.className = 'moment-video';
       photoWrap.appendChild(v);
       videos.set(card, v);
