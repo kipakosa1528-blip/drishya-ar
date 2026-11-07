@@ -195,8 +195,18 @@ async function init() {
     const tex = new VideoTexture(v);
     tex.colorSpace = SRGBColorSpace;
     tex.flipY = false;
-    const fit = () => { if (v.videoWidth) { cover(tex, v.videoWidth, v.videoHeight); story.videoTex = tex; } };
+    tex.generateMipmaps = false;
+    const fit = () => {
+      if (v.videoWidth > 0 && v.videoHeight > 0) {
+        cover(tex, v.videoWidth, v.videoHeight);
+        story.videoTex = tex;
+        tex.needsUpdate = true;
+      }
+    };
     v.addEventListener('loadedmetadata', fit);
+    v.addEventListener('loadeddata', fit);
+    v.addEventListener('canplay', fit);
+    v.addEventListener('playing', fit);
     fit();
   }
 
@@ -207,14 +217,26 @@ async function init() {
     appuVid.requested = true;
     const v = document.createElement('video');
     v.src = '/assets/exhibition/appu-living.mp4';
+    v.crossOrigin = 'anonymous';
+    v.setAttribute('crossorigin', 'anonymous');
     v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
     v.setAttribute('playsinline', '');
     appuVid.video = v;
     const tex = new VideoTexture(v);
     tex.colorSpace = SRGBColorSpace;
     tex.flipY = false;
-    const fit = () => { if (v.videoWidth) { cover(tex, v.videoWidth, v.videoHeight); appuVid.tex = tex; } };
+    tex.generateMipmaps = false;
+    const fit = () => {
+      if (v.videoWidth > 0 && v.videoHeight > 0) {
+        cover(tex, v.videoWidth, v.videoHeight);
+        appuVid.tex = tex;
+        tex.needsUpdate = true;
+      }
+    };
     v.addEventListener('loadedmetadata', fit);
+    v.addEventListener('loadeddata', fit);
+    v.addEventListener('canplay', fit);
+    v.addEventListener('playing', fit);
     v.load();
   }
   const playAppuVideo = () => { const v = appuVid.video; if (v && v.paused) v.play().catch(() => {}); };
@@ -242,22 +264,29 @@ async function init() {
   let overlayTarget = 0;
 
   function steerContent(wanted) {
-    if (pendingSwap) return; // finish the current dissolve first
     const m = maps();
-    if (wanted === 'video' && content === 'appu') wanted = 'still'; // always pass through the still
-    if (wanted === 'appuVideo' && content !== 'appu' && content !== 'appuVideo') wanted = 'appu'; // wake from the Appu print
-    if (content === 'appuVideo' && wanted !== 'appu' && wanted !== 'appuVideo') wanted = 'appu'; // and settle back to it first
-    if (!m[wanted] || wanted === content) return;
+    if (!m[wanted]) return;
+    if (wanted === 'video' && content === 'appu') wanted = 'still';
+    if (wanted === 'appuVideo' && content !== 'appu' && content !== 'appuVideo') wanted = 'appu';
+    if (content === 'appuVideo' && wanted !== 'appu' && wanted !== 'appuVideo') wanted = 'appu';
+    if (wanted === content) return;
+
     if (wanted === 'video' || wanted === 'appuVideo') {
       overlayMat.map = m[wanted];
+      overlayMat.needsUpdate = true;
       overlayTarget = 1;
+      pendingSwap = null;
     } else if (content === 'video' || content === 'appuVideo') {
-      photo.material.map = m[wanted]; // video fades out over the new base
+      photo.material.map = m[wanted];
+      photo.material.needsUpdate = true;
       overlayTarget = 0;
+      pendingSwap = null;
     } else {
-      overlayMat.map = m[wanted];
-      overlayTarget = 1;
-      pendingSwap = wanted;
+      photo.material.map = m[wanted];
+      photo.material.needsUpdate = true;
+      overlayTarget = 0;
+      overlayMat.opacity = 0;
+      pendingSwap = null;
     }
     content = wanted;
   }
@@ -455,24 +484,51 @@ async function init() {
   }
 
   function loadReelMedia(f) {
+    if (f.requested) return;
     f.requested = true;
+    if (!f.posterEl) f.posterEl = f.card.querySelector('.moment-poster') || f.card.querySelector('.frame-photo-base');
+    if (!f.video) f.video = f.card.querySelector('video');
+
     if (f.posterEl) {
-      new TextureLoader().load(f.posterEl.currentSrc || f.posterEl.src, (t) => {
-        t.colorSpace = SRGBColorSpace;
-        t.flipY = false;
-        cover(t, t.image.width, t.image.height);
-        f.photo.material.map = t;
-      });
+      const src = f.posterEl.currentSrc || f.posterEl.src;
+      if (src) {
+        new TextureLoader().load(src, (t) => {
+          t.colorSpace = SRGBColorSpace;
+          t.flipY = false;
+          cover(t, t.image.width, t.image.height);
+          f.photo.material.map = t;
+          f.photo.material.needsUpdate = true;
+        });
+      }
     }
     const v = f.video;
     if (!v) return;
     v.crossOrigin = 'anonymous';
     v.setAttribute('crossorigin', 'anonymous');
+    v.muted = true;
+    v.loop = true;
+    v.playsInline = true;
+    v.setAttribute('playsinline', '');
+    v.preload = 'auto';
+
     const tex = new VideoTexture(v);
     tex.colorSpace = SRGBColorSpace;
     tex.flipY = false;
-    const fit = () => { if (v.videoWidth) { cover(tex, v.videoWidth, v.videoHeight); f.videoTex = tex; f.overlayMat.map = tex; } };
+    tex.generateMipmaps = false;
+
+    const fit = () => {
+      if (v.videoWidth > 0 && v.videoHeight > 0) {
+        cover(tex, v.videoWidth, v.videoHeight);
+        f.videoTex = tex;
+        f.overlayMat.map = tex;
+        f.overlayMat.needsUpdate = true;
+        tex.needsUpdate = true;
+      }
+    };
     v.addEventListener('loadedmetadata', fit);
+    v.addEventListener('loadeddata', fit);
+    v.addEventListener('canplay', fit);
+    v.addEventListener('playing', fit);
     fit();
   }
 
@@ -495,7 +551,10 @@ async function init() {
       f.bob.rotation.y = f.tiltY + Math.sin(t * 0.65 + f.i * 0.9) * 0.16; // same slow sway as the docked frame
       f.bob.position.y = Math.sin(t * 0.9 + f.i) * 0.014;
       // The page's own hover code plays/pauses the card video; the frame shows it while it plays.
-      const playing = !!f.video && !f.video.paused && f.video.readyState >= 2 && !!f.videoTex;
+      const playing = !!f.video && !f.video.paused && f.video.readyState >= 2 && f.video.currentTime > 0.01 && !!f.videoTex && f.video.videoWidth > 0;
+      if (playing && f.videoTex) {
+        f.videoTex.needsUpdate = true;
+      }
       f.overlayMat.opacity += ((playing ? 1 : 0) - f.overlayMat.opacity) * Math.min(1, dt * 8);
     }
   }
@@ -510,13 +569,17 @@ async function init() {
       if (!visible) continue;
       if (!f.requested) loadReelMedia(f);
       f.tint(dim);
-      f.root.position.set(((r.left + r.right) / 2 - width / 2) * unit, -((r.top + r.bottom) / 2 - height / 2) * unit, -st.abs * 0.03);
+      const zDepth = -Math.pow(st.abs, 1.28) * 88 * unit;
+      f.root.position.set(((r.left + r.right) / 2 - width / 2) * unit, -((r.top + r.bottom) / 2 - height / 2) * unit, zDepth);
       f.root.scale.setScalar((r.height * unit) / FRAME_H);
       f.root.rotation.y = (st.ry * Math.PI) / 180;
       f.bob.rotation.x = pointer.y * 0.06;
       f.bob.rotation.y = pointer.x * 0.1 + Math.sin(t * 0.65 + f.i * 0.9) * 0.05;
       f.bob.position.y = Math.sin(t * 0.9 + f.i) * 0.012;
-      const playing = !!f.video && !f.video.paused && f.video.readyState >= 2 && !!f.videoTex;
+      const playing = !!f.video && !f.video.paused && f.video.readyState >= 2 && f.video.currentTime > 0.01 && !!f.videoTex && f.video.videoWidth > 0;
+      if (playing && f.videoTex) {
+        f.videoTex.needsUpdate = true;
+      }
       f.overlayMat.opacity += ((playing ? 1 : 0) - f.overlayMat.opacity) * Math.min(1, dt * 8);
     }
   }
@@ -554,7 +617,9 @@ async function init() {
     canvas.style.opacity = wide() ? '' : pose.alpha.toFixed(3);
     if (pose.alpha < 0.01) { pauseAppuVideo(); return; }
 
-    rig.position.set((L.cx - width / 2) * unit, -(L.cy - height / 2) * unit, 0);
+    const appuSt = appuCard && appuCard.__rail;
+    const rigZ = (L.stop.s.id === 'exhibition' && appuSt) ? -Math.pow(appuSt.abs, 1.28) * 88 * unit : 0;
+    rig.position.set((L.cx - width / 2) * unit, -(L.cy - height / 2) * unit, rigZ);
     tintMain(L.dim);
     rig.visible = L.dim > 0.02;
     reelGrow += ((reelHover && HOVER_STOPS.has(L.stop.s.id) ? 1.05 : 1) - reelGrow) * Math.min(1, dt * 8);

@@ -38,9 +38,10 @@
   cards.forEach((card, idx) => {
     const photoWrap = card.querySelector('.moment-photo-wrap');
     if (!photoWrap) return;
+    let v = photoWrap.querySelector('video');
     const vSrc = card.getAttribute('data-video');
-    if (vSrc) {
-      const v = document.createElement('video');
+    if (!v && vSrc) {
+      v = document.createElement('video');
       v.crossOrigin = 'anonymous';
       v.setAttribute('crossorigin', 'anonymous');
       v.src = vSrc;
@@ -48,11 +49,32 @@
       v.loop = true;
       v.playsInline = true;
       v.setAttribute('playsinline', '');
-      v.preload = 'none';
+      v.preload = 'auto';
       v.className = 'moment-video';
       photoWrap.appendChild(v);
+    }
+    if (v) {
+      v.crossOrigin = 'anonymous';
+      v.setAttribute('crossorigin', 'anonymous');
+      v.muted = true;
+      v.loop = true;
+      v.playsInline = true;
+      v.preload = 'auto';
       videos.set(card, v);
     }
+
+    card.addEventListener('pointerenter', () => {
+      const diff = getWrappedDiff(idx, progress);
+      if (Math.abs(diff) < 0.6) {
+        playCard(card);
+      }
+    });
+
+    card.addEventListener('pointerleave', () => {
+      if (card !== cards[activeIndex]) {
+        pauseCard(card);
+      }
+    });
 
     card.addEventListener('click', (e) => {
       if (dragDistance > 8) return; // was a drag
@@ -96,7 +118,10 @@
   }
 
   function updateLayout() {
-    const spacing = Math.min(235, Math.max(140, window.innerWidth * 0.17));
+    const isDesktop = window.innerWidth >= 1100;
+    const spacing = isDesktop
+      ? Math.min(340, Math.max(300, window.innerWidth * 0.22))
+      : Math.min(250, Math.max(160, window.innerWidth * 0.45));
     const maxVisible = 4.2;
 
     let closestIdx = 0;
