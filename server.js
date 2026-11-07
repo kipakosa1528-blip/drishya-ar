@@ -48,7 +48,6 @@ const PAGE_MAP = {
   createMagzine: 'createMagzine.html',
   magnizes: 'magnizes.html',
   magazine: 'magazine.html',
-  earth_3d_test: 'earth_3d_test.html',
   order: 'order.html',
   demo: 'demo.html',
   bio: 'bio.html',
@@ -58,8 +57,6 @@ const PAGE_MAP = {
   cookies: 'cookies.html',
   'acceptable-use': 'acceptable-use.html',
   'preview-frame': 'preview-frame.html',
-  'preview-frame-mv': 'preview-frame-mv.html',
-  'preview-frame-webxr': 'preview-frame-webxr.html',
   'preview-furniture': 'preview-furniture.html',
   'preview-furniture-webxr': 'preview-furniture-webxr.html',
 };

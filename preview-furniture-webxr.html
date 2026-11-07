@@ -2,20 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Kipakosa — Furniture WebXR Room Scanner & 1:1 Showroom</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Kipakosa — Floor-First Semantic AR Showroom</title>
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1">
   <meta name="theme-color" content="#0a0a0c">
 
   <style>
     :root {
       --bg: #0a0a0c;
-      --card-bg: rgba(18, 18, 24, 0.88);
-      --card-border: rgba(255, 255, 255, 0.14);
+      --card-bg: rgba(18, 18, 24, 0.90);
+      --card-border: rgba(255, 255, 255, 0.15);
       --gold: #c9a96e;
-      --cyan: #00e5ff;
+      --green-floor: #00e676;
+      --yellow-table: #ffd600;
+      --red-wall: #ff3d00;
       --text: #f5f5f7;
-      --text-muted: rgba(255, 255, 255, 0.65);
+      --text-muted: rgba(255, 255, 255, 0.70);
     }
 
     * {
@@ -36,10 +38,13 @@
       -webkit-user-select: none;
     }
 
-    #webxr-canvas {
+    body.ar-active {
+      background: transparent !important;
+    }
+
+    #webgl-canvas {
       position: absolute;
-      top: 0;
-      left: 0;
+      inset: 0;
       width: 100%;
       height: 100%;
       display: block;
@@ -50,12 +55,19 @@
     /* ── WebXR DOM Overlay Root ── */
     #xr-overlay {
       position: absolute;
-      top: 0;
-      left: 0;
+      inset: 0;
       width: 100%;
       height: 100%;
       pointer-events: none;
       z-index: 10;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
     }
 
     /* ── Top Header ── */
@@ -64,267 +76,256 @@
       top: 0;
       left: 0;
       right: 0;
+      padding: calc(12px + env(safe-area-inset-top)) 16px 10px;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 20px;
-      background: linear-gradient(180deg, rgba(10, 10, 12, 0.85) 0%, rgba(10, 10, 12, 0) 100%);
+      flex-direction: column;
+      gap: 10px;
+      background: linear-gradient(180deg, rgba(10, 10, 12, 0.95) 0%, rgba(10, 10, 12, 0) 100%);
       pointer-events: none;
     }
 
-    .top-action {
+    #top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .icon-btn {
       pointer-events: auto;
+      width: 38px;
       height: 38px;
-      padding: 0 14px;
-      border-radius: 9999px;
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      border-radius: 50%;
       display: flex;
       align-items: center;
-      gap: 6px;
-      color: var(--text);
+      justify-content: center;
+      color: #fff;
       text-decoration: none;
-      font-size: 13px;
-      font-weight: 500;
+      font-size: 15px;
+      font-weight: bold;
       cursor: pointer;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-      transition: transform 0.2s;
     }
 
-    .top-action:active {
-      transform: scale(0.95);
+    #header-info {
+      text-align: center;
+      flex: 1;
     }
 
-    .brand-meta {
-      pointer-events: auto;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
-    }
-
-    .brand-title {
+    #header-info b {
+      display: block;
       font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.05em;
       text-transform: uppercase;
       color: #fff;
     }
 
-    .brand-sub {
+    #header-info span {
       font-size: 11px;
-      color: var(--cyan);
+      color: var(--gold);
       font-weight: 600;
-      letter-spacing: 0.04em;
     }
 
-    /* ── Metric Room Dimensions Card ── */
-    #dimension-card {
-      position: absolute;
-      top: 76px;
-      left: 20px;
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-radius: 12px;
-      padding: 10px 14px;
-      font-size: 11px;
+    /* ── Product Switcher Chips ── */
+    #products-scroll {
       display: flex;
-      flex-direction: column;
-      gap: 4px;
-      pointer-events: none;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+      pointer-events: auto;
+    }
+    #products-scroll::-webkit-scrollbar { display: none; }
+
+    .chip {
+      flex: none;
+      border-radius: 9999px;
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .chip.active {
+      background: var(--gold);
+      color: #0a0a0c;
+      border-color: transparent;
+      box-shadow: 0 2px 10px rgba(201, 169, 110, 0.4);
     }
 
-    .dim-row {
+    /* ── Diagnostic Plane Legend HUD ── */
+    #plane-diagnostic-hud {
+      position: absolute;
+      top: calc(118px + env(safe-area-inset-top));
+      left: 16px;
+      right: 16px;
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: 11.5px;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 8px;
-    }
-
-    .dim-label {
-      color: var(--text-muted);
-    }
-
-    .dim-val {
-      font-weight: 600;
-      color: #fff;
-    }
-
-    /* ── Live Wall Clearance Indicator Badge ── */
-    #wall-clearance-card {
-      position: absolute;
-      top: 76px;
-      right: 20px;
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-radius: 12px;
-      padding: 10px 14px;
-      font-size: 11px;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
       pointer-events: none;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
     }
 
-    .clearance-status {
-      font-weight: 700;
-      color: #10b981; /* Green ok, amber close, red collision */
+    .legend-item {
       display: flex;
       align-items: center;
       gap: 5px;
+      font-weight: 600;
     }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot.green { background: var(--green-floor); box-shadow: 0 0 8px var(--green-floor); }
+    .dot.yellow { background: var(--yellow-table); box-shadow: 0 0 8px var(--yellow-table); }
+    .dot.red { background: var(--red-wall); box-shadow: 0 0 8px var(--red-wall); }
 
-    /* ── Environment Mapping Status Toast ── */
+    /* ── Dimension & Door Spec Card ── */
+    #dim-card {
+      position: absolute;
+      left: 16px;
+      top: calc(166px + env(safe-area-inset-top));
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 11px;
+      line-height: 1.5;
+      pointer-events: none;
+    }
+    #dim-card .row { display: flex; gap: 8px; }
+    #dim-card .k { color: var(--text-muted); width: 44px; }
+    #dim-card .v { font-weight: 700; color: #fff; }
+    #dim-card .highlight { color: var(--gold); font-weight: 700; margin-top: 2px; }
+
+    /* ── Status Toast ── */
     #status-toast {
       position: absolute;
-      bottom: 110px;
+      bottom: calc(130px + env(safe-area-inset-bottom));
       left: 50%;
       transform: translateX(-50%);
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      padding: 10px 22px;
+      padding: 11px 22px;
       border-radius: 9999px;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
       color: #fff;
       display: flex;
       align-items: center;
       gap: 8px;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-      pointer-events: none;
       white-space: nowrap;
-      transition: opacity 0.3s;
-    }
-
-    /* ── Bottom Swatch Customizer Bar ── */
-    #swatch-bar {
-      position: absolute;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      padding: 10px 18px;
-      border-radius: 9999px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-      pointer-events: auto;
-    }
-
-    .swatch-item {
-      position: relative;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      cursor: pointer;
-      transition: transform 0.2s, border-color 0.2s;
-    }
-
-    .swatch-item:active {
-      transform: scale(0.92);
-    }
-
-    .swatch-item.active {
-      border-color: #fff;
-      transform: scale(1.15);
-      box-shadow: 0 0 14px rgba(255, 255, 255, 0.4);
+      pointer-events: none;
+      z-index: 20;
+      text-align: center;
     }
 
     /* ── Action Buttons ── */
     #action-bar {
       position: absolute;
-      bottom: 74px;
       left: 50%;
       transform: translateX(-50%);
+      bottom: calc(76px + env(safe-area-inset-bottom));
       display: flex;
       align-items: center;
       gap: 10px;
       pointer-events: auto;
     }
 
-    .btn-action {
-      background: linear-gradient(135deg, rgba(201, 169, 110, 0.96) 0%, rgba(184, 149, 87, 0.96) 100%);
-      color: #0a0a0c;
-      padding: 11px 22px;
+    .btn-main {
+      padding: 12px 24px;
       border-radius: 9999px;
-      font-size: 13px;
-      font-weight: 700;
+      background: linear-gradient(135deg, #d5b57a, #b89557);
+      color: #0a0a0c;
+      font-size: 14px;
+      font-weight: 800;
       border: 1px solid rgba(255, 255, 255, 0.4);
-      box-shadow: 0 8px 32px rgba(201, 169, 110, 0.35);
+      box-shadow: 0 8px 30px rgba(201, 169, 110, 0.4);
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 7px;
+      gap: 8px;
       white-space: nowrap;
     }
 
-    .btn-secondary {
-      background: var(--card-bg);
+    .btn-sub {
+      padding: 10px 16px;
+      border-radius: 9999px;
       color: #fff;
-      border: 1px solid var(--card-border);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: none;
     }
 
-    /* ── Fallback Card ── */
-    #fallback-card {
-      display: none;
+    /* ── Swatch Bar ── */
+    #swatch-container {
       position: absolute;
-      top: 50%;
+      bottom: calc(18px + env(safe-area-inset-bottom));
       left: 50%;
-      transform: translate(-50%, -50%);
-      width: 90%;
-      max-width: 440px;
-      background: rgba(18, 18, 26, 0.94);
-      border: 1px solid rgba(201, 169, 110, 0.35);
-      border-radius: 20px;
-      padding: 28px 24px;
-      text-align: center;
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
       pointer-events: auto;
     }
 
-    #fallback-card h2 {
-      font-size: 18px;
-      margin-bottom: 10px;
-      color: #fff;
+    #swatch-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--gold);
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
     }
 
-    #fallback-card p {
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.5;
-      margin-bottom: 20px;
-    }
-
-    .btn-link {
-      display: block;
-      padding: 12px 18px;
+    #swatches-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 16px;
       border-radius: 9999px;
-      text-decoration: none;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      outline: none;
-      background: linear-gradient(135deg, #c9a96e 0%, #b89557 100%);
-      color: #0a0a0c;
     }
+
+    .swatch {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .swatch.active {
+      border-color: #fff;
+      transform: scale(1.18);
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
+    }
+
+    /* ── Loading Spinner ── */
+    #loading-spinner {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 10, 12, 0.7);
+      backdrop-filter: blur(10px);
+      z-index: 100;
+      pointer-events: auto;
+    }
+    .spin {
+      width: 44px;
+      height: 44px;
+      border: 3px solid rgba(201, 169, 110, 0.3);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 
   <!-- Three.js + GLTFLoader -->
@@ -332,493 +333,945 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
-  <canvas id="webxr-canvas"></canvas>
+  <div id="loading-spinner">
+    <div class="spin"></div>
+    <span id="loading-text" style="margin-top:14px; font-weight:700; font-size:13px; color:var(--gold);">Loading Model...</span>
+  </div>
+
+  <canvas id="webgl-canvas"></canvas>
 
   <div id="xr-overlay">
-    <!-- Top Navigation -->
+    <!-- Header -->
     <header id="top-bar">
-      <a href="/preview-furniture" class="top-action" title="Back">✕ Back</a>
-      <div class="brand-meta">
-        <span class="brand-title">Kipakosa Lounge Sofa</span>
-        <span class="brand-sub">WebXR Environment Meshing & Wall Clearance</span>
+      <div id="top-row">
+        <a href="/" class="icon-btn card" title="Home">✕</a>
+        <div id="header-info">
+          <b id="p-name">Industrial Metal Rack</b>
+          <span>Semantic Floor-First WebAR</span>
+        </div>
+        <button id="btn-toggle-planes" class="icon-btn card" type="button" title="Toggle Plane Mesh">👁️</button>
       </div>
-      <a href="/preview-frame-webxr" class="top-action" title="Living Frame">Frame AR ➔</a>
+
+      <!-- Catalog Chips -->
+      <div id="products-scroll"></div>
     </header>
 
-    <!-- Dimension Spec Card -->
-    <div id="dimension-card">
-      <div class="dim-row">
-        <span class="dim-label">Width:</span>
-        <span class="dim-val">190 cm (6'3")</span>
-      </div>
-      <div class="dim-row">
-        <span class="dim-label">Depth:</span>
-        <span class="dim-val">130 cm (4'3")</span>
-      </div>
-      <div class="dim-row">
-        <span class="dim-label">Height:</span>
-        <span class="dim-val">61 cm (2'0")</span>
-      </div>
-      <div class="dim-row" style="margin-top:2px; color:var(--cyan); font-weight:600">
-        <span id="mesh-counter">🌐 Scanning room geometry...</span>
-      </div>
+    <!-- Diagnostic Plane Legend HUD -->
+    <div id="plane-diagnostic-hud" class="card">
+      <div class="legend-item"><span class="dot green"></span> <span id="lbl-floor">Floor: Scanning</span></div>
+      <div class="legend-item"><span class="dot yellow"></span> <span id="lbl-table">Table: 0</span></div>
+      <div class="legend-item"><span class="dot red"></span> <span id="lbl-wall">Wall/Door: 0</span></div>
+      <div class="legend-item"><span class="dot" style="background:#00e5ff"></span> <span id="lbl-depth">Depth: Probing</span></div>
     </div>
 
-    <!-- Live Wall Clearance Badge -->
-    <div id="wall-clearance-card">
-      <div class="dim-label">Wall Clearance:</div>
-      <div id="wall-clearance-status" class="clearance-status">
-        <span>📏 Scan to detect walls</span>
-      </div>
+    <!-- Dimension Specs & Door Comparison -->
+    <div id="dim-card" class="card">
+      <div class="row"><span class="k">Width</span><span class="v" id="dim-w">91.5 cm</span></div>
+      <div class="row"><span class="k">Depth</span><span class="v" id="dim-d">60 cm</span></div>
+      <div class="row"><span class="k">Height</span><span class="v" id="dim-h">190 cm</span></div>
+      <div class="highlight" id="dim-door-badge">🚪 190cm Tall — Compare with ~200cm Door!</div>
     </div>
 
     <!-- Status Toast -->
-    <div id="status-toast">
-      <span id="status-icon">🔄</span>
-      <span id="status-text">Move camera to map floor & wall geometry...</span>
+    <div id="status-toast" class="card">
+      <span id="toast-icon">🔍</span>
+      <span id="toast-msg">Point phone down at floor tiles to scan...</span>
     </div>
 
-    <!-- Secondary Controls -->
+    <!-- Action Bar -->
     <div id="action-bar">
-      <button id="btn-enter-ar" class="btn-action">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M3 4c0-.55.45-1 1-1h4v2H5v3H3V4zm0 16c0 .55.45 1 1 1h4v-2H5v-3H3v4zm17 0c0 .55-.45 1-1 1h-4v-2h3v-3h2v4zm0-16c0-.55-.45-1-1-1h-4v2h3v3h2V4zM7 9h10v6H7V9z"/>
-        </svg>
-        Start Room Scanner AR
+      <button id="btn-start-ar" class="btn-main" type="button">
+        <span>Start Room Scanner AR</span>
       </button>
-      <button id="btn-xray" class="btn-action btn-secondary" style="display:none">
-        👻 X-Ray Wall Check
-      </button>
-      <button id="btn-reposition" class="btn-action btn-secondary" style="display:none">
-        🔄 Reposition
-      </button>
+      <button id="btn-rot-left" class="btn-sub card" type="button">↺ -45°</button>
+      <button id="btn-rot-right" class="btn-sub card" type="button">↻ +45°</button>
+      <button id="btn-reposition" class="btn-sub card" type="button">🔄 Move</button>
+      <button id="btn-exit-ar" class="btn-sub card" type="button" style="background:rgba(239,68,68,0.85); border-color:transparent;">✕ Exit</button>
     </div>
 
-    <!-- Material Customizer Swatches -->
-    <div id="swatch-bar">
-      <!-- Emerald Velvet -->
-      <div class="swatch-item active" style="background: #1b4d3e" data-color="#1b4d3e" data-roughness="0.85" title="Emerald Velvet"></div>
-      <!-- Charcoal Slate -->
-      <div class="swatch-item" style="background: #2b2b2e" data-color="#2b2b2e" data-roughness="0.80" title="Charcoal Slate"></div>
-      <!-- Warm Oat Linen -->
-      <div class="swatch-item" style="background: #d1c7b7" data-color="#d1c7b7" data-roughness="0.90" title="Warm Oat Linen"></div>
-      <!-- Terracotta Leather -->
-      <div class="swatch-item" style="background: #a45a3c" data-color="#a45a3c" data-roughness="0.65" title="Terracotta Leather"></div>
-      <!-- Midnight Navy -->
-      <div class="swatch-item" style="background: #1a2942" data-color="#1a2942" data-roughness="0.85" title="Midnight Navy"></div>
-    </div>
-
-    <!-- Fallback Card -->
-    <div id="fallback-card">
-      <div style="font-size:32px; margin-bottom:12px;">📱</div>
-      <h2>WebXR Device Notice</h2>
-      <p id="fallback-desc">
-        WebXR room meshing is supported on <strong>Chrome for Android</strong> (Pixel 8 Pro, Galaxy S series).
-      </p>
-      <a href="/preview-furniture" class="btn-link">Return to Model Viewer</a>
+    <!-- Swatch Bar -->
+    <div id="swatch-container">
+      <span id="swatch-label">Finish</span>
+      <div id="swatches-row" class="card"></div>
     </div>
   </div>
 
   <script>
-    const CONFIG = {
-      modelSrc: '/assets/models/sofa.glb?v=grounded2',
-      widthM: 1.90,
-      depthM: 1.30,
-      heightM: 0.61
-    };
-
-    let renderer, scene, camera;
-    let xrSession = null;
-    let xrRefSpace = null;
-    let xrHitTestSource = null;
-    let reticleGroup = null;
-    let sofaGroup = null;
-    let sofaModel = null;
-    let isPlaced = false;
-    let isXray = false;
-    let currentColor = '#1b4d3e';
-    let currentRoughness = 0.85;
-
-    // Environment Meshes (Detected Planes)
-    const detectedPlaneMeshes = new Map();
-    const planeWireframeGroup = new THREE.Group();
-    let detectedWalls = [];
-
-    const canvas = document.getElementById('webxr-canvas');
-    const overlayRoot = document.getElementById('xr-overlay');
-    const btnEnterAr = document.getElementById('btn-enter-ar');
-    const btnXray = document.getElementById('btn-xray');
-    const btnReposition = document.getElementById('btn-reposition');
-    const statusText = document.getElementById('status-text');
-    const statusIcon = document.getElementById('status-icon');
-    const meshCounter = document.getElementById('mesh-counter');
-    const wallClearanceStatus = document.getElementById('wall-clearance-status');
-    const fallbackCard = document.getElementById('fallback-card');
-    const swatches = document.querySelectorAll('.swatch-item');
-
-    function hexToRgb(hex) {
-      const bigint = parseInt(hex.replace('#', ''), 16);
-      return [
-        ((bigint >> 16) & 255) / 255,
-        ((bigint >> 8) & 255) / 255,
-        (bigint & 255) / 255
-      ];
-    }
-
-    function applySofaMaterial(hex, roughness) {
-      if (!sofaModel) return;
-      currentColor = hex;
-      currentRoughness = roughness;
-      const [r, g, b] = hexToRgb(hex);
-      const alpha = isXray ? 0.42 : 1.0;
-
-      sofaModel.traverse((child) => {
-        if (child.isMesh && child.material) {
-          const mats = Array.isArray(child.material) ? child.material : [child.material];
-          mats.forEach(mat => {
-            if (mat.color) mat.color.setRGB(r, g, b);
-            if (mat.roughness !== undefined) mat.roughness = parseFloat(roughness);
-            mat.transparent = isXray;
-            mat.opacity = alpha;
-            if (mat.needsUpdate) mat.needsUpdate = true;
-          });
+    // ── 1. Catalog & Product Definitions ──────────────────────────────────────
+    const products = [
+      {
+        id: 'rack',
+        name: 'Industrial Metal Rack',
+        expected: { w: 91.5, h: 190.0, d: 60.0 },
+        doorBadge: '🚪 190cm Tall: Top shelf reaches just below door frame (~200cm)!',
+        options: {
+          material: 'worn_metal_rack',
+          swatches: [
+            { name: 'Worn Steel', color: '#ffffff' },
+            { name: 'Matte Black', color: '#2a2a2a', roughness: 0.7 },
+            { name: 'Forest Green', color: '#3b533f' },
+            { name: 'Rust Red', color: '#9e462c' }
+          ]
         }
-      });
-    }
+      },
+      {
+        id: 'throne',
+        name: 'Throne of Birds Chair',
+        expected: { w: 118.5, h: 190.0, d: 114.0 },
+        doorBadge: '🚪 190cm Tall: Top eagle carving stands equal to door frame height!',
+        options: {
+          material: 'material_0',
+          swatches: [
+            { name: 'Stone Original', color: '#ffffff' },
+            { name: 'Antique Gold', color: '#c9a96e' },
+            { name: 'Dark Basalt', color: '#383838' }
+          ]
+        }
+      },
+      {
+        id: 'sofa',
+        name: 'Lounge Corner Sofa',
+        expected: { w: 190.0, h: 61.3, d: 129.8 },
+        doorBadge: '🚪 190cm Wide: Length matches a standard door height laid flat on the floor',
+        options: {
+          material: 'Sofa_Fabric',
+          swatches: [
+            { name: 'Emerald Velvet', color: '#1b4d3e', roughness: 0.85 },
+            { name: 'Charcoal Linen', color: '#3a3a3d', roughness: 0.90 },
+            { name: 'Warm Oat Linen', color: '#d6ccbb', roughness: 0.92 },
+            { name: 'Terracotta Leather', color: '#a45a3c', roughness: 0.55 },
+            { name: 'Midnight Navy', color: '#1f2d4a', roughness: 0.95 }
+          ]
+        }
+      },
+      {
+        id: 'radio',
+        name: 'Unitra RM 312 Radio',
+        expected: { w: 27.5, h: 39.7, d: 10.0 },
+        doorBadge: '📐 27.5cm Wide: Compact tabletop / shelf audio unit with antenna',
+        options: {
+          material: 'MainBodyColor',
+          swatches: [
+            { name: 'Original', color: '#ffffff' },
+            { name: 'Cream Ivory', color: '#eee7d3' },
+            { name: 'Signal Red', color: '#c0392b' }
+          ]
+        }
+      }
+    ];
 
-    // ── Three.js Scene Setup ──
-    function initThree() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialProductId = urlParams.get('p') || 'rack';
+    let currentProduct = products.find(p => p.id === initialProductId) || products[0];
+    let swatchIndex = 0;
+
+    // ── 2. Three.js & WebXR Globals ───────────────────────────────────────────
+    let scene, camera, renderer;
+    let studioGroup, arGroup, modelContainer, modelMesh;
+    let currentSession = null;
+    let xrRefSpace = null;
+    let activeAnchor = null;
+    let showPlanes = true;
+
+    // Stage & Floor State
+    let isPlaced = false;
+    let lowestFloorPlane = null;
+    let lowestFloorY = null;
+    let hasDetectedFloor = false;
+    let floorWorldPolygon = []; // Array of THREE.Vector3 on floor plane
+
+    // Diagnostic Plane Mesh Cache
+    const planeMeshes = new Map(); // XRPlane -> THREE.Group
+    const planeVisualGroup = new THREE.Group();
+
+    // Floor Reticle
+    let floorReticle = null;
+
+    // UI Elements
+    const btnStartAr = document.getElementById('btn-start-ar');
+    const btnExitAr = document.getElementById('btn-exit-ar');
+    const btnRotLeft = document.getElementById('btn-rot-left');
+    const btnRotRight = document.getElementById('btn-rot-right');
+    const btnReposition = document.getElementById('btn-reposition');
+    const btnTogglePlanes = document.getElementById('btn-toggle-planes');
+    const toastMsg = document.getElementById('toast-msg');
+    const toastIcon = document.getElementById('toast-icon');
+    const lblFloor = document.getElementById('lbl-floor');
+    const lblTable = document.getElementById('lbl-table');
+    const lblWall = document.getElementById('lbl-wall');
+    const loadingSpinner = document.getElementById('loading-spinner');
+    const loadingText = document.getElementById('loading-text');
+
+    // ── 3. Initialization ─────────────────────────────────────────────────────
+    function init() {
+      const canvas = document.getElementById('webgl-canvas');
       renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.xr.enabled = true;
       renderer.shadowMap.enabled = true;
 
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+      camera.position.set(0, 1.2, 2.0);
 
-      scene.add(planeWireframeGroup);
-
-      // Studio Lighting
-      const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
-      hemiLight.position.set(0, 10, 0);
+      // Lighting
+      const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444448, 1.3);
       scene.add(hemiLight);
 
-      const dirLight = new THREE.DirectionalLight(0xfff5e6, 1.6);
+      const dirLight = new THREE.DirectionalLight(0xfff8e7, 1.8);
       dirLight.position.set(2, 4, 2);
-      dirLight.castShadow = true;
       scene.add(dirLight);
 
-      // Build 1:1 Footprint Reticle (Shows 1.9m x 1.3m floor box BEFORE placement)
-      buildFootprintReticle();
+      const fillLight = new THREE.DirectionalLight(0xddeeff, 0.8);
+      fillLight.position.set(-2, 3, -1);
+      scene.add(fillLight);
 
-      // Load 3D Sofa Model
-      loadSofaModel();
+      // Groups
+      studioGroup = new THREE.Group();
+      scene.add(studioGroup);
 
-      window.addEventListener('resize', onWindowResize);
-    }
+      arGroup = new THREE.Group();
+      arGroup.visible = false;
+      scene.add(arGroup);
 
-    function buildFootprintReticle() {
-      reticleGroup = new THREE.Group();
-      reticleGroup.matrixAutoUpdate = false;
-      reticleGroup.visible = false;
+      scene.add(planeVisualGroup);
 
-      // Outer Footprint Box (1.90m x 1.30m)
-      const footprintGeom = new THREE.PlaneGeometry(CONFIG.widthM, CONFIG.depthM);
-      const wireGeom = new THREE.EdgesGeometry(footprintGeom);
-      const wireMat = new THREE.LineBasicMaterial({ color: 0x00e5ff, linewidth: 2 });
-      const wireLine = new THREE.LineSegments(wireGeom, wireMat);
-      wireLine.rotation.x = -Math.PI / 2;
-      reticleGroup.add(wireLine);
+      // Build Floor Reticle
+      buildFloorReticle();
 
-      // Subtle translucent ground glow
-      const fillMat = new THREE.MeshBasicMaterial({
-        color: 0x00e5ff,
-        transparent: true,
-        opacity: 0.12,
-        side: THREE.DoubleSide
+      // Setup UI
+      renderProductChips();
+      selectProduct(currentProduct.id);
+      setupTouchInteractions();
+      window.addEventListener('resize', onResize);
+
+      btnTogglePlanes.addEventListener('click', () => {
+        showPlanes = !showPlanes;
+        planeVisualGroup.visible = showPlanes;
+        btnTogglePlanes.style.opacity = showPlanes ? '1.0' : '0.5';
       });
-      const fillPlane = new THREE.Mesh(footprintGeom, fillMat);
-      fillPlane.rotation.x = -Math.PI / 2;
-      reticleGroup.add(fillPlane);
 
-      // Center aiming target
-      const centerTarget = new THREE.RingGeometry(0.06, 0.08, 32).rotateX(-Math.PI / 2);
-      const centerMat = new THREE.MeshBasicMaterial({ color: 0xc9a96e, side: THREE.DoubleSide });
-      const centerMesh = new THREE.Mesh(centerTarget, centerMat);
-      reticleGroup.add(centerMesh);
+      // Start pre-AR render loop
+      renderer.setAnimationLoop(render);
 
-      scene.add(reticleGroup);
+      // Check WebXR
+      checkWebXRSupport();
     }
 
-    function loadSofaModel() {
-      sofaGroup = new THREE.Group();
-      sofaGroup.visible = false;
-      scene.add(sofaGroup);
+    // ── 4. Floor Reticle (Only Visible on Green Floor) ────────────────────────
+    function buildFloorReticle() {
+      floorReticle = new THREE.Group();
+      floorReticle.visible = false;
+
+      // Outer ring
+      const ringGeom = new THREE.RingGeometry(0.24, 0.27, 48).rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x00e676, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+      floorReticle.add(new THREE.Mesh(ringGeom, ringMat));
+
+      // Center pip
+      const pipGeom = new THREE.CircleGeometry(0.035, 32).rotateX(-Math.PI / 2);
+      const pipMat = new THREE.MeshBasicMaterial({ color: 0xc9a96e, side: THREE.DoubleSide });
+      floorReticle.add(new THREE.Mesh(pipGeom, pipMat));
+
+      // Soft contact shadow
+      const shadowGeom = new THREE.PlaneGeometry(0.65, 0.65).rotateX(-Math.PI / 2);
+      const canvas = document.createElement('canvas');
+      canvas.width = 128; canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      const grad = ctx.createRadialGradient(64, 64, 10, 64, 64, 60);
+      grad.addColorStop(0, 'rgba(0,0,0,0.6)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 128, 128);
+      const shadowMat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthWrite: false });
+      floorReticle.add(new THREE.Mesh(shadowGeom, shadowMat));
+
+      scene.add(floorReticle);
+    }
+
+    // ── 5. Product Management & Model Loading ─────────────────────────────────
+    function renderProductChips() {
+      const box = document.getElementById('products-scroll');
+      box.innerHTML = '';
+      products.forEach(p => {
+        const b = document.createElement('button');
+        b.className = 'chip card' + (p.id === currentProduct.id ? ' active' : '');
+        b.type = 'button';
+        b.textContent = p.name;
+        b.onclick = () => selectProduct(p.id);
+        box.appendChild(b);
+      });
+    }
+
+    function selectProduct(id) {
+      currentProduct = products.find(p => p.id === id);
+      swatchIndex = 0;
+
+      urlParams.set('p', id);
+      history.replaceState(null, '', '?' + urlParams);
+
+      document.getElementById('p-name').textContent = currentProduct.name;
+      document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.textContent === currentProduct.name));
+
+      const exp = currentProduct.expected;
+      document.getElementById('dim-w').textContent = `${exp.w} cm`;
+      document.getElementById('dim-d').textContent = `${exp.d} cm`;
+      document.getElementById('dim-h').textContent = `${exp.h} cm`;
+      document.getElementById('dim-door-badge').textContent = currentProduct.doorBadge;
+
+      renderSwatches();
+      loadModel(`/assets/models/furniture/${currentProduct.id}.glb?v=semantic1`);
+    }
+
+    function loadModel(url) {
+      loadingSpinner.style.display = 'flex';
+      loadingText.textContent = `Loading ${currentProduct.name}...`;
 
       const loader = new THREE.GLTFLoader();
-      loader.load(CONFIG.modelSrc, (gltf) => {
-        sofaModel = gltf.scene;
-        sofaGroup.add(sofaModel);
+      loader.load(url, (gltf) => {
+        loadingSpinner.style.display = 'none';
 
-        applySofaMaterial(currentColor, currentRoughness);
+        if (modelContainer) {
+          studioGroup.remove(modelContainer);
+          arGroup.remove(modelContainer);
+        }
 
-        // Add 1:1 Contact Shadow Plane
-        const shadowGeom = new THREE.PlaneGeometry(CONFIG.widthM * 1.1, CONFIG.depthM * 1.1);
-        const shadowMat = new THREE.MeshBasicMaterial({
-          color: 0x000000,
-          transparent: true,
-          opacity: 0.35,
-          side: THREE.DoubleSide
-        });
-        const shadowMesh = new THREE.Mesh(shadowGeom, shadowMat);
-        shadowMesh.rotation.x = -Math.PI / 2;
+        modelMesh = gltf.scene;
+
+        // Force ground alignment: bounding box min.y must be exactly 0
+        const box = new THREE.Box3().setFromObject(modelMesh);
+        const center = box.getCenter(new THREE.Vector3());
+        modelMesh.position.set(-center.x, -box.min.y, -center.z);
+
+        modelContainer = new THREE.Group();
+        modelContainer.add(modelMesh);
+
+        // Add soft contact shadow
+        const size = box.getSize(new THREE.Vector3());
+        const shadowMesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(size.x * 1.15, size.z * 1.15).rotateX(-Math.PI / 2),
+          new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.45, depthWrite: false })
+        );
         shadowMesh.position.y = 0.001;
-        sofaGroup.add(shadowMesh);
+        modelContainer.add(shadowMesh);
+
+        if (currentSession) {
+          arGroup.clear();
+          arGroup.add(modelContainer);
+          applySwatch();
+        } else {
+          studioGroup.clear();
+          studioGroup.add(modelContainer);
+          camera.position.set(0, size.y * 0.7, size.z * 2.2);
+          camera.lookAt(0, size.y * 0.4, 0);
+          applySwatch();
+        }
+      }, null, (err) => {
+        loadingSpinner.style.display = 'none';
+        console.error('Failed to load model:', err);
       });
     }
 
-    function onWindowResize() {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+    function renderSwatches() {
+      const row = document.getElementById('swatches-row');
+      row.innerHTML = '';
+      const list = currentProduct.options?.swatches || [];
+      document.getElementById('swatch-container').style.display = list.length ? 'flex' : 'none';
+
+      list.forEach((s, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'swatch' + (idx === swatchIndex ? ' active' : '');
+        btn.title = s.name;
+        btn.style.backgroundColor = s.color;
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          swatchIndex = idx;
+          document.querySelectorAll('.swatch').forEach((el, i) => el.classList.toggle('active', i === idx));
+          document.getElementById('swatch-label').textContent = s.name;
+          applySwatch();
+        };
+        row.appendChild(btn);
+      });
+      document.getElementById('swatch-label').textContent = list[swatchIndex]?.name || '';
     }
 
-    // ── Check WebXR Support ──
-    async function checkWebXR() {
+    function applySwatch() {
+      const s = currentProduct.options?.swatches?.[swatchIndex];
+      if (!s || !modelMesh) return;
+      const targetMat = currentProduct.options.material;
+      const color = new THREE.Color(s.color);
+
+      modelMesh.traverse((child) => {
+        if (child.isMesh && child.material) {
+          const mats = Array.isArray(child.material) ? child.material : [child.material];
+          mats.forEach(mat => {
+            if (!targetMat || mat.name === targetMat || mats.length === 1) {
+              if (mat.color) mat.color.copy(color);
+              if (s.roughness != null) mat.roughness = s.roughness;
+              mat.needsUpdate = true;
+            }
+          });
+        }
+      });
+    }
+
+    // ── 6. WebXR Lifecycle ────────────────────────────────────────────────────
+    async function checkWebXRSupport() {
       if (navigator.xr) {
         const supported = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
         if (supported) {
-          btnEnterAr.style.display = 'flex';
-          btnEnterAr.addEventListener('click', startWebXRSession);
+          btnStartAr.style.display = 'flex';
+          btnStartAr.addEventListener('click', enterAR);
           return;
         }
       }
-      fallbackCard.style.display = 'block';
-      btnEnterAr.style.display = 'none';
+      btnStartAr.textContent = 'WebXR Not Supported on Device';
+      btnStartAr.disabled = true;
     }
 
-    // ── Start WebXR Session with Plane Detection & Hit-Test ──
-    async function startWebXRSession() {
-      let session = null;
+    async function enterAR() {
+      if (currentSession !== null) return;
+      btnStartAr.disabled = true;
+
+      const sessionInit = {
+        requiredFeatures: ['hit-test'],
+        optionalFeatures: ['plane-detection', 'anchors', 'dom-overlay', 'depth-sensing'],
+        depthSensing: {
+          usagePreference: ['cpu-optimized', 'gpu-optimized'],
+          dataFormatPreference: ['luminance-alpha', 'float32']
+        },
+        domOverlay: { root: document.getElementById('xr-overlay') }
+      };
+
       try {
-        const sessionInit = {
-          requiredFeatures: ['hit-test'],
-          optionalFeatures: ['plane-detection', 'anchors', 'dom-overlay', 'light-estimation'],
-          domOverlay: { root: overlayRoot }
-        };
-        session = await navigator.xr.requestSession('immersive-ar', sessionInit);
-      } catch (errDom) {
-        console.warn('DOM overlay failed, fallback to direct AR session:', errDom);
-        session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['hit-test'],
-          optionalFeatures: ['plane-detection', 'light-estimation']
-        });
-      }
-
-      await renderer.xr.setSession(session);
-      xrSession = session;
-
-      btnEnterAr.style.display = 'none';
-      btnXray.style.display = 'flex';
-      statusText.textContent = 'Move camera across floor & walls to map geometry...';
-      statusIcon.textContent = '🔍';
-
-      const viewerSpace = await xrSession.requestReferenceSpace('viewer');
-      xrRefSpace = await xrSession.requestReferenceSpace('local-floor').catch(async () => {
-        return await xrSession.requestReferenceSpace('local');
-      });
-
-      xrHitTestSource = await xrSession.requestHitTestSource({ space: viewerSpace });
-
-      xrSession.addEventListener('select', onSelect);
-      xrSession.addEventListener('end', onSessionEnded);
-
-      renderer.setAnimationLoop(renderXR);
-    }
-
-    function onSessionEnded() {
-      xrHitTestSource = null;
-      xrSession = null;
-      renderer.setAnimationLoop(null);
-      btnEnterAr.style.display = 'flex';
-      btnXray.style.display = 'none';
-      btnReposition.style.display = 'none';
-      statusText.textContent = 'Session ended';
-    }
-
-    // ── XR Frame Loop: Environment Meshing & Hit-Test ──
-    function renderXR(timestamp, frame) {
-      if (!frame) return;
-
-      // 1. Process Detected Real-World Planes (Floor & Walls)
-      if (frame.detectedPlanes) {
-        processDetectedPlanes(frame, frame.detectedPlanes);
-      }
-
-      // 2. Hardware Hit-Testing for Footprint Placement
-      if (xrHitTestSource && !isPlaced) {
-        const hitTestResults = frame.getHitTestResults(xrHitTestSource);
-        if (hitTestResults.length > 0) {
-          const hit = hitTestResults[0];
-          const hitPose = hit.getPose(xrRefSpace);
-          if (hitPose) {
-            reticleGroup.visible = true;
-            reticleGroup.matrix.fromArray(hitPose.transform.matrix);
-            reticleGroup.matrix.decompose(reticleGroup.position, reticleGroup.quaternion, reticleGroup.scale);
-
-            // Compute distance to camera
-            const camPos = new THREE.Vector3();
-            camera.getWorldPosition(camPos);
-            const dist = camPos.distanceTo(reticleGroup.position);
-
-            statusText.textContent = `Floor locked (${dist.toFixed(2)}m) — Tap to place 1:1 sofa`;
-            statusIcon.textContent = '📐';
-          }
-        } else {
-          reticleGroup.visible = false;
+        currentSession = await navigator.xr.requestSession('immersive-ar', sessionInit);
+      } catch (e) {
+        console.warn('Depth sensing / DOM overlay failed, falling back:', e);
+        try {
+          currentSession = await navigator.xr.requestSession('immersive-ar', {
+            requiredFeatures: ['hit-test'],
+            optionalFeatures: ['plane-detection', 'anchors', 'dom-overlay'],
+            domOverlay: { root: document.getElementById('xr-overlay') }
+          });
+        } catch (e2) {
+          currentSession = await navigator.xr.requestSession('immersive-ar', {
+            requiredFeatures: ['hit-test'],
+            optionalFeatures: ['plane-detection', 'anchors']
+          });
         }
       }
 
-      // 3. If Placed, Continuously Check Wall Clearance
-      if (isPlaced && sofaGroup && detectedWalls.length > 0) {
-        calculateWallClearance();
+      onSessionStarted(currentSession);
+    }
+
+    async function onSessionStarted(session) {
+      session.addEventListener('end', onSessionEnded);
+      document.body.classList.add('ar-active');
+
+      try {
+        xrRefSpace = await session.requestReferenceSpace('local-floor');
+        renderer.xr.setReferenceSpaceType('local-floor');
+      } catch (e) {
+        xrRefSpace = await session.requestReferenceSpace('local');
+        renderer.xr.setReferenceSpaceType('local');
+      }
+
+      await renderer.xr.setSession(session);
+
+      const lblDepth = document.getElementById('lbl-depth');
+      if (lblDepth) {
+        if (session.depthUsage) {
+          lblDepth.textContent = `Depth: ${session.depthUsage} (${session.depthDataFormat})`;
+        } else {
+          lblDepth.textContent = 'Depth: Unsupported';
+        }
+      }
+
+      studioGroup.visible = false;
+      arGroup.visible = false;
+      isPlaced = false;
+      hasDetectedFloor = false;
+      lowestFloorY = null;
+      lowestFloorPlane = null;
+
+      if (studioGroup.children.length > 0) {
+        const m = studioGroup.children[0];
+        studioGroup.remove(m);
+        arGroup.add(m);
+      }
+
+      btnStartAr.style.display = 'none';
+      btnExitAr.style.display = 'flex';
+      btnRotLeft.style.display = 'none';
+      btnRotRight.style.display = 'none';
+      btnReposition.style.display = 'none';
+
+      toastMsg.textContent = 'Move phone down to scan floor tiles (Green)...';
+      toastIcon.textContent = '🔍';
+
+      session.addEventListener('select', onScreenTap);
+    }
+
+    function onSessionEnded() {
+      currentSession = null;
+      xrRefSpace = null;
+      activeAnchor = null;
+      document.body.classList.remove('ar-active');
+
+      if (arGroup.children.length > 0) {
+        const m = arGroup.children[0];
+        arGroup.remove(m);
+        studioGroup.add(m);
+      }
+      studioGroup.visible = true;
+      arGroup.visible = false;
+      floorReticle.visible = false;
+      planeVisualGroup.clear();
+      planeMeshes.clear();
+
+      btnStartAr.style.display = 'flex';
+      btnStartAr.disabled = false;
+      btnExitAr.style.display = 'none';
+      btnRotLeft.style.display = 'none';
+      btnRotRight.style.display = 'none';
+      btnReposition.style.display = 'none';
+    }
+
+    // ── 7. Render Loop: Stage 1 Semantic Plane Understanding ───────────────────
+    function render(timestamp, frame) {
+      if (!currentSession) {
+        renderer.render(scene, camera);
+        return;
+      }
+
+      // ── STAGE 1: Process Detected Planes ──
+      if (frame && frame.detectedPlanes) {
+        processDetectedPlanes(frame, frame.detectedPlanes);
+      }
+
+      // Update reticle position on confirmed floor
+      if (!isPlaced && hasDetectedFloor && lowestFloorY !== null) {
+        updateFloorReticle();
+      } else {
+        floorReticle.visible = false;
+      }
+
+      // If placed and anchored, update anchor pose
+      if (isPlaced && activeAnchor) {
+        const anchorPose = frame.getPose(activeAnchor.anchorSpace, xrRefSpace);
+        if (anchorPose) {
+          arGroup.position.x = anchorPose.transform.position.x;
+          arGroup.position.z = anchorPose.transform.position.z;
+          arGroup.position.y = lowestFloorY; // HARD CLAMP to floor elevation
+        }
       }
 
       renderer.render(scene, camera);
     }
 
-    // ── Real-Time Environment Plane Meshing (Floors & Walls) ──
     function processDetectedPlanes(frame, planes) {
       let floorCount = 0;
+      let tableCount = 0;
       let wallCount = 0;
-      detectedWalls = [];
+
+      // Find the minimum elevation among horizontal planes
+      let minHozY = Infinity;
+      let candidateFloorPlane = null;
 
       planes.forEach(plane => {
-        const isHorizontal = plane.orientation === 'horizontal';
-        if (isHorizontal) floorCount++;
-        else wallCount++;
+        if (plane.orientation === 'horizontal') {
+          const pose = frame.getPose(plane.planeSpace, xrRefSpace);
+          if (pose) {
+            const y = pose.transform.position.y;
+            if (y < minHozY) {
+              minHozY = y;
+              candidateFloorPlane = plane;
+            }
+          }
+        }
+      });
 
+      if (minHozY !== Infinity) {
+        lowestFloorY = minHozY;
+        lowestFloorPlane = candidateFloorPlane;
+        hasDetectedFloor = true;
+      }
+
+      floorPolygonsWorld = [];
+
+      // Update diagnostic visual meshes and extract floor world polygon
+      planes.forEach(plane => {
         const pose = frame.getPose(plane.planeSpace, xrRefSpace);
         if (!pose) return;
 
-        if (!isHorizontal) {
-          detectedWalls.push({
-            position: new THREE.Vector3(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z),
-            orientation: pose.transform.orientation
-          });
-        }
+        const isHorizontal = plane.orientation === 'horizontal';
+        let planeType = 'wall'; // 'floor', 'table', 'wall'
 
-        // Build or update visual wireframe mesh
-        let meshObj = detectedPlaneMeshes.get(plane);
-        if (!meshObj) {
-          const polygon = plane.polygon;
-          if (polygon && polygon.length >= 3) {
-            const shape = new THREE.Shape();
-            shape.moveTo(polygon[0].x, polygon[0].z);
-            for (let i = 1; i < polygon.length; i++) {
-              shape.lineTo(polygon[i].x, polygon[i].z);
+        if (isHorizontal) {
+          const y = pose.transform.position.y;
+          // If within 20cm of the lowest horizontal plane => FLOOR
+          if (Math.abs(y - minHozY) <= 0.20) {
+            planeType = 'floor';
+            floorCount++;
+
+            // Extract world-space polygon boundary
+            if (plane.polygon && plane.polygon.length >= 3) {
+              const planeMat = new THREE.Matrix4().compose(
+                new THREE.Vector3(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z),
+                new THREE.Quaternion(pose.transform.orientation.x, pose.transform.orientation.y, pose.transform.orientation.z, pose.transform.orientation.w),
+                new THREE.Vector3(1, 1, 1)
+              );
+              const worldPoly = plane.polygon.map(pt => {
+                const v = new THREE.Vector3(pt.x, 0, pt.z);
+                v.applyMatrix4(planeMat);
+                return v;
+              });
+              floorPolygonsWorld.push(worldPoly);
             }
-            shape.closePath();
-
-            const geom = new THREE.ShapeGeometry(shape);
-            const edges = new THREE.EdgesGeometry(geom);
-
-            // Cyan wireframe for floors, Golden wireframe for walls
-            const matColor = isHorizontal ? 0x00e5ff : 0xc9a96e;
-            const lineMat = new THREE.LineBasicMaterial({
-              color: matColor,
-              linewidth: 2,
-              transparent: true,
-              opacity: 0.6
-            });
-            meshObj = new THREE.LineSegments(edges, lineMat);
-            meshObj.rotation.x = -Math.PI / 2;
-            planeWireframeGroup.add(meshObj);
-            detectedPlaneMeshes.set(plane, meshObj);
+          } else {
+            planeType = 'table';
+            tableCount++;
           }
+        } else {
+          wallCount++;
         }
 
-        if (meshObj) {
-          meshObj.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
+        // Build / Update Plane Visual Mesh
+        let visualGroup = planeMeshes.get(plane);
+        if (!visualGroup) {
+          visualGroup = buildPlaneVisual(plane, planeType);
+          planeMeshes.set(plane, visualGroup);
+          planeVisualGroup.add(visualGroup);
+        } else {
+          updatePlaneColor(visualGroup, planeType);
         }
+
+        visualGroup.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
+        visualGroup.quaternion.set(pose.transform.orientation.x, pose.transform.orientation.y, pose.transform.orientation.z, pose.transform.orientation.w);
       });
 
-      meshCounter.textContent = `🌐 ${floorCount} floor(s), ${wallCount} wall(s) mapped`;
-    }
-
-    // ── Wall Clearance Calculation ──
-    function calculateWallClearance() {
-      if (detectedWalls.length === 0) return;
-
-      const sofaPos = sofaGroup.position;
-      let minDistance = Infinity;
-
-      detectedWalls.forEach(wall => {
-        const d = Math.hypot(sofaPos.x - wall.position.x, sofaPos.z - wall.position.z) - (CONFIG.depthM / 2);
-        if (d < minDistance) minDistance = d;
-      });
-
-      const distCm = Math.round(minDistance * 100);
-      if (distCm < 0) {
-        wallClearanceStatus.innerHTML = `<span style="color:#ef4444;">⚠️ Clips Wall by ${Math.abs(distCm)} cm</span>`;
-      } else if (distCm <= 10) {
-        wallClearanceStatus.innerHTML = `<span style="color:#f59e0b;">📏 Snug to Wall (${distCm} cm)</span>`;
+      // Update HUD Labels
+      if (hasDetectedFloor) {
+        lblFloor.textContent = `Floor: ${floorCount} (Y: ${lowestFloorY.toFixed(2)}m)`;
+        lblFloor.style.color = '#00e676';
       } else {
-        wallClearanceStatus.innerHTML = `<span style="color:#10b981;">✅ Safe Clearance (${distCm} cm)</span>`;
+        lblFloor.textContent = 'Floor: Scanning...';
+        lblFloor.style.color = '#fff';
+      }
+      lblTable.textContent = `Table: ${tableCount}`;
+      lblWall.textContent = `Wall/Door: ${wallCount}`;
+
+      if (!isPlaced) {
+        if (hasDetectedFloor) {
+          toastMsg.textContent = `Green floor locked — Tap on floor to place 1:1 ${currentProduct.name}`;
+          toastIcon.textContent = '✨';
+        } else {
+          toastMsg.textContent = 'Point phone down at floor tiles to detect ground...';
+          toastIcon.textContent = '🔍';
+        }
       }
     }
 
-    // ── Tap to Place ──
-    function onSelect() {
-      if (reticleGroup && reticleGroup.visible && !isPlaced) {
-        sofaGroup.position.copy(reticleGroup.position);
+    function buildPlaneVisual(plane, type) {
+      const group = new THREE.Group();
+      const polygon = plane.polygon;
+      if (!polygon || polygon.length < 3) return group;
 
-        // Face camera horizontally
-        const camPos = new THREE.Vector3();
-        camera.getWorldPosition(camPos);
-        const lookTarget = new THREE.Vector3(camPos.x, sofaGroup.position.y, camPos.z);
-        sofaGroup.lookAt(lookTarget);
+      const shape = new THREE.Shape();
+      shape.moveTo(polygon[0].x, polygon[0].z);
+      for (let i = 1; i < polygon.length; i++) shape.lineTo(polygon[i].x, polygon[i].z);
+      shape.closePath();
 
-        sofaGroup.visible = true;
-        reticleGroup.visible = false;
-        isPlaced = true;
+      const geom = new THREE.ShapeGeometry(shape);
+      const edges = new THREE.EdgesGeometry(geom);
 
-        statusText.textContent = 'Sofa placed (1:1 Metric Scale, 0mm drift)';
-        statusIcon.textContent = '🛋️';
+      let color = 0xff3d00; // RED
+      let opacity = 0.20;
+      if (type === 'floor') { color = 0x00e676; opacity = 0.35; } // GREEN
+      else if (type === 'table') { color = 0xffd600; opacity = 0.25; } // YELLOW
+
+      const fillMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false });
+      const fillMesh = new THREE.Mesh(geom, fillMat);
+      fillMesh.rotation.x = -Math.PI / 2;
+      group.add(fillMesh);
+
+      const lineMat = new THREE.LineBasicMaterial({ color, linewidth: 2, transparent: true, opacity: 0.85 });
+      const lineMesh = new THREE.LineSegments(edges, lineMat);
+      lineMesh.rotation.x = -Math.PI / 2;
+      group.add(lineMesh);
+
+      group.userData = { fillMesh, lineMesh, type };
+      return group;
+    }
+
+    function updatePlaneColor(group, type) {
+      if (group.userData.type === type) return;
+      group.userData.type = type;
+      let color = 0xff3d00;
+      let opacity = 0.20;
+      if (type === 'floor') { color = 0x00e676; opacity = 0.35; }
+      else if (type === 'table') { color = 0xffd600; opacity = 0.25; }
+
+      group.userData.fillMesh.material.color.setHex(color);
+      group.userData.fillMesh.material.opacity = opacity;
+      group.userData.lineMesh.material.color.setHex(color);
+    }
+
+    let floorPolygonsWorld = [];
+    let lastTouchNdc = new THREE.Vector2(0, -0.4);
+
+    function isPointInPolygon2D(pt, poly) {
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const xi = poly[i].x, zi = poly[i].z;
+        const xj = poly[j].x, zj = poly[j].z;
+        const intersect = ((zi > pt.z) !== (zj > pt.z))
+            && (pt.x < (xj - xi) * (pt.z - zi) / (zj - zi) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function isPointInFloorPolygon(pt) {
+      if (floorPolygonsWorld.length === 0) return true; // fallback if polygon not yet meshed
+      for (const poly of floorPolygonsWorld) {
+        if (isPointInPolygon2D(pt, poly)) return true;
+      }
+      return false;
+    }
+
+    // ── STAGE 2: Screen Ray Intersecting Known Floor Surface ONLY ─────────────
+    function updateFloorReticle() {
+      const raycaster = new THREE.Raycaster();
+      const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -lowestFloorY);
+      const floorIntersect = new THREE.Vector3();
+
+      // Test screen rays from center downwards to find valid floor intersection
+      const testAngles = [new THREE.Vector2(0, -0.4), new THREE.Vector2(0, -0.2), new THREE.Vector2(0, 0), new THREE.Vector2(0, -0.6)];
+      let found = false;
+
+      for (const pt of testAngles) {
+        raycaster.setFromCamera(pt, camera);
+        if (raycaster.ray.intersectPlane(floorPlane, floorIntersect)) {
+          const camPos = new THREE.Vector3();
+          camera.getWorldPosition(camPos);
+          const dist = camPos.distanceTo(floorIntersect);
+
+          if (dist >= 0.4 && dist <= 4.0 && floorIntersect.y <= camPos.y - 0.25) {
+            // Verify intersection is inside the actual green floor polygon!
+            if (isPointInFloorPolygon(floorIntersect)) {
+              floorReticle.position.copy(floorIntersect);
+              floorReticle.position.y = lowestFloorY + 0.002; // Flush on floor
+              floorReticle.visible = true;
+              found = true;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!found) {
+        floorReticle.visible = false;
+      }
+    }
+
+    async function onScreenTap(event) {
+      if (isPlaced || !hasDetectedFloor || lowestFloorY === null) return;
+
+      let targetPos = null;
+      if (floorReticle && floorReticle.visible) {
+        targetPos = floorReticle.position.clone();
+      } else {
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(lastTouchNdc, camera);
+        const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -lowestFloorY);
+        const testPos = new THREE.Vector3();
+        if (raycaster.ray.intersectPlane(floorPlane, testPos) && isPointInFloorPolygon(testPos)) {
+          targetPos = testPos;
+        }
+      }
+
+      if (!targetPos) {
+        toastMsg.textContent = '⚠️ Tap directly on the green floor tiles!';
+        toastIcon.textContent = '👇';
+        if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+        return;
+      }
+
+      arGroup.position.set(targetPos.x, lowestFloorY, targetPos.z);
+
+      // Face towards camera
+      const camPos = new THREE.Vector3();
+      camera.getWorldPosition(camPos);
+      arGroup.lookAt(camPos.x, lowestFloorY, camPos.z);
+
+      arGroup.visible = true;
+      isPlaced = true;
+      floorReticle.visible = false;
+
+        if (navigator.vibrate) navigator.vibrate(40);
+
+        // Try creating persistent SLAM anchor
+        if (currentSession) {
+          try {
+            const frame = renderer.xr.getFrame();
+            if (frame && frame.createAnchor) {
+              const transform = new XRRigidTransform(
+                { x: targetPos.x, y: lowestFloorY, z: targetPos.z },
+                { x: 0, y: 0, z: 0, w: 1 }
+              );
+              activeAnchor = await frame.createAnchor(transform, xrRefSpace);
+            }
+          } catch (e) {
+            console.warn('Anchor creation skipped:', e);
+          }
+        }
+
+        toastMsg.textContent = `${currentProduct.name} anchored to floor (1:1 scale)`;
+        toastIcon.textContent = '🛋️';
+
+        btnRotLeft.style.display = 'flex';
+        btnRotRight.style.display = 'flex';
         btnReposition.style.display = 'flex';
       }
     }
 
-    // ── Reposition & X-Ray ──
-    btnReposition.addEventListener('click', () => {
-      isPlaced = false;
-      sofaGroup.visible = false;
-      reticleGroup.visible = true;
-      btnReposition.style.display = 'none';
-      statusText.textContent = 'Repositioning — Move camera and tap floor';
-      statusIcon.textContent = '🔄';
-    });
+    // ── STAGE 3: Dragging Strictly Clamped to 2D Floor (Zero Elevation Drift) ──
+    let isDragging = false;
+    let initialPinchAngle = 0;
 
-    btnXray.addEventListener('click', () => {
-      isXray = !isXray;
-      btnXray.style.background = isXray ? 'rgba(201, 169, 110, 0.4)' : 'var(--card-bg)';
-      btnXray.textContent = isXray ? '👻 X-Ray: ACTIVE' : '👻 X-Ray Wall Check';
-      applySofaMaterial(currentColor, currentRoughness);
-    });
+    function setupTouchInteractions() {
+      window.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 0) {
+          const t = e.touches[0];
+          lastTouchNdc.set(
+            (t.clientX / window.innerWidth) * 2 - 1,
+            -(t.clientY / window.innerHeight) * 2 + 1
+          );
+        }
+        if (!isPlaced || !currentSession) return;
+        if (e.target.closest('#top-bar, #action-bar, #swatch-container, #dim-card, #plane-diagnostic-hud')) return;
 
-    // Swatch handlers
-    swatches.forEach(swatch => {
-      swatch.addEventListener('click', () => {
-        swatches.forEach(s => s.classList.remove('active'));
-        swatch.classList.add('active');
-        applySofaMaterial(swatch.dataset.color, swatch.dataset.roughness);
+        if (e.touches.length === 1) {
+          isDragging = true;
+        } else if (e.touches.length === 2) {
+          isDragging = false;
+          const dx = e.touches[1].clientX - e.touches[0].clientX;
+          const dy = e.touches[1].clientY - e.touches[0].clientY;
+          initialPinchAngle = Math.atan2(dy, dx);
+        }
+      }, { passive: false });
+
+      window.addEventListener('touchmove', (e) => {
+        if (!isPlaced || !currentSession) return;
+        if (e.target.closest('#top-bar, #action-bar, #swatch-container, #dim-card, #plane-diagnostic-hud')) return;
+
+        if (e.touches.length === 1 && isDragging && lowestFloorY !== null) {
+          // PROFESSOR'S ARCHITECTURE: Mathematical infinite horizontal plane intersection
+          // Never raycast against walls, never allow Y to change from lowestFloorY.
+          const touch = e.touches[0];
+          const mouse = new THREE.Vector2(
+            (touch.clientX / window.innerWidth) * 2 - 1,
+            -(touch.clientY / window.innerHeight) * 2 + 1
+          );
+
+          const raycaster = new THREE.Raycaster();
+          raycaster.setFromCamera(mouse, camera);
+
+          const camPos = new THREE.Vector3();
+          camera.getWorldPosition(camPos);
+          const rayDir = raycaster.ray.direction.clone().normalize();
+
+          // Camera height above floor
+          const h = camPos.y - lowestFloorY;
+
+          let targetX = arGroup.position.x;
+          let targetZ = arGroup.position.z;
+
+          if (rayDir.y < -0.08 && h > 0) {
+            const t = -h / rayDir.y;
+            // Cap horizontal distance from camera to conservative room boundary (3.2m)
+            // so dragging toward the far wall doesn't shoot 30 meters through the wall
+            const maxFloorDist = 3.2; // meters
+            const hitX = camPos.x + rayDir.x * t;
+            const hitZ = camPos.z + rayDir.z * t;
+            const floorDist = Math.hypot(hitX - camPos.x, hitZ - camPos.z);
+
+            if (floorDist > maxFloorDist) {
+              const ratio = maxFloorDist / floorDist;
+              targetX = camPos.x + (hitX - camPos.x) * ratio;
+              targetZ = camPos.z + (hitZ - camPos.z) * ratio;
+            } else {
+              targetX = hitX;
+              targetZ = hitZ;
+            }
+          } else {
+            // Finger pointed at wall or above horizon (rayDir.y >= -0.08):
+            // Project along camera ground direction at conservative max room distance (2.8m).
+            // Guarantees: NEVER floats upward onto wall, stops comfortably on the floor in front of user!
+            const groundDir = new THREE.Vector2(rayDir.x, rayDir.z).normalize();
+            targetX = camPos.x + groundDir.x * 2.8;
+            targetZ = camPos.z + groundDir.y * 2.8;
+          }
+
+          // Smooth lerp to prevent jerky jumping
+          arGroup.position.x += (targetX - arGroup.position.x) * 0.4;
+          arGroup.position.z += (targetZ - arGroup.position.z) * 0.4;
+          arGroup.position.y = lowestFloorY; // IMMUTABLE GROUND LOCK: ZERO ELEVATION DRIFT
+        } else if (e.touches.length === 2) {
+          const dx = e.touches[1].clientX - e.touches[0].clientX;
+          const dy = e.touches[1].clientY - e.touches[0].clientY;
+          const angle = Math.atan2(dy, dx);
+          const delta = angle - initialPinchAngle;
+          arGroup.rotation.y -= delta * 1.2;
+          initialPinchAngle = angle;
+        }
+      }, { passive: false });
+
+      window.addEventListener('touchend', () => {
+        isDragging = false;
       });
-    });
 
-    // Startup
-    initThree();
-    checkWebXR();
+      // Quick Turn Buttons
+      btnRotLeft.addEventListener('click', () => {
+        if (arGroup) {
+          arGroup.rotation.y -= Math.PI / 4;
+          if (navigator.vibrate) navigator.vibrate(20);
+        }
+      });
+
+      btnRotRight.addEventListener('click', () => {
+        if (arGroup) {
+          arGroup.rotation.y += Math.PI / 4;
+          if (navigator.vibrate) navigator.vibrate(20);
+        }
+      });
+
+      btnReposition.addEventListener('click', () => {
+        isPlaced = false;
+        arGroup.visible = false;
+        btnRotLeft.style.display = 'none';
+        btnRotRight.style.display = 'none';
+        btnReposition.style.display = 'none';
+        toastMsg.textContent = 'Point at floor spot and tap to place';
+        toastIcon.textContent = '🔄';
+      });
+
+      btnExitAr.addEventListener('click', () => {
+        if (currentSession) currentSession.end();
+      });
+    }
+
+    function onResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // Launch
+    init();
   </script>
 </body>
 </html>

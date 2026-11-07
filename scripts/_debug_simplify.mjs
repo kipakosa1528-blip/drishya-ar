@@ -1,0 +1,12 @@
+import { NodeIO } from '@gltf-transform/core';
+import { simplify, weld } from '@gltf-transform/functions';
+import { MeshoptSimplifier } from 'meshoptimizer';
+await MeshoptSimplifier.ready;
+const io = new NodeIO();
+const doc = await io.read(process.argv[2]);
+const count = () => doc.getRoot().listMeshes().flatMap((m) => m.listPrimitives()).map((p) => [p.getAttribute('POSITION').getCount(), p.getIndices()?.getCount()]);
+console.log('before', count());
+await doc.transform(weld());
+console.log('after weld', count());
+await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: 0.5, error: 0.002 }));
+console.log('after simplify', count());

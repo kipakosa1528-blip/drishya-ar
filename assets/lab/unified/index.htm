@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Lab · Unified floor AR (Android WebXR + iOS Quick Look)</title>
+  <meta name="theme-color" content="#0a0a0c">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/USDZExporter.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0c; color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    #c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; z-index: 1; }
+    #ui { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+    .card { background: rgba(18,18,24,0.85); border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-radius: 12px; }
+
+    #start-wrap { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 14px; text-align: center; padding: 24px; pointer-events: auto; }
+    #start-wrap h1 { font-size: 17px; font-weight: 700; }
+    #start-wrap p { font-size: 13px; color: rgba(255,255,255,0.6); max-width: 340px; line-height: 1.5; }
+    #enter { pointer-events: auto; padding: 15px 34px; border-radius: 9999px; border: none; cursor: pointer;
+      font-size: 15px; font-weight: 800; color: #0a0a0c;
+      background: linear-gradient(135deg, #d5b57a, #b89557); box-shadow: 0 8px 30px rgba(201,169,110,0.4); }
+    #err { color: #ff8a80; font-size: 12.5px; max-width: 340px; }
+
+    #hud { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 12px; right: 64px;
+      padding: 8px 11px; font-size: 11.5px; line-height: 1.5; display: none; }
+    #hud b { color: #fff; } .ok { color: #00e676; } .no { color: #ff5252; }
+
+    #models { position: absolute; left: 12px; right: 12px; bottom: calc(74px + env(safe-area-inset-bottom));
+      display: none; gap: 8px; overflow-x: auto; pointer-events: auto; scrollbar-width: none; }
+    #models::-webkit-scrollbar { display: none; }
+    #models button { flex: none; padding: 8px 14px; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(18,18,24,0.85); color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    #models button.active { background: #c9a96e; color: #0a0a0c; border-color: transparent; }
+
+    #swatches { position: absolute; left: 50%; transform: translateX(-50%);
+      bottom: calc(130px + env(safe-area-inset-bottom)); display: none; gap: 12px; padding: 8px 16px;
+      pointer-events: auto; max-width: calc(100% - 24px); overflow-x: auto; scrollbar-width: none; }
+    #swatches::-webkit-scrollbar { display: none; }
+    .swatch { width: 34px; height: 34px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25); cursor: pointer; flex: none; }
+    .swatch.active { border-color: #fff; transform: scale(1.12); box-shadow: 0 0 0 3px rgba(201,169,110,0.6); }
+
+    #reset { position: absolute; left: 50%; transform: translateX(-50%);
+      bottom: calc(22px + env(safe-area-inset-bottom)); display: none; pointer-events: auto; cursor: pointer;
+      padding: 11px 22px; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(18,18,24,0.85); color: #fff; font-size: 13px; font-weight: 700; }
+    #exit { position: absolute; top: calc(12px + env(safe-area-inset-top)); right: 12px; width: 40px; height: 40px;
+      border-radius: 50%; display: none; align-items: center; justify-content: center; border: none; cursor: pointer;
+      background: rgba(220,38,38,0.9); color: #fff; font-size: 16px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="ui">
+    <div id="start-wrap">
+      <h1>Floor AR · Android + iOS</h1>
+      <p id="plat">—</p>
+      <button id="enter">View in your room (AR)</button>
+      <p id="err"></p>
+    </div>
+    <div id="hud" class="card">
+      <div>floor: <b id="h-floor">-</b> · planes: <b id="h-planes">-</b> · hit: <b id="h-hit" class="no">no</b></div>
+      <div>consecutive: <b id="h-run">0</b>/10 · <b id="h-ready" class="no">off</b> · anchor: <b id="h-anchor" class="no">no</b></div>
+    </div>
+    <div id="models"></div>
+    <div id="swatches" class="card"></div>
+    <button id="reset">Reset</button>
+    <button id="exit">✕</button>
+    <a id="ios-ar-link" rel="ar" style="display:none"></a>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const canvas = $('c');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x000000, 0);
+    renderer.xr.enabled = true;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x555555, 1.4));
+    const dl = new THREE.DirectionalLight(0xffffff, 1.1); dl.position.set(1, 3, 2); scene.add(dl);
+
+    const reticle = new THREE.Mesh(
+      new THREE.RingGeometry(0.16, 0.19, 48),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false })
+    );
+    reticle.rotation.x = -Math.PI / 2; reticle.visible = false; scene.add(reticle);
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    $('plat').textContent = isIOS
+      ? 'iOS detected — your colour choice is baked into a USDZ and opens in AR Quick Look (floor placement by ARKit).'
+      : 'Android detected — live in-AR session: tap the floor to place, drag to move (floor-locked), two-finger twist to rotate.';
+
+    // ---- state ----
+    const MODELS = [
+      { id: 'radio', name: 'Radio · 27 cm', url: '/assets/models/furniture/radio.glb' },
+      { id: 'rack', name: 'Rack · 190 cm', url: '/assets/models/furniture/rack.glb' },
+      { id: 'throne', name: 'Throne · 190 cm', url: '/assets/models/furniture/throne.glb' },
+      { id: 'sofa', name: 'Sofa · 190 cm', url: '/assets/models/furniture/sofa.glb' },
+    ];
+    let session = null, refSpace = null, centerHitSource = null, downHitSource = null;
+    let modelTemplate = null, placedModel = null, activeAnchor = null;
+    let placed = false, dragging = false, rotating = false, lastAngle = 0;
+    let lowestFloorY = null, validHit = null, floorRun = 0, lastHitY = null;
+    let floorPolygon2D = null, floorPolygonLine = null;
+    let lastNormY = 0, lastElev = 0;
+    const RUN_REQUIRED = 10, MAX_HIT_DIST = 3.5, FLOOR_EDGE_MARGIN = 0.25;
+    const anchorOffset = new THREE.Vector3();
+    const lastAnchorPos = new THREE.Vector3();
+    const _camPos = new THREE.Vector3();
+    const _plane = new THREE.Plane();
+    const _ndc = new THREE.Vector2();
+    const _rc = new THREE.Raycaster();
+
+    // ---- model chooser + swatches ----
+    function buildChips() {
+      const bar = $('models'); bar.innerHTML = '';
+      MODELS.forEach((mo) => {
+        const b = document.createElement('button'); b.textContent = mo.name; b.dataset.id = mo.id;
+        b.addEventListener('click', () => selectModel(mo.id)); bar.appendChild(b);
+      });
+    }
+    let currentSwatch = null, currentOptions = null;
+    function selectModel(id) {
+      const mo = MODELS.find((x) => x.id === id) || MODELS[0];
+      document.querySelectorAll('#models button').forEach((b) => b.classList.toggle('active', b.dataset.id === mo.id));
+      modelTemplate = null; currentSwatch = null; currentOptions = null;
+      fetch('/assets/catalog.json?v=' + Date.now()).then((r) => r.json()).then((cat) => {
+        const p = cat.products.find((x) => x.id === mo.id);
+        currentOptions = p?.options || null;
+        new THREE.GLTFLoader().load(mo.url, (gltf) => {
+          const m = gltf.scene;
+          const box = new THREE.Box3().setFromObject(m);
+          const c = box.getCenter(new THREE.Vector3());
+          m.position.set(-c.x, -box.min.y, -c.z);   // pivot at base centre
+          modelTemplate = m;
+          buildSwatches();
+          if (currentSwatch) applySwatch(currentSwatch);
+          if (placed && placedModel) {
+            const inst = m.clone(true);
+            inst.position.copy(placedModel.position);
+            inst.rotation.copy(placedModel.rotation);
+            scene.remove(placedModel);
+            scene.add(inst);
+            placedModel = inst;
+            if (currentSwatch) applySwatch(currentSwatch);
+          }
+        }, undefined, (e) => console.error('model load failed', e));
+      });
+    }
+    function buildSwatches() {
+      const bar = $('swatches'); bar.innerHTML = '';
+      const list = currentOptions?.swatches || [];
+      bar.style.display = list.length ? 'flex' : 'none';
+      list.forEach((s, i) => {
+        const el = document.createElement('div');
+        el.className = 'swatch' + (i === 0 ? ' active' : '');
+        el.style.background = s.color; el.title = s.name;
+        el.addEventListener('click', () => {
+          bar.querySelectorAll('.swatch').forEach((x) => x.classList.remove('active'));
+          el.classList.add('active');
+          currentSwatch = s;
+          applySwatch(s);
+          if (navigator.vibrate) navigator.vibrate(12);
+        });
+        bar.appendChild(el);
+      });
+      currentSwatch = list[0] || null;
+    }
+    function applySwatch(s) {
+      const target = (m) => {
+        if (!m || !s) return;
+        m.traverse((c) => {
+          if (!c.isMesh || !c.material) return;
+          const mats = Array.isArray(c.material) ? c.material : [c.material];
+          const tm = currentOptions?.material;
+          mats.forEach((mm) => {
+            if (!tm || mm.name === tm || mats.length === 1) {
+              const n = parseInt(s.color.replace('#', ''), 16);
+              if (mm.color) mm.color.setRGB(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
+              if (s.roughness != null && mm.roughness !== undefined) mm.roughness = s.roughness;
+            }
+          });
+        });
+      };
+      if (placedModel) target(placedModel);
+      if (modelTemplate) target(modelTemplate);
+    }
+
+    // ---- iOS path: export the CURRENT model+colour as USDZ -> AR Quick Look ----
+    async function launchIOS() {
+      const errEl = $('err');
+      if (!modelTemplate) { errEl.textContent = 'Model still loading — try again in a second.'; return; }
+      // export a fresh clone with the current swatch colour applied
+      const clone = modelTemplate.clone(true);
+      clone.position.set(0, 0, 0);
+      const tmp = new THREE.Group();
+      tmp.add(clone);
+      if (currentSwatch) applySwatch(currentSwatch);   // ensure the live colour
+      try {
+        const exporter = new THREE.USDZExporter();
+        const arraybuffer = await exporter.parse(tmp);
+        const blob = new Blob([arraybuffer], { type: 'model/vnd.usdz+zip' });
+        const url = URL.createObjectURL(blob);
+        const a = $('ios-ar-link');
+        a.href = url;
+        a.download = 'furniture.usdz';
+        a.click();
+        errEl.textContent = '';
+      } catch (e) {
+        errEl.textContent = 'USDZ export failed: ' + e.message;
+      }
+    }
+
+    // ---- Android path: WebXR floor-locked placement ----
+    async function start() {
+      if (isIOS) { launchIOS(); return; }
+      const errEl = $('err');
+      if (!navigator.xr) { errEl.textContent = 'WebXR not available.'; return; }
+      const ok = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
+      if (!ok) { errEl.textContent = 'immersive-ar not supported.'; return; }
+      try {
+        session = await navigator.xr.requestSession('immersive-ar', {
+          optionalFeatures: ['dom-overlay', 'plane-detection', 'anchors', 'hit-test', 'depth-sensing'],
+          depthSensing: { usagePreference: ['cpu-optimized'], dataFormatPreference: ['luminance-alpha', 'float32'] },
+          domOverlay: { root: $('ui') },
+        });
+      } catch (e) { errEl.textContent = 'Session failed: ' + e.message; return; }
+
+      session.addEventListener('end', onEnd);
+      renderer.xr.setReferenceSpaceType('local');
+      await renderer.xr.setSession(session);
+      refSpace = renderer.xr.getReferenceSpace() || await session.requestReferenceSpace('local');
+
+      const viewerSpace = await session.requestReferenceSpace('viewer');
+      centerHitSource = await session.requestHitTestSource({ space: viewerSpace }).catch(() => null);
+      try {
+        const downRay = new XRRay(new DOMPointReadOnly(0, 0, 0), { x: 0, y: -0.6, z: -1.0 });
+        downHitSource = await session.requestHitTestSource({ space: viewerSpace, offsetRay: downRay });
+      } catch (e) { downHitSource = null; }
+      session.addEventListener('select', onSelect);
+
+      $('start-wrap').style.display = 'none';
+      $('hud').style.display = 'block'; $('models').style.display = 'flex';
+      $('swatches').style.display = 'flex'; $('reset').style.display = 'flex'; $('exit').style.display = 'flex';
+      renderer.setAnimationLoop(render);
+    }
+
+    function onEnd() {
+      session = null; refSpace = null; centerHitSource = null; downHitSource = null;
+      activeAnchor = null; placed = false;
+      if (placedModel) { scene.remove(placedModel); placedModel = null; }
+      lowestFloorY = null; validHit = null; floorRun = 0; lastHitY = null; floorPolygon2D = null;
+      reticle.visible = false;
+      if (floorPolygonLine) { scene.remove(floorPolygonLine); floorPolygonLine = null; }
+      renderer.setAnimationLoop(null);
+      $('hud').style.display = 'none'; $('models').style.display = 'none'; $('swatches').style.display = 'none';
+      $('reset').style.display = 'none'; $('exit').style.display = 'none';
+      $('start-wrap').style.display = 'flex';
+    }
+
+    async function onSelect() {
+      if (placed || !modelTemplate) return;
+      if (!validHit || floorRun < RUN_REQUIRED) return;
+      const p = validHit.pose.transform.position;
+      const inst = modelTemplate.clone(true);
+      inst.position.set(p.x, lowestFloorY, p.z);
+      const cp = new THREE.Vector3(); camera.getWorldPosition(cp);
+      inst.rotation.set(0, Math.atan2(cp.x - p.x, cp.z - p.z), 0);
+      scene.add(inst);
+      placedModel = inst; placed = true;
+      if (currentSwatch) applySwatch(currentSwatch);
+      reticle.visible = false;
+      anchorOffset.set(0, 0, 0);
+      try { activeAnchor = await validHit.hit.createAnchor(); } catch (e) { activeAnchor = null; }
+      if (navigator.vibrate) navigator.vibrate(30);
+    }
+
+    // ---- floor helpers (planes + depth-fit) ----
+    function polygonAreaXZ(poly) {
+      if (!poly || poly.length < 3) return 0;
+      let a = 0;
+      for (let i = 0, n = poly.length; i < n; i++) { const p = poly[i], q = poly[(i + 1) % n]; a += p.x * q.z - q.x * p.z; }
+      return Math.abs(a) / 2;
+    }
+    function getFloorPolygon2D(plane, ref, frame) {
+      if (!plane || !plane.polygon || plane.polygon.length < 3) return null;
+      const pose = frame.getPose(plane.planeSpace, ref);
+      if (!pose) return null;
+      const m = new THREE.Matrix4().fromArray(pose.transform.matrix);
+      const v = new THREE.Vector3(); const out = [];
+      for (let i = 0; i < plane.polygon.length; i++) {
+        v.set(plane.polygon[i].x, 0, plane.polygon[i].z).applyMatrix4(m);
+        out.push({ x: v.x, z: v.z });
+      }
+      return out;
+    }
+    function convexHull(pts) {
+      if (pts.length < 3) return pts.slice();
+      const P = pts.slice().sort((a, b) => (a.x - b.x) || (a.z - b.z));
+      const cross = (o, a, b) => (a.x - o.x) * (b.z - o.z) - (a.z - o.z) * (b.x - o.x);
+      const lo = [];
+      for (const p of P) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+      const up = [];
+      for (let i = P.length - 1; i >= 0; i--) { const p = P[i]; while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+      up.pop(); lo.pop();
+      return lo.concat(up);
+    }
+    function fitFloorFromDepth(di, view, camPos) {
+      if (!di || !di.getDepthInMeters) return null;
+      const invProj = new THREE.Matrix4().fromArray(view.projectionMatrix).invert();
+      const viewMat = new THREE.Matrix4().fromArray(view.transform.matrix);
+      const pt = new THREE.Vector3(); const pts = [];
+      for (let gy = 0.42; gy <= 0.99; gy += 0.03) {
+        for (let gx = 0.08; gx <= 0.92; gx += 0.045) {
+          let d = 0;
+          try { d = di.getDepthInMeters(gx, gy); } catch (e) { d = 0; }
+          if (!d || d <= 0.1 || d > 6) continue;
+          pt.set(gx * 2 - 1, 1 - gy * 2, 1).applyMatrix4(invProj);
+          pt.multiplyScalar(-d / pt.z);
+          pt.applyMatrix4(viewMat);
+          pts.push({ x: pt.x, y: pt.y, z: pt.z });
+        }
+      }
+      if (pts.length < 25) return null;
+      const bins = new Map();
+      for (const p of pts) {
+        if (camPos && (p.y > camPos.y - 0.25 || p.y < camPos.y - 2.5)) continue;
+        const k = Math.round(p.y / 0.05);
+        bins.set(k, (bins.get(k) || 0) + 1);
+      }
+      let bestK = null, bestN = 0;
+      for (const [k, n] of bins) { if (n > bestN) { bestN = n; bestK = k; } }
+      if (bestK === null || bestN < 10) return null;
+      const floorY = bestK * 0.05;
+      const inliers = pts.filter((p) => Math.abs(p.y - floorY) < 0.06);
+      if (inliers.length < 15) return null;
+      const polygon = convexHull(inliers.map((p) => ({ x: p.x, z: p.z })));
+      if (polygon.length < 3) return null;
+      return { floorY, polygon };
+    }
+    function pointInPolygon(x, z, poly2D) {
+      if (!poly2D || poly2D.length < 3) return false;
+      let inside = false;
+      for (let i = 0, j = poly2D.length - 1; i < poly2D.length; j = i++) {
+        const pi = poly2D[i], pj = poly2D[j];
+        if (((pi.z > z) !== (pj.z > z)) &&
+          (x < ((pj.x - pi.x) * (z - pi.z) / ((pj.z - pi.z) || 1e-9)) + pi.x)) inside = !inside;
+      }
+      return inside;
+    }
+    function clampToFloorPolygon(x, z, poly2D, margin) {
+      if (!poly2D || poly2D.length < 3) return { x, z, ok: false };
+      if (pointInPolygon(x, z, poly2D)) {
+        // inside; also require distance from edges (approx by margin check on segments)
+        let best = Infinity;
+        for (let i = 0, j = poly2D.length - 1; i < poly2D.length; j = i++) {
+          const ax = poly2D[j].x, az = poly2D[j].z, bx = poly2D[i].x, bz = poly2D[i].z;
+          const dx = bx - ax, dz = bz - az;
+          const len2 = dx * dx + dz * dz;
+          let t = len2 > 0 ? ((x - ax) * dx + (z - az) * dz) / len2 : 0;
+          t = Math.max(0, Math.min(1, t));
+          const ex = x - (ax + t * dx), ez = z - (az + t * dz);
+          const d2 = ex * ex + ez * ez;
+          if (d2 < best) best = d2;
+        }
+        if (best >= margin * margin) return { x, z, ok: true };
+      }
+      // clamp to nearest edge, then walk toward centroid by margin
+      let bestX = x, bestZ = z, bestD = Infinity;
+      for (let i = 0, j = poly2D.length - 1; i < poly2D.length; j = i++) {
+        const ax = poly2D[j].x, az = poly2D[j].z, bx = poly2D[i].x, bz = poly2D[i].z;
+        const dx = bx - ax, dz = bz - az;
+        const len2 = dx * dx + dz * dz;
+        let t = len2 > 0 ? ((x - ax) * dx + (z - az) * dz) / len2 : 0;
+        t = Math.max(0, Math.min(1, t));
+        const px = ax + t * dx, pz = az + t * dz;
+        const ex = x - px, ez = z - pz;
+        const d2 = ex * ex + ez * ez;
+        if (d2 < bestD) { bestD = d2; bestX = px; bestZ = pz; }
+      }
+      const cx = poly2D.reduce((a, p) => a + p.x, 0) / poly2D.length;
+      const cz = poly2D.reduce((a, p) => a + p.z, 0) / poly2D.length;
+      let nx = cx - bestX, nz = cz - bestZ;
+      const nl = Math.hypot(nx, nz) || 1; nx /= nl; nz /= nl;
+      return { x: bestX + nx * margin, z: bestZ + nz * margin, ok: true };
+    }
+
+    function evaluateHit(frame, src) {
+      if (!src || lowestFloorY === null) return null;
+      let best = null;
+      for (const r of frame.getHitTestResults(src)) {
+        const pose = r.getPose(refSpace);
+        if (!pose) continue;
+        const q = new THREE.Quaternion(pose.transform.orientation.x, pose.transform.orientation.y, pose.transform.orientation.z, pose.transform.orientation.w);
+        const n = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+        const y = pose.transform.position.y;
+        const elev = y - lowestFloorY;
+        lastNormY = n.y; lastElev = elev;
+        if (n.y < 0.90 || elev > 0.25 || elev < -0.10) continue;
+        const dx = pose.transform.position.x - _camPos.x, dz = pose.transform.position.z - _camPos.z;
+        if (dx * dx + dz * dz > MAX_HIT_DIST * MAX_HIT_DIST) continue;
+        if (floorPolygon2D && floorPolygon2D.length >= 3 &&
+            !pointInPolygon(pose.transform.position.x, pose.transform.position.z, floorPolygon2D)) continue;
+        if (!best || y < best.y) best = { pose, hit: r, y };
+      }
+      return best;
+    }
+
+    function render(timestamp, frame) {
+      if (!session || !frame) { renderer.render(scene, camera); return; }
+      const rs = renderer.xr.getReferenceSpace(); if (rs) refSpace = rs;
+      if (!refSpace) { renderer.render(scene, camera); return; }
+      const vp = frame.getViewerPose(refSpace);
+      if (!vp || !vp.views.length) { renderer.render(scene, camera); return; }
+
+      const camY = vp.transform.position.y;
+      _camPos.set(vp.transform.position.x, camY, vp.transform.position.z);
+
+      // ARCore planes (counts + fallback)
+      let hCount = 0, vCount = 0, minY = Infinity;
+      const floorCands = [];
+      if (frame.detectedPlanes) {
+        for (const plane of frame.detectedPlanes) {
+          const pose = frame.getPose(plane.planeSpace, refSpace);
+          if (!pose) continue;
+          const py = pose.transform.position.y;
+          if (plane.orientation === 'horizontal') {
+            const area = polygonAreaXZ(plane.polygon);
+            if (camY - py >= 0.9 && area >= 0.4) { hCount++; if (py < minY) minY = py; floorCands.push({ plane, py, area }); }
+          } else if (plane.orientation === 'vertical') vCount++;
+        }
+      }
+
+      // PRIMARY: depth-based floor fit (independent of plane detection)
+      let di = null;
+      try { di = (frame.getDepthInformation && vp.views[0]) ? frame.getDepthInformation(vp.views[0]) : null; } catch (e) { di = null; }
+      let newFloorPoly = null;
+      if (di && di.getDepthInMeters) {
+        const dFloor = fitFloorFromDepth(di, vp.views[0], _camPos);
+        if (dFloor) {
+          lowestFloorY = lowestFloorY === null ? dFloor.floorY : lowestFloorY + (dFloor.floorY - lowestFloorY) * 0.25;
+          newFloorPoly = dFloor.polygon;
+        }
+      }
+      // FALLBACK: ARCore plane polygon
+      if (!newFloorPoly && hCount > 0 && isFinite(minY)) {
+        if (lowestFloorY === null) lowestFloorY = minY;
+        else if (minY < lowestFloorY) lowestFloorY += (minY - lowestFloorY) * 0.3;
+        let cand = null, bestArea = -1;
+        for (const c of floorCands) {
+          if (Math.abs(c.py - lowestFloorY) <= 0.25 && c.area > bestArea) { bestArea = c.area; cand = c.plane; }
+        }
+        if (cand) newFloorPoly = getFloorPolygon2D(cand, refSpace, frame);
+      }
+      if (newFloorPoly) {
+        floorPolygon2D = newFloorPoly;
+        if (floorPolygonLine) { scene.remove(floorPolygonLine); floorPolygonLine = null; }
+        const pts = newFloorPoly.concat([newFloorPoly[0]]).map((p) => new THREE.Vector3(p.x, lowestFloorY + 0.003, p.z));
+        floorPolygonLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+          new THREE.LineBasicMaterial({ color: 0xc9a96e, transparent: true, opacity: 0.7 }));
+        floorPolygonLine.frustumCulled = false;
+        scene.add(floorPolygonLine);
+      }
+
+      if (!placed) {
+        validHit = evaluateHit(frame, centerHitSource) || evaluateHit(frame, downHitSource);
+        if (validHit) {
+          if (lastHitY === null || Math.abs(validHit.y - lastHitY) <= 0.05) floorRun++;
+          else floorRun = 1;
+          lastHitY = validHit.y;
+        } else { floorRun = 0; lastHitY = null; }
+
+        if (validHit && floorRun >= RUN_REQUIRED) {
+          const p = validHit.pose.transform.position;
+          reticle.position.set(p.x, lowestFloorY + 0.004, p.z);
+          reticle.visible = true;
+        } else reticle.visible = false;
+      }
+
+      // anchor + floor-Y lock
+      if (placed && placedModel && lowestFloorY !== null && Math.abs(placedModel.position.y - lowestFloorY) > 0.0005) {
+        anchorOffset.y = lowestFloorY - lastAnchorPos.y;
+        placedModel.position.y = lowestFloorY;
+      }
+      if (placed && activeAnchor && placedModel) {
+        const ap = frame.getPose(activeAnchor.anchorSpace, refSpace);
+        if (ap) {
+          lastAnchorPos.set(ap.transform.position.x, ap.transform.position.y, ap.transform.position.z);
+          placedModel.position.set(
+            lastAnchorPos.x + anchorOffset.x,
+            lastAnchorPos.y + anchorOffset.y,
+            lastAnchorPos.z + anchorOffset.z
+          );
+        }
+      } else if (placed && placedModel) {
+        lastAnchorPos.copy(placedModel.position);
+      }
+
+      $('h-floor').textContent = lowestFloorY === null ? '-' : lowestFloorY.toFixed(2) + ' m';
+      $('h-planes').textContent = hCount + '/' + vCount;
+      $('h-hit').textContent = validHit ? 'yes' : 'no'; $('h-hit').className = validHit ? 'ok' : 'no';
+      $('h-run').textContent = floorRun;
+      const rdy = !!validHit && floorRun >= RUN_REQUIRED;
+      $('h-ready').textContent = rdy ? 'tap to place' : 'off'; $('h-ready').className = rdy ? 'ok' : 'no';
+      $('h-anchor').textContent = activeAnchor ? 'yes' : 'no'; $('h-anchor').className = activeAnchor ? 'ok' : 'no';
+
+      renderer.render(scene, camera);
+    }
+
+    // ---- gestures: 1-finger drag = floor-locked move, 2-finger = rotate ----
+    window.addEventListener('touchstart', (e) => {
+      if (!placed || !placedModel) return;
+      if (e.target.closest('#models, #reset, #swatches')) return;
+      if (e.touches.length === 1) { dragging = true; rotating = false; }
+      else if (e.touches.length === 2) {
+        rotating = true; dragging = false;
+        lastAngle = Math.atan2(e.touches[1].clientY - e.touches[0].clientY, e.touches[1].clientX - e.touches[0].clientX);
+      }
+    }, { passive: true });
+    window.addEventListener('touchmove', (e) => {
+      if (!placedModel) return;
+      if (e.target.closest('#models, #reset, #swatches')) return;
+      if (dragging && e.touches.length === 1 && lowestFloorY !== null) {
+        const r = renderer.domElement.getBoundingClientRect();
+        const t = e.touches[0];
+        _ndc.set(((t.clientX - r.left) / r.width) * 2 - 1, -((t.clientY - r.top) / r.height) * 2 + 1);
+        _rc.setFromCamera(_ndc, camera);
+        _plane.set(new THREE.Vector3(0, 1, 0), -lowestFloorY);
+        const p = new THREE.Vector3();
+        if (_rc.ray.intersectPlane(_plane, p)) {
+          let cx = p.x, cz = p.z;
+          if (floorPolygon2D) {
+            const c = clampToFloorPolygon(cx, cz, floorPolygon2D, FLOOR_EDGE_MARGIN);
+            if (c.ok) { cx = c.x; cz = c.z; }
+          }
+          placedModel.position.x = cx; placedModel.position.z = cz; placedModel.position.y = lowestFloorY;
+          anchorOffset.set(placedModel.position.x - lastAnchorPos.x, 0, placedModel.position.z - lastAnchorPos.z);
+        }
+      } else if (rotating && e.touches.length === 2) {
+        const a = Math.atan2(e.touches[1].clientY - e.touches[0].clientY, e.touches[1].clientX - e.touches[0].clientX);
+        placedModel.rotation.y -= (a - lastAngle);
+        lastAngle = a;
+      }
+    }, { passive: true });
+    window.addEventListener('touchend', () => { dragging = false; rotating = false; });
+
+    $('enter').addEventListener('click', start);
+    $('exit').addEventListener('click', () => { if (session) session.end(); });
+    $('reset').addEventListener('click', () => {
+      if (placedModel) { scene.remove(placedModel); placedModel = null; }
+      placed = false; activeAnchor = null; reticle.visible = true;
+    });
+
+    buildChips(); selectModel('radio');
+
+    // pre-AR studio orbit
+    function fitCamera() { camera.position.set(0, 0.5, 1.2); camera.lookAt(0, 0.15, 0); }
+    fitCamera();
+    renderer.setAnimationLoop(render);
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

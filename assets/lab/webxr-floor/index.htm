@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Lab · WebXR floor-only placement (prof. rules)</title>
+  <meta name="theme-color" content="#0a0a0c">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0c; color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    #c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; z-index: 1; }
+    #ui { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+    .card { background: rgba(18,18,24,0.85); border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-radius: 12px; }
+
+    #start-wrap { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 14px; text-align: center; padding: 24px; pointer-events: auto; }
+    #start-wrap h1 { font-size: 17px; font-weight: 700; }
+    #start-wrap p { font-size: 13px; color: rgba(255,255,255,0.6); max-width: 340px; line-height: 1.5; }
+    #enter { pointer-events: auto; padding: 15px 34px; border-radius: 9999px; border: none; cursor: pointer;
+      font-size: 15px; font-weight: 800; color: #0a0a0c;
+      background: linear-gradient(135deg, #d5b57a, #b89557); box-shadow: 0 8px 30px rgba(201,169,110,0.4); }
+
+    #hud { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 12px; right: 64px;
+      padding: 9px 12px; font-size: 12px; line-height: 1.55; display: none; }
+    #hud b { color: #fff; } .ok { color: #00e676; } .no { color: #ff5252; } .muted { color: rgba(255,255,255,0.55); }
+
+    #models { position: absolute; left: 12px; right: 12px; bottom: calc(126px + env(safe-area-inset-bottom));
+      display: none; gap: 8px; overflow-x: auto; pointer-events: auto; scrollbar-width: none; }
+    #models::-webkit-scrollbar { display: none; }
+    #models button { flex: none; padding: 8px 14px; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(18,18,24,0.85); color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    #models button.active { background: #c9a96e; color: #0a0a0c; border-color: transparent; }
+
+    #reset { position: absolute; left: 50%; transform: translateX(-50%);
+      bottom: calc(22px + env(safe-area-inset-bottom)); display: none; pointer-events: auto; cursor: pointer;
+      padding: 11px 22px; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(18,18,24,0.85); color: #fff; font-size: 13px; font-weight: 700; }
+    #exit { position: absolute; top: calc(12px + env(safe-area-inset-top)); right: 12px; width: 40px; height: 40px;
+      border-radius: 50%; display: none; align-items: center; justify-content: center; border: none; cursor: pointer;
+      background: rgba(220,38,38,0.9); color: #fff; font-size: 16px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="ui">
+    <div id="start-wrap">
+      <h1>Floor-only placement · WebXR</h1>
+      <p>Prof. algorithm: detected planes → lowest floor; reject wall/tilted hits (normal ≥ 0.90, ≤ 15 cm above floor); require 10 consecutive valid frames; place on the hit; lock to an XR anchor; drag strictly on the floor plane.</p>
+      <button id="enter">Enter AR</button>
+      <p id="err" style="color:#ff8a80"></p>
+    </div>
+
+    <div id="hud" class="card">
+      <div>planes h/v: <b id="h-planes">-</b> · lowestFloorY: <b id="h-floor">-</b></div>
+      <div>validHit: <b id="h-hit" class="no">no</b> · norm.y: <b id="h-norm">-</b> · elev: <b id="h-elev">-</b></div>
+      <div>consecutive: <b id="h-run">0</b>/10 · placement: <b id="h-ready" class="no">off</b></div>
+      <div>anchored: <b id="h-anchor" class="no">no</b> · model y: <b id="h-my">-</b></div>
+    </div>
+
+    <div id="models"></div>
+    <button id="reset">Reset</button>
+    <button id="exit">✕</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('c');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x000000, 0);
+    renderer.xr.enabled = true;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x555555, 1.4));
+    const dl = new THREE.DirectionalLight(0xffffff, 1.1); dl.position.set(1, 3, 2); scene.add(dl);
+
+    // floor reticle
+    const reticle = new THREE.Mesh(
+      new THREE.RingGeometry(0.16, 0.19, 48),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false })
+    );
+    reticle.rotation.x = -Math.PI / 2; reticle.visible = false; scene.add(reticle);
+
+    const $ = (id) => document.getElementById(id);
+    const hud = $('hud'), exitBtn = $('exit');
+    const hPlanes = $('h-planes'), hFloor = $('h-floor'), hHit = $('h-hit'), hNorm = $('h-norm'),
+      hElev = $('h-elev'), hRun = $('h-run'), hReady = $('h-ready'), hAnchor = $('h-anchor'), hMy = $('h-my');
+
+    const MODELS = [
+      { id: 'radio', name: 'Radio · 27 cm', url: '/assets/models/furniture/radio.glb' },
+      { id: 'rack', name: 'Rack · 190 cm', url: '/assets/models/furniture/rack.glb' },
+      { id: 'throne', name: 'Throne · 190 cm', url: '/assets/models/furniture/throne.glb' },
+      { id: 'sofa', name: 'Sofa · 190 cm', url: '/assets/models/furniture/sofa.glb' },
+    ];
+
+    let session = null, refSpace = null;
+    let centerHitSource = null, downHitSource = null;
+    let modelTemplate = null, placedModel = null, activeAnchor = null;
+
+    let lowestFloorY = null;         // Rule 1
+    let validHit = null;             // Rule 2 (accepted hit)
+    let lastNormY = 0, lastElev = 0;
+    let floorRun = 0, lastHitY = null;   // Rule 3
+    const RUN_REQUIRED = 10;
+
+    let placed = false, dragging = false, rotating = false;
+    let lastAngle = 0;
+    const anchorOffset = new THREE.Vector3();
+    const lastAnchorPos = new THREE.Vector3();
+    const _plane = new THREE.Plane();
+    const _ndc = new THREE.Vector2();
+    const _rc = new THREE.Raycaster();
+    const _camPos = new THREE.Vector3();
+    const MAX_HIT_DIST = 3.5;   // don't let the reticle run off toward the horizon
+
+    // Floor polygon (from detected horizontal plane) bounds the marker so it
+    // cannot climb onto the wall.
+    let floorPolygon2D = null;            // [{x, z}, ...] in world (local) space at lowestFloorY
+    let floorPolygonLine = null;          // THREE.Line drawn at lowestFloorY
+    const FLOOR_EDGE_MARGIN = 0.25;       // keep the marker this far inside the polygon edge
+
+    let lastPlaneSeenAt = 0;              // for the drift guard: re-anchor if planes go quiet
+
+    // ---- model chooser ----
+    function buildChips() {
+      const bar = $('models'); bar.innerHTML = '';
+      MODELS.forEach((mo) => {
+        const b = document.createElement('button'); b.textContent = mo.name; b.dataset.id = mo.id;
+        b.addEventListener('click', () => selectModel(mo.id)); bar.appendChild(b);
+      });
+    }
+    function selectModel(id) {
+      const mo = MODELS.find((x) => x.id === id) || MODELS[0];
+      document.querySelectorAll('#models button').forEach((b) => b.classList.toggle('active', b.dataset.id === id));
+      modelTemplate = null;
+      new THREE.GLTFLoader().load(mo.url, (gltf) => {
+        const m = gltf.scene;
+        const box = new THREE.Box3().setFromObject(m);
+        const c = box.getCenter(new THREE.Vector3());
+        m.position.set(-c.x, -box.min.y, -c.z);   // pivot at base centre
+        modelTemplate = m;
+        // if something is already placed, swap it in place (keep position + rotation)
+        if (placed && placedModel) {
+          const inst = m.clone(true);
+          inst.position.copy(placedModel.position);
+          inst.rotation.copy(placedModel.rotation);
+          scene.remove(placedModel);
+          scene.add(inst);
+          placedModel = inst;
+        }
+      }, undefined, (e) => console.error('model load failed', e));
+    }
+
+    $('enter').addEventListener('click', start);
+    exitBtn.addEventListener('click', () => { if (session) session.end(); });
+    $('reset').addEventListener('click', () => {
+      if (placedModel) { scene.remove(placedModel); placedModel = null; }
+      placed = false; activeAnchor = null; reticle.visible = true;
+    });
+
+    async function start() {
+      const errEl = $('err');
+      if (!navigator.xr) { errEl.textContent = 'WebXR not available.'; return; }
+      const ok = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
+      if (!ok) { errEl.textContent = 'immersive-ar not supported.'; return; }
+
+      try {
+        session = await navigator.xr.requestSession('immersive-ar', {
+          optionalFeatures: ['dom-overlay', 'plane-detection', 'anchors', 'hit-test'],
+          domOverlay: { root: $('ui') },
+        });
+      } catch (e) { errEl.textContent = 'Session failed: ' + e.message; return; }
+
+      session.addEventListener('end', onEnd);
+      renderer.xr.setReferenceSpaceType('local');
+      await renderer.xr.setSession(session);
+      refSpace = renderer.xr.getReferenceSpace() || await session.requestReferenceSpace('local');
+
+      const viewerSpace = await session.requestReferenceSpace('viewer');
+      centerHitSource = await session.requestHitTestSource({ space: viewerSpace }).catch(() => null);
+      try {
+        const downRay = new XRRay(new DOMPointReadOnly(0, 0, 0), { x: 0, y: -0.6, z: -1.0 });
+        downHitSource = await session.requestHitTestSource({ space: viewerSpace, offsetRay: downRay });
+      } catch (e) { downHitSource = null; }
+
+      session.addEventListener('select', onSelect);
+
+      $('start-wrap').style.display = 'none';
+      hud.style.display = 'block'; $('models').style.display = 'flex'; $('reset').style.display = 'flex';
+      exitBtn.style.display = 'flex';
+      buildChips(); selectModel('radio');
+      renderer.setAnimationLoop(render);
+    }
+
+    function onEnd() {
+      session = null; refSpace = null; centerHitSource = null; downHitSource = null;
+      activeAnchor = null; placed = false;
+      if (placedModel) { scene.remove(placedModel); placedModel = null; }
+      lowestFloorY = null; validHit = null; floorRun = 0; lastHitY = null;
+      reticle.visible = false;
+      renderer.setAnimationLoop(null);
+      hud.style.display = 'none'; $('models').style.display = 'none'; $('reset').style.display = 'none'; exitBtn.style.display = 'none';
+      $('start-wrap').style.display = 'flex';
+    }
+
+    // Rule 4: place at the accepted hit, then lock to an XR anchor
+    async function onSelect() {
+      if (placed || !modelTemplate) return;
+      if (!validHit || !bothRulesPass()) return;   // place only on a valid floor hit
+      const p = validHit.pose.transform.position;
+      const inst = modelTemplate.clone(true);
+      inst.position.set(p.x, lowestFloorY, p.z);  // base clamped to the floor plane
+      scene.add(inst);
+      placedModel = inst; placed = true;
+      reticle.visible = false;
+      anchorOffset.set(0, 0, 0);
+      try { activeAnchor = await validHit.hit.createAnchor(); } catch (e) { activeAnchor = null; }
+      if (navigator.vibrate) navigator.vibrate(30);
+    }
+
+    function bothRulesPass() { return floorRun >= RUN_REQUIRED; }
+
+    // Rule 2: accept a hit only if normal.y >= 0.90 and within 15 cm of lowestFloorY,
+    // and its (x,z) lies INSIDE the detected floor polygon (with edge margin).
+    function evaluateHit(frame, src) {
+      if (!src) return null;
+      if (lowestFloorY === null) return null;
+      let best = null;
+      for (const r of frame.getHitTestResults(src)) {
+        const pose = r.getPose(refSpace);
+        if (!pose) continue;
+        const q = new THREE.Quaternion(pose.transform.orientation.x, pose.transform.orientation.y, pose.transform.orientation.z, pose.transform.orientation.w);
+        const n = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+        const y = pose.transform.position.y;
+        const elev = y - lowestFloorY;
+        lastNormY = n.y; lastElev = elev;
+        if (n.y < 0.90 || elev > 0.25 || elev < -0.10) continue;
+        // distance gate: as the camera tilts up the ray meets the floor plane
+        // far away (toward the horizon) — reject those so the reticle can't run
+        // off to the wall.
+        { const dx = pose.transform.position.x - _camPos.x, dz = pose.transform.position.z - _camPos.z; if (dx * dx + dz * dz > MAX_HIT_DIST * MAX_HIT_DIST) continue; }
+        // polygon gate: keep the marker inside the detected floor region (now
+        // depth-derived, so it covers the real floor, not just the rug).
+        if (floorPolygon2D && floorPolygon2D.length >= 3 &&
+            !pointInPolygon(pose.transform.position.x, pose.transform.position.z, floorPolygon2D)) continue;
+        if (!best || y < best.y) best = { pose, hit: r, y };
+      }
+      return best;
+    }
+
+    // signed area of a horizontal plane polygon (m^2) — floors are large, the
+    // spurious planes ARCore sometimes emits at wall height are small.
+    function polygonAreaXZ(poly) {
+      if (!poly || poly.length < 3) return 0;
+      let a = 0;
+      for (let i = 0, n = poly.length; i < n; i++) {
+        const p = poly[i], q = poly[(i + 1) % n];
+        a += p.x * q.z - q.x * p.z;
+      }
+      return Math.abs(a) / 2;
+    }
+
+    // Convert an XRPlane.polygon (in plane-local coords, where Y is normal) into
+    // a 2D world-space (x, z) polygon at the plane's world y. For a horizontal
+    // plane the polygon's local y is 0, so we just transform (x, 0, z) by the
+    // plane's pose matrix and drop the resulting y.
+    function getFloorPolygon2D(plane, refSpace, frame) {
+      if (!plane || !plane.polygon || plane.polygon.length < 3) return null;
+      if (plane.orientation !== 'horizontal') return null;
+      const pose = frame.getPose(plane.planeSpace, refSpace);
+      if (!pose) return null;
+      const m = new THREE.Matrix4().fromArray(pose.transform.matrix);
+      const v = new THREE.Vector3();
+      const out = [];
+      for (let i = 0; i < plane.polygon.length; i++) {
+        v.set(plane.polygon[i].x, 0, plane.polygon[i].z).applyMatrix4(m);
+        out.push({ x: v.x, z: v.z });
+      }
+      return out;
+    }
+
+    // 2D point-in-polygon (ray casting) — works for convex and simple concave.
+    function pointInPolygon(x, z, poly2D) {
+      if (!poly2D || poly2D.length < 3) return false;
+      let inside = false;
+      for (let i = 0, j = poly2D.length - 1; i < poly2D.length; j = i++) {
+        const pi = poly2D[i], pj = poly2D[j];
+        const xi = pi.x, zi = pi.z, xj = pj.x, zj = pj.z;
+        const intersect = ((zi > z) !== (zj > z)) &&
+          (x < ((xj - xi) * (z - zi) / ((zj - zi) || 1e-9)) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    // Distance squared from (x, z) to the nearest segment of the polygon (in 2D x,z).
+    function distSqToPolygonEdges(x, z, poly2D) {
+      let best = Infinity;
+      for (let i = 0, j = poly2D.length - 1; i < poly2D.length; j = i++) {
+        const ax = poly2D[j].x, az = poly2D[j].z;
+        const bx = poly2D[i].x, bz = poly2D[i].z;
+        const dx = bx - ax, dz = bz - az;
+        const len2 = dx * dx + dz * dz;
+        let t = len2 > 0 ? ((x - ax) * dx + (z - az) * dz) / len2 : 0;
+        t = Math.max(0, Math.min(1, t));
+        const px = ax + t * dx, pz = az + t * dz;
+        const ex = x - px, ez = z - pz;
+        const d2 = ex * ex + ez * ez;
+        if (d2 < best) best = d2;
+      }
+      return best;
+    }
+
+    // Clamp (x, z) into the polygon at the closest interior point with the
+    // given edge margin (in metres). If the point is already inside with margin
+    // it's returned unchanged.
+    function clampToFloorPolygon(x, z, poly2D, margin) {
+      if (!poly2D || poly2D.length < 3) return { x, z, ok: false };
+      if (pointInPolygon(x, z, poly2D) && distSqToPolygonEdges(x, z, poly2D) >= margin * margin) {
+        return { x, z, ok: true };
+      }
+      // Push the point toward the polygon's centroid by margin along the closest
+      // edge normal. Quick heuristic: clamp to the segment's interior nearest point,
+      // then walk toward centroid by margin if still outside the inset region.
+      const cx = poly2D.reduce((a, p) => a + p.x, 0) / poly2D.length;
+      const cz = poly2D.reduce((a, p) => a + p.z, 0) / poly2D.length;
+      let bestX = x, bestZ = z, bestD = Infinity;
+      for (let i = 0, j = poly2D.length - 1; i < poly2D.length; j = i++) {
+        const ax = poly2D[j].x, az = poly2D[j].z;
+        const bx = poly2D[i].x, bz = poly2D[i].z;
+        const dx = bx - ax, dz = bz - az;
+        const len2 = dx * dx + dz * dz;
+        let t = len2 > 0 ? ((x - ax) * dx + (z - az) * dz) / len2 : 0;
+        t = Math.max(0, Math.min(1, t));
+        const px = ax + t * dx, pz = az + t * dz;
+        const ex = x - px, ez = z - pz;
+        const d2 = ex * ex + ez * ez;
+        if (d2 < bestD) { bestD = d2; bestX = px; bestZ = pz; }
+      }
+      // Walk from the projected point toward the centroid by the margin so the
+      // model ends up clearly inside (not sitting on the wall).
+      let nx = cx - bestX, nz = cz - bestZ;
+      const nl = Math.hypot(nx, nz);
+      if (nl > 1e-6) { nx /= nl; nz /= nl; }
+      const f = Math.max(0, (margin - Math.sqrt(bestD)) / Math.max(margin, 1e-6));
+      return {
+        x: bestX + nx * Math.min(f, 1) * margin,
+        z: bestZ + nz * Math.min(f, 1) * margin,
+        ok: true,
+      };
+    }
+
+    function makeFloorPolygonLine(poly2D, y) {
+      const pts = poly2D.flatMap((p) => new THREE.Vector3(p.x, y, p.z));
+      pts.push(new THREE.Vector3(poly2D[0].x, y, poly2D[0].z)); // close
+      const g = new THREE.BufferGeometry().setFromPoints(pts);
+      const m = new THREE.LineBasicMaterial({ color: 0xc9a96e, transparent: true, opacity: 0.7 });
+      return new THREE.Line(g, m);
+    }
+
+    // Andrew's monotone-chain convex hull of 2D points [{x,z}].
+    function convexHull(pts) {
+      if (pts.length < 3) return pts.slice();
+      const P = pts.slice().sort((a, b) => (a.x - b.x) || (a.z - b.z));
+      const cross = (o, a, b) => (a.x - o.x) * (b.z - o.z) - (a.z - o.z) * (b.x - o.x);
+      const lower = [];
+      for (const p of P) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop(); lower.push(p); }
+      const upper = [];
+      for (let i = P.length - 1; i >= 0; i--) { const p = P[i]; while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p); }
+      upper.pop(); lower.pop();
+      return lower.concat(upper);
+    }
+
+    // Fit the floor plane + its XY polygon directly from the ARCore depth buffer
+    // (independent of WebXR plane detection, which is unreliable on this device).
+    function fitFloorFromDepth(di, view, camPos) {
+      if (!di || !di.getDepthInMeters) return null;
+      const invProj = new THREE.Matrix4().fromArray(view.projectionMatrix).invert();
+      const viewMat = new THREE.Matrix4().fromArray(view.transform.matrix);
+      const pt = new THREE.Vector3();
+      const pts = [];
+      // sample a grid over the lower ~60% of the view (floor is below the horizon)
+      for (let gy = 0.42; gy <= 0.99; gy += 0.03) {
+        for (let gx = 0.08; gx <= 0.92; gx += 0.045) {
+          let d = 0;
+          try { d = di.getDepthInMeters(gx, gy); } catch (e) { d = 0; }
+          if (!d || d <= 0.1 || d > 6) continue;
+          pt.set(gx * 2 - 1, 1 - gy * 2, 1).applyMatrix4(invProj);
+          pt.multiplyScalar(-d / pt.z);
+          pt.applyMatrix4(viewMat);
+          pts.push({ x: pt.x, y: pt.y, z: pt.z });
+        }
+      }
+      if (pts.length < 25) return null;
+      // dominant horizontal band below the camera = floor height
+      const bins = new Map();
+      for (const p of pts) {
+        if (camPos && (p.y > camPos.y - 0.25 || p.y < camPos.y - 2.5)) continue;
+        const k = Math.round(p.y / 0.05);
+        bins.set(k, (bins.get(k) || 0) + 1);
+      }
+      let bestK = null, bestN = 0;
+      for (const [k, n] of bins) { if (n > bestN) { bestN = n; bestK = k; } }
+      if (bestK === null || bestN < 10) return null;
+      const floorY = bestK * 0.05;
+      const inliers = pts.filter((p) => Math.abs(p.y - floorY) < 0.06);
+      if (inliers.length < 15) return null;
+      const polygon = convexHull(inliers.map((p) => ({ x: p.x, z: p.z })));
+      if (polygon.length < 3) return null;
+      return { floorY, polygon, count: inliers.length };
+    }
+
+    function render(timestamp, frame) {
+      if (!session || !frame) { renderer.render(scene, camera); return; }
+      const rs = renderer.xr.getReferenceSpace(); if (rs) refSpace = rs;
+      if (!refSpace) { renderer.render(scene, camera); return; }
+      const vp = frame.getViewerPose(refSpace);
+      if (!vp || !vp.views.length) { renderer.render(scene, camera); return; }
+
+      // ---- Floor detection (Rule 1) ----
+      const camY = vp.transform.position.y;
+      _camPos.set(vp.transform.position.x, camY, vp.transform.position.z);
+
+      // ARCore plane counts (for the HUD) + fallback floor.
+      let hCount = 0, vCount = 0, minY = Infinity;
+      if (frame.detectedPlanes && frame.detectedPlanes.size > 0) lastPlaneSeenAt = performance.now();
+      const floorCands = [];           // { plane, py, area }
+      if (frame.detectedPlanes) {
+        for (const plane of frame.detectedPlanes) {
+          const pose = frame.getPose(plane.planeSpace, refSpace);
+          if (!pose) continue;
+          const py = pose.transform.position.y;
+          if (plane.orientation === 'horizontal') {
+            const area = polygonAreaXZ(plane.polygon);
+            if (camY - py >= 0.9 && area >= 0.4) { hCount++; if (py < minY) minY = py; floorCands.push({ plane, py, area }); }
+          } else if (plane.orientation === 'vertical') vCount++;
+        }
+      }
+
+      // PRIMARY: depth-based floor fit — independent of ARCore's plane detection
+      // (which misses the plain tiled floor on this device).
+      let di = null;
+      try { di = (frame.getDepthInformation && vp.views[0]) ? frame.getDepthInformation(vp.views[0]) : null; } catch (e) { di = null; }
+      let newFloorPoly = null;
+      if (di && di.getDepthInMeters) {
+        const dFloor = fitFloorFromDepth(di, vp.views[0], _camPos);
+        if (dFloor) {
+          lowestFloorY = lowestFloorY === null ? dFloor.floorY : lowestFloorY + (dFloor.floorY - lowestFloorY) * 0.25;
+          newFloorPoly = dFloor.polygon;
+        }
+      }
+
+      // FALLBACK: ARCore plane polygon when depth gives nothing.
+      if (!newFloorPoly && hCount > 0 && isFinite(minY)) {
+        if (lowestFloorY === null) lowestFloorY = minY;
+        else if (minY < lowestFloorY) lowestFloorY += (minY - lowestFloorY) * 0.3; // move DOWN only
+        let cand = null, bestArea = -1;
+        for (const c of floorCands) {
+          if (Math.abs(c.py - lowestFloorY) <= 0.25 && c.area > bestArea) { bestArea = c.area; cand = c.plane; }
+        }
+        if (cand) newFloorPoly = getFloorPolygon2D(cand, refSpace, frame);
+      }
+
+      // Update the floor polygon + its drawn boundary.
+      if (newFloorPoly) {
+        floorPolygon2D = newFloorPoly;
+        if (floorPolygonLine) { scene.remove(floorPolygonLine); floorPolygonLine.geometry.dispose(); floorPolygonLine = null; }
+        floorPolygonLine = makeFloorPolygonLine(newFloorPoly, lowestFloorY + 0.003);
+        floorPolygonLine.frustumCulled = false;
+        scene.add(floorPolygonLine);
+      }
+
+      if (!placed) {
+        // Rule 2: evaluate centre + downward hit rays, reject ambiguous
+        validHit = evaluateHit(frame, centerHitSource) || evaluateHit(frame, downHitSource);
+
+        // Rule 3: require 10 consecutive, consistent floor detections
+        if (validHit) {
+          if (lastHitY === null || Math.abs(validHit.y - lastHitY) <= 0.05) floorRun++;
+          else floorRun = 1;
+          lastHitY = validHit.y;
+        } else { floorRun = 0; lastHitY = null; }
+
+        if (validHit && bothRulesPass()) {
+          const p = validHit.pose.transform.position;
+          // clamp to the FLOOR height so the marker can never ride up a wall
+          reticle.position.set(p.x, lowestFloorY + 0.004, p.z);
+          reticle.visible = true;
+        } else {
+          reticle.visible = false;
+        }
+      }
+
+      // Keep the model pinned to the floor's Y (the anchor y is the hit floor y,
+      // and lowestFloorY may be locked slightly differently; enforce equality).
+      if (placed && placedModel && lowestFloorY !== null) {
+        if (Math.abs(placedModel.position.y - lowestFloorY) > 0.0005) {
+          anchorOffset.y = lowestFloorY - lastAnchorPos.y;
+          placedModel.position.y = lowestFloorY;
+        }
+      }
+
+      // Rule 4: keep the placed model locked to its XR anchor (+ drag/rotate offset)
+      if (placed && activeAnchor && placedModel) {
+        const ap = frame.getPose(activeAnchor.anchorSpace, refSpace);
+        if (ap) {
+          lastAnchorPos.set(ap.transform.position.x, ap.transform.position.y, ap.transform.position.z);
+          placedModel.position.set(
+            lastAnchorPos.x + anchorOffset.x,
+            lastAnchorPos.y + anchorOffset.y,
+            lastAnchorPos.z + anchorOffset.z
+          );
+        }
+      } else if (placed && placedModel) {
+        lastAnchorPos.copy(placedModel.position);
+      }
+
+      // HUD
+      hPlanes.textContent = hCount + '/' + vCount;
+      hFloor.textContent = lowestFloorY === null ? '-' : lowestFloorY.toFixed(2) + ' m';
+      hHit.textContent = validHit ? 'yes' : 'no'; hHit.className = validHit ? 'ok' : 'no';
+      hNorm.textContent = lastNormY.toFixed(2);
+      hElev.textContent = lastElev.toFixed(2) + ' m';
+      hRun.textContent = floorRun;
+      const readyNow = !!validHit && bothRulesPass();
+      hReady.textContent = readyNow ? 'enabled' : 'off'; hReady.className = readyNow ? 'ok' : 'no';
+      hAnchor.textContent = activeAnchor ? 'yes' : 'no'; hAnchor.className = activeAnchor ? 'ok' : 'no';
+      hMy.textContent = placedModel ? placedModel.position.y.toFixed(2) + ' m' : '-';
+
+      renderer.render(scene, camera);
+    }
+
+    // Rule 5: drag strictly on the floor plane y = lowestFloorY
+    window.addEventListener('touchstart', (e) => {
+      if (!placed || !placedModel) return;
+      if (e.target.closest('#models, #reset')) return;
+      if (e.touches.length === 1) { dragging = true; rotating = false; }
+      else if (e.touches.length === 2) {
+        rotating = true; dragging = false;
+        lastAngle = Math.atan2(e.touches[1].clientY - e.touches[0].clientY, e.touches[1].clientX - e.touches[0].clientX);
+      }
+    }, { passive: true });
+    window.addEventListener('touchmove', (e) => {
+      if (!placedModel) return;
+      if (e.target.closest('#models, #reset')) return;
+      if (dragging && e.touches.length === 1 && lowestFloorY !== null) {
+        const r = renderer.domElement.getBoundingClientRect();
+        const t = e.touches[0];
+        _ndc.set(((t.clientX - r.left) / r.width) * 2 - 1, -((t.clientY - r.top) / r.height) * 2 + 1);
+        _rc.setFromCamera(_ndc, camera);
+        _plane.set(new THREE.Vector3(0, 1, 0), -lowestFloorY);
+        const p = new THREE.Vector3();
+        if (_rc.ray.intersectPlane(_plane, p)) {
+          // clamp to the detected floor polygon so the model can't be dragged
+          // onto the wall; stay anchored on the floor.
+          let cx = p.x, cz = p.z;
+          if (floorPolygon2D) {
+            const c = clampToFloorPolygon(cx, cz, floorPolygon2D, FLOOR_EDGE_MARGIN);
+            if (c.ok) { cx = c.x; cz = c.z; }
+          }
+          placedModel.position.x = cx; placedModel.position.z = cz; placedModel.position.y = lowestFloorY;
+          // keep the model world-locked to the anchor at its new spot
+          anchorOffset.set(placedModel.position.x - lastAnchorPos.x, 0, placedModel.position.z - lastAnchorPos.z);
+          console.log('[drag] floor=' + lowestFloorY.toFixed(2) + ' p=' + p.x.toFixed(2) + ',' + p.y.toFixed(2) + ',' + p.z.toFixed(2) + ' modelY=' + placedModel.position.y.toFixed(2));
+        }
+      } else if (rotating && e.touches.length === 2) {
+        const a = Math.atan2(e.touches[1].clientY - e.touches[0].clientY, e.touches[1].clientX - e.touches[0].clientX);
+        // rotate around the floor anchor: only Y-axis, base stays anchored.
+        placedModel.rotation.y -= (a - lastAngle);
+        lastAngle = a;
+      }
+    }, { passive: true });
+    window.addEventListener('touchend', () => { dragging = false; rotating = false; });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    renderer.setAnimationLoop(render);
+  </script>
+</body>
+</html>

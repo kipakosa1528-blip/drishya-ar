@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Kipakosa Living — Modular Sofa 1:1 AR Customizer</title>
+  <title>Kipakosa Living — 1:1 Metric AR Showroom</title>
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg?v=1">
   <meta name="theme-color" content="#0a0a0c">
 
@@ -13,11 +13,13 @@
   <style>
     :root {
       --bg: #0a0a0c;
-      --card-bg: rgba(18, 18, 24, 0.78);
-      --card-border: rgba(255, 255, 255, 0.1);
+      --card-bg: rgba(18, 18, 24, 0.85);
+      --card-border: rgba(255, 255, 255, 0.12);
       --gold: #c9a96e;
+      --gold-bright: #dfbe82;
       --text: #f5f5f7;
-      --text-muted: rgba(255, 255, 255, 0.6);
+      --text-muted: rgba(255, 255, 255, 0.65);
+      --cyan: #00e5ff;
     }
 
     * {
@@ -52,17 +54,23 @@
       right: 0;
       z-index: 20;
       display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px 16px;
+      background: linear-gradient(180deg, rgba(10, 10, 12, 0.95) 0%, rgba(10, 10, 12, 0) 100%);
+      pointer-events: none;
+    }
+
+    .top-header-row {
+      display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 18px 20px;
-      background: linear-gradient(180deg, rgba(10, 10, 12, 0.85) 0%, rgba(10, 10, 12, 0) 100%);
-      pointer-events: none;
     }
 
     .top-action {
       pointer-events: auto;
-      width: 42px;
-      height: 42px;
+      width: 38px;
+      height: 38px;
       border-radius: 50%;
       background: var(--card-bg);
       border: 1px solid var(--card-border);
@@ -73,14 +81,14 @@
       justify-content: center;
       color: var(--text);
       text-decoration: none;
-      font-size: 15px;
+      font-size: 14px;
       cursor: pointer;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
       transition: transform 0.2s;
     }
 
     .top-action:active {
-      transform: scale(0.94);
+      transform: scale(0.92);
     }
 
     .brand-meta {
@@ -102,15 +110,61 @@
     .brand-sub {
       font-size: 11px;
       color: var(--gold);
-      font-weight: 500;
+      font-weight: 600;
       letter-spacing: 0.04em;
+    }
+
+    /* ── Model Selector Tabs ── */
+    #model-nav {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 4px 2px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    #model-nav::-webkit-scrollbar { display: none; }
+
+    .model-tab {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 6px 12px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .model-tab.active {
+      background: rgba(201, 169, 110, 0.2);
+      border-color: var(--gold);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .model-tab .badge {
+      display: inline-block;
+      margin-left: 4px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 9px;
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
     }
 
     /* ── Dimensions Badge Card ── */
     #dimension-card {
       position: absolute;
-      top: 80px;
-      left: 20px;
+      top: 104px;
+      left: 16px;
       z-index: 10;
       background: var(--card-bg);
       border: 1px solid var(--card-border);
@@ -123,7 +177,7 @@
       flex-direction: column;
       gap: 4px;
       pointer-events: none;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     }
 
     .dim-row {
@@ -141,6 +195,18 @@
       color: #fff;
     }
 
+    .dim-door-badge {
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--gold);
+      font-weight: 600;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
     /* ── 3D & Native AR Canvas ── */
     model-viewer {
       width: 100%;
@@ -150,49 +216,56 @@
       outline: none;
     }
 
-    /* ── Custom Luxury AR Launch Button ── */
-    .luxury-ar-button {
+    /* ── Bottom Controls Group ── */
+    #bottom-controls {
       position: absolute;
-      bottom: 120px;
-      left: 50%;
-      transform: translateX(-50%);
+      bottom: 20px;
+      left: 0;
+      right: 0;
       z-index: 30;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    /* ── Primary AR Launch Button ── */
+    .ar-launch-cta {
+      pointer-events: auto;
       display: flex;
       align-items: center;
       gap: 10px;
-      background: linear-gradient(135deg, rgba(201, 169, 110, 0.96) 0%, rgba(184, 149, 87, 0.96) 100%);
+      background: linear-gradient(135deg, var(--gold-bright) 0%, var(--gold) 100%);
       color: #0a0a0c;
-      padding: 14px 30px;
+      padding: 14px 28px;
       border-radius: 9999px;
       font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.02em;
-      border: 1px solid rgba(255, 255, 255, 0.4);
-      box-shadow: 0 8px 32px rgba(201, 169, 110, 0.4), 0 4px 12px rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 8px 30px rgba(201, 169, 110, 0.4), 0 4px 12px rgba(0, 0, 0, 0.6);
       cursor: pointer;
       white-space: nowrap;
       transition: transform 0.2s, box-shadow 0.2s;
       outline: none;
+      text-decoration: none;
     }
 
-    .luxury-ar-button:active {
-      transform: translateX(-50%) scale(0.96);
+    .ar-launch-cta:active {
+      transform: scale(0.96);
       box-shadow: 0 4px 16px rgba(201, 169, 110, 0.25);
     }
 
-    .luxury-ar-button svg {
-      width: 18px;
-      height: 18px;
+    .ar-launch-cta svg {
+      width: 20px;
+      height: 20px;
       fill: currentColor;
     }
 
     /* ── Bottom Material Swatch Customizer ── */
     #swatch-bar {
-      position: absolute;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 30;
+      pointer-events: auto;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -200,17 +273,17 @@
       border: 1px solid var(--card-border);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      padding: 10px 18px;
+      padding: 8px 16px;
       border-radius: 9999px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     }
 
     .swatch-item {
       position: relative;
-      width: 34px;
-      height: 34px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
-      border: 2px solid rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.25);
       cursor: pointer;
       transition: transform 0.2s, border-color 0.2s;
     }
@@ -222,15 +295,15 @@
     .swatch-item.active {
       border-color: #fff;
       transform: scale(1.15);
-      box-shadow: 0 0 14px rgba(255, 255, 255, 0.4);
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
     }
 
     .swatch-tooltip {
       position: absolute;
-      top: -32px;
+      top: -30px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.85);
+      background: rgba(0, 0, 0, 0.9);
       color: #fff;
       font-size: 10px;
       font-weight: 600;
@@ -245,126 +318,243 @@
     .swatch-item:hover .swatch-tooltip {
       opacity: 1;
     }
+
+    /* Quick status toast */
+    #toast {
+      position: absolute;
+      top: 160px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(18, 18, 24, 0.92);
+      border: 1px solid var(--gold);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
   </style>
 </head>
 <body>
   <div id="app-container">
-    <!-- Top Navigation -->
+    <!-- Top Navigation & Model Switcher -->
     <header id="top-bar">
-      <a href="/landing" class="top-action" title="Back">✕</a>
-      <div class="brand-meta">
-        <span class="brand-title">Kipakosa Lounge Sofa</span>
-        <span class="brand-sub">True 1:1 Metric Floor AR</span>
+      <div class="top-header-row">
+        <a href="/landing" class="top-action" title="Back">✕</a>
+        <div class="brand-meta">
+          <span class="brand-title" id="item-title">Worn Metal Rack</span>
+          <span class="brand-sub">Native 1:1 Floor AR</span>
+        </div>
+        <a href="/preview-furniture-webxr" class="top-action" title="WebXR Scanner Diagnostics" style="font-size:11px; font-weight:700; color:var(--cyan); border-color:rgba(0,229,255,0.4);">
+          XR
+        </a>
       </div>
-      <div style="width:42px"></div>
+
+      <!-- Catalog Selector: Rack (Door Test), Throne, Sofa, Radio -->
+      <nav id="model-nav">
+        <button class="model-tab active" data-id="rack">
+          Rack <span class="badge">190cm • Door Test</span>
+        </button>
+        <button class="model-tab" data-id="throne">
+          Throne <span class="badge">190cm</span>
+        </button>
+        <button class="model-tab" data-id="sofa">
+          Sofa <span class="badge">190cm W</span>
+        </button>
+        <button class="model-tab" data-id="radio">
+          Radio <span class="badge">27.5cm</span>
+        </button>
+      </nav>
     </header>
 
-    <!-- Dimension Spec Card -->
+    <!-- Floating Dimension & Door Alignment Card -->
     <div id="dimension-card">
       <div class="dim-row">
         <span class="dim-label">Width:</span>
-        <span class="dim-val">190 cm (6'3")</span>
+        <span class="dim-val" id="spec-w">91.5 cm</span>
       </div>
       <div class="dim-row">
         <span class="dim-label">Depth:</span>
-        <span class="dim-val">130 cm (4'3")</span>
+        <span class="dim-val" id="spec-d">60.0 cm</span>
       </div>
       <div class="dim-row">
         <span class="dim-label">Height:</span>
-        <span class="dim-val">61 cm (2'0")</span>
+        <span class="dim-val" id="spec-h">190.0 cm</span>
       </div>
-      <div class="dim-row" style="margin-top:2px; color:var(--gold); font-weight:600">
-        <span>📐 100% Grounded Floor Scale</span>
+      <div class="dim-door-badge" id="spec-door-info">
+        🚪 Reaches 95% of 200 cm Door Frame
       </div>
     </div>
 
-    <!-- Wall Clearance / X-Ray, WebXR Scanner & Dimension Controls -->
-    <div style="position:absolute; top:80px; right:20px; z-index:20; display:flex; flex-direction:column; gap:8px;">
-      <a href="/preview-furniture-webxr" class="top-action" style="width:auto; height:34px; font-size:12px; font-weight:700; padding:0 12px; gap:6px; color:#00e5ff; border-color:rgba(0,229,255,0.4); text-decoration:none;">
-        🌐 WebXR Room Scanner
-      </a>
-      <button id="btn-xray" class="top-action" style="width:auto; height:34px; font-size:12px; font-weight:600; padding:0 12px; gap:6px;">
-        👻 X-Ray Wall Check
-      </button>
-      <button id="btn-toggle-dims" class="top-action" style="width:auto; height:34px; font-size:12px; font-weight:600; padding:0 12px; gap:6px;">
-        📐 Dimensions: ON
-      </button>
-    </div>
-
-    <!-- Google <model-viewer> Element with Grounded Origin & Hotspots -->
+    <!-- 3D Studio & Native AR Viewer -->
     <model-viewer
       id="furniture-mv"
-      src="/assets/models/sofa.glb?v=grounded2"
-      ios-src="/assets/models/sofa.usdz?v=grounded2"
-      alt="Kipakosa Luxury Sofa"
+      src="/assets/models/furniture/rack.glb"
+      ios-src="/assets/models/furniture/rack.usdz"
+      alt="Kipakosa Furniture"
       ar
       ar-placement="floor"
       ar-scale="fixed"
-      ar-modes="webxr scene-viewer quick-look"
+      ar-modes="scene-viewer quick-look"
       camera-controls
       touch-action="pan-y"
-      shadow-intensity="1.6"
-      shadow-softness="0.8"
+      shadow-intensity="1.5"
+      shadow-softness="0.7"
       exposure="1.0"
       interaction-prompt="auto"
-      camera-orbit="35deg 70deg 115%">
+      camera-orbit="30deg 75deg 110%">
 
-      <!-- Dimension Hotspots -->
-      <button class="hotspot dim-hotspot" slot="hotspot-dim-w" data-position="0 0.65 -0.65" data-normal="0 0 -1" style="background:rgba(18,18,24,0.9); border:1px solid #c9a96e; color:#fff; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; pointer-events:none;">
-        ↔ 190 cm (Width)
-      </button>
-      <button class="hotspot dim-hotspot" slot="hotspot-dim-d" data-position="0.95 0.65 0" data-normal="1 0 0" style="background:rgba(18,18,24,0.9); border:1px solid #c9a96e; color:#fff; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; pointer-events:none;">
-        ↕ 130 cm (Depth)
-      </button>
-      <button class="hotspot dim-hotspot" slot="hotspot-dim-h" data-position="-0.95 0.35 0" data-normal="-1 0 0" style="background:rgba(18,18,24,0.9); border:1px solid #c9a96e; color:#fff; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; pointer-events:none;">
-        ↕ 61 cm (Height)
+      <!-- Dimension Hotspot -->
+      <button class="hotspot" id="hotspot-h" slot="hotspot-height" data-position="0 1.90 0" data-normal="0 1 0" style="background:rgba(18,18,24,0.92); border:1px solid #c9a96e; color:#fff; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; pointer-events:none;">
+        ↕ 190 cm (Top Frame)
       </button>
 
-      <!-- Custom Luxury AR Button Slot -->
-      <button slot="ar-button" class="luxury-ar-button">
+      <!-- Model-viewer default slot AR button -->
+      <button slot="ar-button" style="display:none"></button>
+    </model-viewer>
+
+    <!-- Bottom Controls: Swatches & Big AR Launch CTA -->
+    <div id="bottom-controls">
+      <!-- Direct Scene Viewer & Quick Look Trigger -->
+      <button id="btn-ar-launch" class="ar-launch-cta">
         <svg viewBox="0 0 24 24">
           <path d="M3 4c0-.55.45-1 1-1h4v2H5v3H3V4zm0 16c0 .55.45 1 1 1h4v-2H5v-3H3v4zm17 0c0 .55-.45 1-1 1h-4v-2h3v-3h2v4zm0-16c0-.55-.45-1-1-1h-4v2h3v3h2V4zM7 9h10v6H7V9z"/>
         </svg>
-        View in Your Room (1:1)
+        <span>View in Your Room (1:1 Native AR)</span>
       </button>
 
-      <!-- Loading / Progress bar slot -->
-      <div slot="progress-bar" style="display:none"></div>
-    </model-viewer>
-
-    <!-- Material & Color Customizer Swatch Bar -->
-    <div id="swatch-bar">
-      <!-- Emerald Velvet -->
-      <div class="swatch-item active" style="background: #1b4d3e" data-color="#1b4d3e" data-roughness="0.85" title="Emerald Velvet">
-        <span class="swatch-tooltip">Emerald Velvet</span>
-      </div>
-      <!-- Charcoal Slate -->
-      <div class="swatch-item" style="background: #2b2b2e" data-color="#2b2b2e" data-roughness="0.80" title="Charcoal Slate">
-        <span class="swatch-tooltip">Charcoal Slate</span>
-      </div>
-      <!-- Warm Oat Linen -->
-      <div class="swatch-item" style="background: #d1c7b7" data-color="#d1c7b7" data-roughness="0.90" title="Warm Oat Linen">
-        <span class="swatch-tooltip">Warm Oat</span>
-      </div>
-      <!-- Terracotta Leather -->
-      <div class="swatch-item" style="background: #a45a3c" data-color="#a45a3c" data-roughness="0.65" title="Terracotta Leather">
-        <span class="swatch-tooltip">Terracotta</span>
-      </div>
-      <!-- Midnight Navy -->
-      <div class="swatch-item" style="background: #1a2942" data-color="#1a2942" data-roughness="0.85" title="Midnight Navy">
-        <span class="swatch-tooltip">Midnight Navy</span>
+      <!-- Material Swatch Palette -->
+      <div id="swatch-bar">
+        <div class="swatch-item active" style="background:#555a60" data-color="#555a60" data-roughness="0.5" title="Gunmetal Steel">
+          <span class="swatch-tooltip">Gunmetal</span>
+        </div>
+        <div class="swatch-item" style="background:#1b4d3e" data-color="#1b4d3e" data-roughness="0.85" title="Emerald Velvet">
+          <span class="swatch-tooltip">Emerald</span>
+        </div>
+        <div class="swatch-item" style="background:#2b2b2e" data-color="#2b2b2e" data-roughness="0.80" title="Charcoal">
+          <span class="swatch-tooltip">Charcoal</span>
+        </div>
+        <div class="swatch-item" style="background:#a45a3c" data-color="#a45a3c" data-roughness="0.65" title="Terracotta Leather">
+          <span class="swatch-tooltip">Terracotta</span>
+        </div>
+        <div class="swatch-item" style="background:#d1c7b7" data-color="#d1c7b7" data-roughness="0.90" title="Warm Linen">
+          <span class="swatch-tooltip">Warm Linen</span>
+        </div>
       </div>
     </div>
+
+    <!-- Hidden fallback anchor for iOS AR Quick Look -->
+    <a id="ios-quick-look-link" rel="ar" href="/assets/models/furniture/rack.usdz" style="display:none">
+      <img src="/assets/models/furniture/rack.usdz" alt="AR">
+    </a>
+
+    <div id="toast"></div>
   </div>
 
   <script>
-    const mv = document.getElementById('furniture-mv');
-    const swatches = document.querySelectorAll('.swatch-item');
-    const btnXray = document.getElementById('btn-xray');
-    const btnToggleDims = document.getElementById('btn-toggle-dims');
-    let isXray = false;
-    let showDims = true;
+    const CATALOG = {
+      rack: {
+        title: "Worn Metal Rack",
+        glb: "/assets/models/furniture/rack.glb",
+        usdz: "/assets/models/furniture/rack.usdz",
+        w: 91.5,
+        d: 60.0,
+        h: 190.0,
+        hotspotPos: "0 1.90 0",
+        hotspotText: "↕ 190 cm (Top Shelf)",
+        doorInfo: "🚪 Reaches 95% of 200 cm Door Frame"
+      },
+      throne: {
+        title: "Throne of Birds",
+        glb: "/assets/models/furniture/throne.glb",
+        usdz: "/assets/models/furniture/throne.usdz",
+        w: 118.5,
+        d: 114.0,
+        h: 190.0,
+        hotspotPos: "0 1.90 0",
+        hotspotText: "↕ 190 cm (Crest)",
+        doorInfo: "🚪 Reaches 95% of 200 cm Door Frame"
+      },
+      sofa: {
+        title: "Kipakosa Lounge Sofa",
+        glb: "/assets/models/furniture/sofa.glb",
+        usdz: "/assets/models/furniture/sofa.usdz",
+        w: 190.0,
+        d: 129.8,
+        h: 61.3,
+        hotspotPos: "0 0.61 0",
+        hotspotText: "↕ 61.3 cm (Backrest)",
+        doorInfo: "🛋️ 190 cm Wide Floor Lounge"
+      },
+      radio: {
+        title: "Vintage Unitra Radio",
+        glb: "/assets/models/furniture/radio.glb",
+        usdz: "/assets/models/furniture/radio.usdz",
+        w: 27.5,
+        d: 10.0,
+        h: 39.7,
+        hotspotPos: "0 0.40 0",
+        hotspotText: "↕ 39.7 cm (Antenna)",
+        doorInfo: "📻 Tabletop / Counter Accent"
+      }
+    };
 
+    let currentId = 'rack';
+    const mv = document.getElementById('furniture-mv');
+    const itemTitle = document.getElementById('item-title');
+    const specW = document.getElementById('spec-w');
+    const specD = document.getElementById('spec-d');
+    const specH = document.getElementById('spec-h');
+    const specDoorInfo = document.getElementById('spec-door-info');
+    const hotspotH = document.getElementById('hotspot-h');
+    const btnArLaunch = document.getElementById('btn-ar-launch');
+    const iosLink = document.getElementById('ios-quick-look-link');
+    const swatches = document.querySelectorAll('.swatch-item');
+    const modelTabs = document.querySelectorAll('.model-tab');
+    const toast = document.getElementById('toast');
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.style.opacity = '1';
+      setTimeout(() => { toast.style.opacity = '0'; }, 3000);
+    }
+
+    function selectModel(id) {
+      const item = CATALOG[id];
+      if (!item) return;
+      currentId = id;
+
+      modelTabs.forEach(t => {
+        t.classList.toggle('active', t.dataset.id === id);
+      });
+
+      itemTitle.textContent = item.title;
+      specW.textContent = `${item.w} cm`;
+      specD.textContent = `${item.d} cm`;
+      specH.textContent = `${item.h} cm`;
+      specDoorInfo.textContent = item.doorInfo;
+
+      // Update model-viewer
+      mv.src = item.glb;
+      mv.setAttribute('ios-src', item.usdz);
+      hotspotH.dataset.position = item.hotspotPos;
+      hotspotH.textContent = item.hotspotText;
+
+      // Update iOS link
+      iosLink.href = item.usdz;
+    }
+
+    modelTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        selectModel(tab.dataset.id);
+      });
+    });
+
+    // Swatches
     function hexToRgb(hex) {
       const bigint = parseInt(hex.replace('#', ''), 16);
       return [
@@ -375,61 +565,75 @@
     }
 
     function applyMaterialColor(hex, roughness) {
-      if (!mv.model || !mv.model.materials || mv.model.materials.length === 0) return;
-      
+      if (!mv.model || !mv.model.materials) return;
       const [r, g, b] = hexToRgb(hex);
-      const alpha = isXray ? 0.42 : 1.0;
       mv.model.materials.forEach(mat => {
         if (mat && mat.pbrMetallicRoughness) {
-          mat.pbrMetallicRoughness.setBaseColorFactor([r, g, b, alpha]);
+          mat.pbrMetallicRoughness.setBaseColorFactor([r, g, b, 1.0]);
           mat.pbrMetallicRoughness.setRoughnessFactor(parseFloat(roughness));
-          if (mat.setAlphaMode) {
-            mat.setAlphaMode(isXray ? 'BLEND' : 'OPAQUE');
-          }
         }
       });
     }
 
-    // Swatch click handlers
     swatches.forEach(swatch => {
       swatch.addEventListener('click', () => {
         swatches.forEach(s => s.classList.remove('active'));
         swatch.classList.add('active');
-
-        const color = swatch.dataset.color;
-        const roughness = swatch.dataset.roughness;
-        applyMaterialColor(color, roughness);
+        applyMaterialColor(swatch.dataset.color, swatch.dataset.roughness);
       });
     });
 
-    // X-Ray Wall Check Toggle
-    btnXray.addEventListener('click', () => {
-      isXray = !isXray;
-      btnXray.style.background = isXray ? 'rgba(201, 169, 110, 0.4)' : 'var(--card-bg)';
-      btnXray.textContent = isXray ? '👻 X-Ray: ACTIVE' : '👻 X-Ray Wall Check';
-
-      const activeSwatch = document.querySelector('.swatch-item.active');
-      if (activeSwatch) {
-        applyMaterialColor(activeSwatch.dataset.color, activeSwatch.dataset.roughness);
-      }
-    });
-
-    // Toggle Dimension Hotspots
-    btnToggleDims.addEventListener('click', () => {
-      showDims = !showDims;
-      btnToggleDims.textContent = showDims ? '📐 Dimensions: ON' : '📐 Dimensions: OFF';
-      document.querySelectorAll('.dim-hotspot').forEach(el => {
-        el.style.display = showDims ? 'block' : 'none';
-      });
-    });
-
-    // Apply default color when model loads
     mv.addEventListener('load', () => {
       const activeSwatch = document.querySelector('.swatch-item.active');
       if (activeSwatch) {
         applyMaterialColor(activeSwatch.dataset.color, activeSwatch.dataset.roughness);
       }
     });
+
+    // Native AR Launch Trigger
+    btnArLaunch.addEventListener('click', () => {
+      const item = CATALOG[currentId];
+      const isIOS = (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) && !window.MSStream;
+
+      if (isIOS) {
+        // Trigger iOS Quick Look
+        iosLink.click();
+        return;
+      }
+
+      // Android Scene Viewer Intent
+      // Must use absolute HTTPS URL for Google Play Services to download asset
+      const currentHost = window.location.host;
+      const isHttps = window.location.protocol === 'https:';
+      
+      // Determine HTTPS GLB URL:
+      // If served over HTTPS, use current origin; otherwise use the active tunnel URL
+      let httpsGlbUrl = `${window.location.origin}${item.glb}`;
+      if (!isHttps) {
+        // If developer is on localhost:3000, resolve to Pinggy tunnel domain
+        // (pinggy is running on the server)
+        httpsGlbUrl = `https://ofwja-203-159-54-203.run.pinggy-free.link${item.glb}`;
+      }
+
+      showToast("Launching Native AR (Floor Locked 1:1)...");
+
+      // Construct Google Scene Viewer Intent
+      // mode=ar_only forces native AR directly (skips 3D previewer)
+      // resizable=false locks 1:1 metric scale (prevents user pinching to scale)
+      const intentUrl = `intent://arvr.google.com/scene-viewer/1.0?file=${encodeURIComponent(httpsGlbUrl)}&mode=ar_only&resizable=false&title=${encodeURIComponent(item.title)}#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;end;`;
+
+      // Fallback: If device doesn't catch intent directly, activate model-viewer AR
+      try {
+        window.location.href = intentUrl;
+      } catch (err) {
+        if (mv.canActivateAR) {
+          mv.activateAR();
+        }
+      }
+    });
+
+    // Initialize default item
+    selectModel('rack');
   </script>
 </body>
 </html>

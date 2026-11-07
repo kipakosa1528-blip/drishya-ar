@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Lab · Floor vs Wall (ARCore Depth)</title>
+  <meta name="theme-color" content="#0a0a0c">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0c; color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    #c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; z-index: 1; }
+    #ui { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+    .card { background: rgba(18,18,24,0.85); border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-radius: 12px; }
+
+    #start-wrap { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 14px; text-align: center; padding: 24px; pointer-events: auto; }
+    #start-wrap h1 { font-size: 18px; font-weight: 700; }
+    #start-wrap p { font-size: 13px; color: rgba(255,255,255,0.6); max-width: 320px; line-height: 1.5; }
+    #enter { pointer-events: auto; padding: 15px 34px; border-radius: 9999px; border: none; cursor: pointer;
+      font-size: 15px; font-weight: 800; color: #0a0a0c;
+      background: linear-gradient(135deg, #d5b57a, #b89557); box-shadow: 0 8px 30px rgba(201,169,110,0.4); }
+
+    #hud { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 12px; right: 12px;
+      padding: 10px 14px; font-size: 12.5px; line-height: 1.6; display: none; }
+    #hud b { color: #fff; }
+    #hud .f { color: #00e676; } #hud .w { color: #ff5252; } #hud .muted { color: rgba(255,255,255,0.55); }
+
+    #legend { position: absolute; left: 12px; bottom: calc(16px + env(safe-area-inset-bottom));
+      padding: 9px 14px; font-size: 12px; display: none; gap: 12px; }
+    #legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+    #exit { position: absolute; top: calc(12px + env(safe-area-inset-top)); right: 12px; width: 40px; height: 40px;
+      border-radius: 50%; display: none; align-items: center; justify-content: center; border: none; cursor: pointer;
+      background: rgba(220,38,38,0.9); color: #fff; font-size: 16px; font-weight: 700; }
+
+    #place { position: absolute; left: 50%; transform: translateX(-50%);
+      bottom: calc(70px + env(safe-area-inset-bottom)); display: none; pointer-events: auto; cursor: pointer;
+      padding: 13px 26px; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.4); font-size: 14px; font-weight: 800;
+      color: #0a0a0c; background: linear-gradient(135deg, #d5b57a, #b89557); box-shadow: 0 8px 30px rgba(201,169,110,0.4); }
+    #place:disabled { opacity: 0.45; }
+
+    #models { position: absolute; left: 12px; right: 12px; bottom: calc(122px + env(safe-area-inset-bottom));
+      display: none; gap: 8px; overflow-x: auto; pointer-events: auto; scrollbar-width: none; }
+    #models::-webkit-scrollbar { display: none; }
+    #models button { flex: none; padding: 8px 14px; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(18,18,24,0.85); color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    #models button.active { background: #c9a96e; color: #0a0a0c; border-color: transparent; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <div id="ui">
+    <div id="start-wrap">
+      <h1>Floor / Wall Detection · Phase 1</h1>
+      <p>Android + ARCore depth. Aim at the floor and walls — floor is drawn <b style="color:#00e676">green</b>, walls <b style="color:#ff5252">red</b>.</p>
+      <button id="enter">Enter AR</button>
+      <p id="err" style="color:#ff8a80"></p>
+    </div>
+
+    <div id="hud" class="card">
+      <div>depth: <b id="d-state" class="muted">—</b> · cam y: <b id="d-cy" class="muted">—</b> · floor y: <b id="d-fy" class="muted">—</b></div>
+      <div>floor: <b id="d-floor" class="f">0</b> pts · wall: <b id="d-wall" class="w">0</b> pts</div>
+    </div>
+
+    <div id="legend" class="card">
+      <span><i class="dot" style="background:#00e676"></i>Floor</span>
+      <span><i class="dot" style="background:#ff5252"></i>Wall</span>
+      <span><i class="dot" style="background:#999"></i>Other</span>
+    </div>
+
+    <div id="models"></div>
+    <button id="place" disabled>Place on floor</button>
+    <button id="exit">✕</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('c');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x000000, 0);
+    renderer.xr.enabled = true;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
+
+    // lighting so placed GLB models are visible
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x555555, 1.4));
+    const _dl = new THREE.DirectionalLight(0xffffff, 1.1); _dl.position.set(1, 3, 2); scene.add(_dl);
+    const _fl = new THREE.DirectionalLight(0xbfd4ff, 0.5); _fl.position.set(-2, 2, -1); scene.add(_fl);
+
+    // ---- point cloud -------------------------------------------------------
+    const MAXP = 24000;
+    const posArr = new Float32Array(MAXP * 3);
+    const colArr = new Float32Array(MAXP * 3);
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+    geom.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
+    geom.setDrawRange(0, 0);
+    const points = new THREE.Points(geom, new THREE.PointsMaterial({
+      size: 0.02, vertexColors: true, sizeAttenuation: true, transparent: true, opacity: 0.95, depthWrite: false,
+    }));
+    points.frustumCulled = false;
+    scene.add(points);
+
+    // ---- fitted floor plane ------------------------------------------------
+    const floorMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 1),
+      new THREE.MeshBasicMaterial({ color: 0x00e676, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })
+    );
+    floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.visible = false;
+    scene.add(floorMesh);
+
+    // ---- DOM ---------------------------------------------------------------
+    const $ = (id) => document.getElementById(id);
+    const hud = $('hud'), legend = $('legend'), exitBtn = $('exit');
+    const dState = $('d-state'), dFy = $('d-fy'), dFloor = $('d-floor'), dWall = $('d-wall'), dCy = $('d-cy');
+    const placeBtn = $('place');
+
+    let session = null, refSpace = null;
+    let floorY = null;           // smoothed floor height (local-space metres)
+    let floorAnchor = null;      // { x, z, size } — set once, then world-locked
+    let floorLocked = false;     // height frozen once stable
+    let floorGoodFrames = 0;     // consecutive frames with a usable floor band
+
+    // ---- placement ---------------------------------------------------------
+    const placedGroup = new THREE.Group();   // world-locked container for placed models
+    scene.add(placedGroup);
+    let sofaTemplate = null;                 // loaded GLB scene (1:1, grounded)
+    let currentModel = null;                 // the instance currently placed
+    const lastCamPos = new THREE.Vector3();
+    const lastCamQuat = new THREE.Quaternion();
+    const _fwd = new THREE.Vector3();
+
+    // floor reticle (shows exactly where the model will sit — on the FLOOR plane)
+    const reticle = new THREE.Mesh(
+      new THREE.RingGeometry(0.16, 0.19, 48),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false })
+    );
+    reticle.rotation.x = -Math.PI / 2;
+    reticle.visible = false;
+    scene.add(reticle);
+
+    const _projInv = new THREE.Matrix4();
+    const _viewMat = new THREE.Matrix4();
+    const _pt = new THREE.Vector3();
+    const _up = new THREE.Vector3(0, 1, 0);
+
+    $('enter').addEventListener('click', start);
+    exitBtn.addEventListener('click', () => { if (session) session.end(); });
+
+    async function start() {
+      const errEl = $('err');
+      if (!navigator.xr) { errEl.textContent = 'WebXR not available in this browser.'; return; }
+      const ok = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
+      if (!ok) { errEl.textContent = 'immersive-ar not supported on this device.'; return; }
+
+      try {
+        session = await navigator.xr.requestSession('immersive-ar', {
+          optionalFeatures: ['dom-overlay', 'depth-sensing'],
+          depthSensing: { usagePreference: ['cpu-optimized'], dataFormatPreference: ['luminance-alpha', 'float32'] },
+          domOverlay: { root: $('ui') },
+        });
+      } catch (e) {
+        try {
+          session = await navigator.xr.requestSession('immersive-ar', { optionalFeatures: ['dom-overlay'] ,
+            domOverlay: { root: $('ui') } });
+        } catch (e2) { errEl.textContent = 'Session failed: ' + e2.message; return; }
+      }
+
+      session.addEventListener('end', onEnd);
+      renderer.xr.setReferenceSpaceType('local');
+      await renderer.xr.setSession(session);
+      refSpace = renderer.xr.getReferenceSpace() || await session.requestReferenceSpace('local');
+      console.log('[lab] AR ready. presenting=' + renderer.xr.isPresenting);
+      window.__lab = { get session() { return session; }, get refSpace() { return refSpace; }, get presenting() { return renderer.xr.isPresenting; } };
+
+      $('start-wrap').style.display = 'none';
+      hud.style.display = 'block';
+      legend.style.display = 'flex';
+      exitBtn.style.display = 'flex';
+      placeBtn.style.display = 'flex';
+      $('models').style.display = 'flex';
+      buildModelChips();
+      selectModel('radio');
+      renderer.setAnimationLoop(render);
+    }
+
+    function onEnd() {
+      session = null; refSpace = null;
+      floorY = null; floorAnchor = null;
+      renderer.setAnimationLoop(null);
+      geom.setDrawRange(0, 0);
+      floorMesh.visible = false;
+      reticle.visible = false;
+      clearPlacements();
+      hud.style.display = 'none'; legend.style.display = 'none'; exitBtn.style.display = 'none';
+      placeBtn.style.display = 'none'; $('models').style.display = 'none';
+      $('start-wrap').style.display = 'flex';
+    }
+
+    // ---- model loading + floor-only placement ------------------------------
+    const MODELS = [
+      { id: 'radio', name: 'Radio · 27 cm', url: '/assets/models/furniture/radio.glb' },
+      { id: 'rack', name: 'Rack · 190 cm', url: '/assets/models/furniture/rack.glb' },
+      { id: 'throne', name: 'Throne · 190 cm', url: '/assets/models/furniture/throne.glb' },
+      { id: 'sofa', name: 'Sofa · 190 cm', url: '/assets/models/furniture/sofa.glb' },
+    ];
+    let modelId = null;
+
+    function buildModelChips() {
+      const bar = $('models');
+      bar.innerHTML = '';
+      MODELS.forEach((mo) => {
+        const b = document.createElement('button');
+        b.textContent = mo.name;
+        b.dataset.id = mo.id;
+        b.addEventListener('click', () => selectModel(mo.id));
+        bar.appendChild(b);
+      });
+    }
+
+    function selectModel(id) {
+      const mo = MODELS.find((x) => x.id === id) || MODELS[0];
+      modelId = mo.id;
+      document.querySelectorAll('#models button').forEach((b) => b.classList.toggle('active', b.dataset.id === id));
+      modelTemplate = null;
+      placeBtn.disabled = true;
+      new THREE.GLTFLoader().load(mo.url, (gltf) => {
+        const m = gltf.scene;
+        const box = new THREE.Box3().setFromObject(m);
+        const c = box.getCenter(new THREE.Vector3());
+        m.position.set(-c.x, -box.min.y, -c.z);   // pivot at base centre (grounded)
+        modelTemplate = m;
+        console.log('[lab] model ready:', id);
+      }, undefined, (e) => console.error('[lab] model load failed', e));
+    }
+
+    function place() {
+      if (!sofaTemplate || floorY === null || floorAnchor === null) return;
+      _fwd.set(0, 0, -1).applyQuaternion(lastCamQuat);
+      if (Math.abs(_fwd.y) < 1e-3) return;
+      const t = (floorY - lastCamPos.y) / _fwd.y;
+      if (t <= 0.3 || t > 8) return;
+      const px = lastCamPos.x + _fwd.x * t;
+      const pz = lastCamPos.z + _fwd.z * t;
+      const inst = sofaTemplate.clone(true);
+      inst.rotation.set(0, Math.atan2(lastCamPos.x - px, lastCamPos.z - pz), 0);
+      inst.position.set(px, floorY, pz);          // base exactly on the FLOOR plane
+      placedGroup.add(inst);
+      if (navigator.vibrate) navigator.vibrate(30);
+    }
+
+    function clearPlacements() {
+      while (placedGroup.children.length) placedGroup.remove(placedGroup.children[0]);
+    }
+
+    placeBtn.addEventListener('click', place);
+
+    function classifyAndUpload(di, w, h, view, camY) {
+      _projInv.fromArray(view.projectionMatrix).invert();
+      _viewMat.fromArray(view.transform.matrix);
+
+      const STEP = 2;                 // subsample for speed (160x90 -> 80x45)
+      const gw = Math.floor((w - 1) / STEP);
+      const gh = Math.floor((h - 1) / STEP);
+
+      // world points grid
+      const grid = new Array(gh);
+      for (let ry = 0; ry < gh; ry++) {
+        const row = new Array(gw);
+        const j = ry * STEP;
+        for (let rx = 0; rx < gw; rx++) {
+          const i = rx * STEP;
+          const u = (i + 0.5) / w;
+          const v = (j + 0.5) / h;
+          let d = 0;
+          try { d = di.getDepthInMeters(u, v); } catch (e) { d = 0; }
+          if (!d || d <= 0 || d > 8) { row[rx] = null; continue; }
+          const ndcX = u * 2 - 1;
+          const ndcY = 1 - v * 2;
+          _pt.set(ndcX, ndcY, 1).applyMatrix4(_projInv);
+          _pt.multiplyScalar(-d / _pt.z);
+          row[rx] = _pt.clone().applyMatrix4(_viewMat);
+        }
+        grid[ry] = row;
+      }
+
+      let n = 0, floorCount = 0, wallCount = 0;
+      const yCands = [];
+      let fxMin = Infinity, fxMax = -Infinity, fzMin = Infinity, fzMax = -Infinity;
+
+      const tx = new THREE.Vector3(), ty = new THREE.Vector3(), nrm = new THREE.Vector3();
+
+      for (let ry = 0; ry < gh; ry++) {
+        for (let rx = 0; rx < gw; rx++) {
+          const p = grid[ry][rx];
+          if (!p || n >= MAXP) continue;
+
+          let cls = 'other';
+          const pl = rx > 0 ? grid[ry][rx - 1] : null;
+          const pr = rx < gw - 1 ? grid[ry][rx + 1] : null;
+          const pu = ry > 0 ? grid[ry - 1][rx] : null;
+          const pd = ry < gh - 1 ? grid[ry + 1][rx] : null;
+          if (pl && pr && pu && pd) {
+            tx.subVectors(pr, pl);
+            ty.subVectors(pd, pu);
+            nrm.crossVectors(tx, ty);
+            if (nrm.lengthSq() > 1e-12) {
+              nrm.normalize();
+              if (nrm.y < 0) nrm.negate();
+              if (nrm.y > 0.6) {
+                cls = 'floor';
+                yCands.push(p.y);
+                if (p.x < fxMin) fxMin = p.x; if (p.x > fxMax) fxMax = p.x;
+                if (p.z < fzMin) fzMin = p.z; if (p.z > fzMax) fzMax = p.z;
+              } else if (Math.abs(nrm.y) < 0.35) {
+                cls = 'wall';
+              }
+            }
+          }
+
+          let r, g, b;
+          if (cls === 'floor') { r = 0.0; g = 0.9; b = 0.4; floorCount++; }
+          else if (cls === 'wall') { r = 1.0; g = 0.3; b = 0.3; wallCount++; }
+          else { r = 0.6; g = 0.6; b = 0.6; }
+
+          posArr[n * 3] = p.x; posArr[n * 3 + 1] = p.y; posArr[n * 3 + 2] = p.z;
+          colArr[n * 3] = r; colArr[n * 3 + 1] = g; colArr[n * 3 + 2] = b;
+          n++;
+        }
+      }
+
+      geom.attributes.position.needsUpdate = true;
+      geom.attributes.color.needsUpdate = true;
+      geom.setDrawRange(0, n);
+      geom.computeBoundingSphere();
+
+      // ---- floor plane fit: MEDIAN y of floor points within a plausible band ----
+      // Restricting to [camY-2.2, camY-0.5] excludes the door base, rug edges and
+      // far/edge outliers that previously skewed the height. The median makes the
+      // fitted plane lie exactly on the classified floor points (no float).
+      let planeShown = false;
+      const band = yCands.filter((y) => y <= camY - 0.5 && y >= camY - 2.2);
+      if (band.length >= 40) {
+        band.sort((a, b) => a - b);
+        const raw = band[Math.floor(band.length / 2)];
+        floorY = floorY === null ? raw : floorY + (raw - floorY) * 0.3;
+        // Anchor ONCE (world-locked in ARCore's local space). After this the
+        // plane keeps a fixed world position and does NOT follow the camera.
+        if (floorAnchor === null && fxMax > fxMin && fzMax > fzMin) {
+          const size = Math.min(8, Math.max(4, Math.max(fxMax - fxMin, fzMax - fzMin) * 1.5));
+          floorAnchor = { x: (fxMin + fxMax) / 2, z: (fzMin + fzMax) / 2, size };
+        }
+      }
+      if (floorAnchor !== null && floorY !== null) {
+        floorMesh.position.set(floorAnchor.x, floorY + 0.004, floorAnchor.z);
+        floorMesh.scale.set(floorAnchor.size, floorAnchor.size, 1);
+        floorMesh.visible = true;
+        planeShown = true;
+      } else {
+        floorMesh.visible = false;
+      }
+
+      return { floorCount, wallCount, total: n, planeShown };
+    }
+
+    function render(timestamp, frame) {
+      window.__frames = (window.__frames || 0) + 1;
+      if (!session || !frame) { renderer.render(scene, camera); return; }
+      try { renderAR(timestamp, frame); } catch (e) { window.__rerr = String(e && e.stack || e); }
+      renderer.render(scene, camera);
+    }
+
+    function renderAR(timestamp, frame) {
+      const rs = renderer.xr.getReferenceSpace();
+      if (rs) refSpace = rs;
+      if (!refSpace) { renderer.render(scene, camera); return; }
+
+      const vp = frame.getViewerPose(refSpace);
+      if (!vp || !vp.views.length) { dState.textContent = 'no pose — move phone'; dState.className = 'w'; renderer.render(scene, camera); return; }
+      const view = vp.views[0];
+      lastCamPos.set(vp.transform.position.x, vp.transform.position.y, vp.transform.position.z);
+      lastCamQuat.set(vp.transform.orientation.x, vp.transform.orientation.y, vp.transform.orientation.z, vp.transform.orientation.w);
+
+      let di = null;
+      try { di = frame.getDepthInformation ? frame.getDepthInformation(view) : null; } catch (e) { di = null; }
+
+      if (di && di.getDepthInMeters) {
+        const camY = vp.transform.position.y;
+        dState.textContent = 'on (' + di.width + '×' + di.height + ')';
+        dState.className = 'f';
+        dCy.textContent = camY.toFixed(2) + ' m';
+        const info = classifyAndUpload(di, di.width, di.height, view, camY);
+        dFloor.textContent = info.floorCount;
+        dWall.textContent = info.wallCount;
+        dFy.textContent = floorY === null ? '—' : floorY.toFixed(2) + ' m';
+        dFy.className = 'f';
+      } else {
+        dState.textContent = 'unavailable';
+        dState.className = 'w';
+        geom.setDrawRange(0, 0);
+        floorMesh.visible = false;
+      }
+
+      // Floor reticle + place-button availability. The reticle lives ONLY on the
+      // fitted floor plane, so the model can never be placed on a wall.
+      if (floorY !== null && floorAnchor !== null) {
+        _fwd.set(0, 0, -1).applyQuaternion(lastCamQuat);
+        let showR = false;
+        if (Math.abs(_fwd.y) > 1e-3) {
+          const t = (floorY - lastCamPos.y) / _fwd.y;
+          if (t > 0.3 && t < 8) {
+            reticle.position.set(lastCamPos.x + _fwd.x * t, floorY + 0.005, lastCamPos.z + _fwd.z * t);
+            reticle.visible = true; showR = true;
+          }
+        }
+        if (!showR) reticle.visible = false;
+        placeBtn.disabled = !sofaTemplate;
+      } else {
+        reticle.visible = false;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    renderer.setAnimationLoop(render);
+  </script>
+</body>
+</html>

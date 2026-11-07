@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Lab · model-viewer (native floor AR)</title>
+  <meta name="theme-color" content="#0a0a0c">
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0c; color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    #app { position: absolute; inset: 0; }
+    model-viewer { width: 100%; height: 100%; background: #0a0a0c; --poster-color: transparent; }
+    #ui { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+    .card { background: rgba(18,18,24,0.85); border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-radius: 12px; }
+
+    #top { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 12px; right: 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    #title b { display: block; font-size: 14px; letter-spacing: 0.04em; text-transform: uppercase; }
+    #title span { font-size: 11px; color: #c9a96e; font-weight: 700; }
+
+    #dims { position: absolute; left: 12px; top: calc(64px + env(safe-area-inset-top));
+      padding: 9px 13px; font-size: 12px; line-height: 1.5; }
+    #dims .v { font-weight: 700; }
+
+    #models { position: absolute; top: calc(64px + env(safe-area-inset-top)); right: 12px;
+      display: flex; flex-direction: column; gap: 6px; pointer-events: auto; }
+    #models button { padding: 8px 12px; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(18,18,24,0.85); color: #fff; font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    #models button.active { background: #c9a96e; color: #0a0a0c; border-color: transparent; }
+
+    #swatches { position: absolute; left: 50%; transform: translateX(-50%);
+      bottom: calc(140px + env(safe-area-inset-bottom)); display: flex; gap: 12px;
+      padding: 8px 16px; pointer-events: auto; }
+    .swatch { width: 34px; height: 34px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25); cursor: pointer; flex: none; }
+    .swatch.active { border-color: #fff; transform: scale(1.12); box-shadow: 0 0 0 3px rgba(201,169,110,0.6); }
+
+    #arbtn { position: absolute; left: 50%; transform: translateX(-50%);
+      bottom: calc(60px + env(safe-area-inset-bottom)); pointer-events: auto; cursor: pointer;
+      padding: 14px 30px; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.4); font-size: 14.5px; font-weight: 800;
+      color: #0a0a0c; background: linear-gradient(135deg, #d5b57a, #b89557); box-shadow: 0 8px 30px rgba(201,169,110,0.4); }
+    #hint { position: absolute; left: 12px; right: 12px; bottom: calc(16px + env(safe-area-inset-bottom));
+      text-align: center; font-size: 12px; color: rgba(255,255,255,0.6); }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <model-viewer id="mv" alt="Furniture AR"
+      ar ar-placement="floor" ar-scale="fixed"
+      ar-modes="scene-viewer webxr quick-look"
+      camera-controls touch-action="pan-y"
+      shadow-intensity="1.4" shadow-softness="0.8" exposure="1.0"
+      camera-orbit="35deg 70deg 115%">
+      <button slot="ar-button" id="arbtn">View in your room (AR)</button>
+      <div slot="progress-bar" style="display:none"></div>
+    </model-viewer>
+
+    <div id="ui">
+      <div id="top">
+        <div id="title" class="card" style="padding:9px 13px">
+          <b id="m-name">Radio</b><span>True 1:1 · native floor AR</span>
+        </div>
+      </div>
+      <div id="dims" class="card"><span class="v" id="d-dims">—</span></div>
+      <div id="models"></div>
+      <div id="swatches" class="card"></div>
+      <div id="hint">Choose a piece, then AR → point at your floor → tap to place</div>
+    </div>
+  </div>
+
+  <script type="module">
+    const mv = document.getElementById('mv');
+    const state = { products: [], product: null };
+
+    const hexToRgb = (hex) => { const n = parseInt(hex.replace('#', ''), 16); return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]; };
+
+    function applyColor(hex) {
+      if (!mv.model || !mv.model.materials) return;
+      const [r, g, b] = hexToRgb(hex);
+      mv.model.materials.forEach((m) => {
+        if (m && m.pbrMetallicRoughness) m.pbrMetallicRoughness.setBaseColorFactor([r, g, b, 1]);
+      });
+    }
+
+    function renderSwatches(p) {
+      const bar = document.getElementById('swatches');
+      bar.innerHTML = '';
+      const list = p.options?.swatches || [];
+      bar.style.display = list.length ? 'flex' : 'none';
+      list.forEach((s, i) => {
+        const el = document.createElement('div');
+        el.className = 'swatch' + (i === 0 ? ' active' : '');
+        el.style.background = s.color;
+        el.title = s.name;
+        el.addEventListener('click', () => {
+          bar.querySelectorAll('.swatch').forEach((x) => x.classList.remove('active'));
+          el.classList.add('active');
+          applyColor(s.color);
+          if (navigator.vibrate) navigator.vibrate(12);
+        });
+        bar.appendChild(el);
+      });
+      state.swatch = list[0] || null;
+    }
+
+    function selectProduct(id) {
+      const p = state.products.find((x) => x.id === id) || state.products[0];
+      state.product = p;
+      document.getElementById('m-name').textContent = p.name;
+      document.querySelectorAll('#models button').forEach((b) => b.classList.toggle('active', b.dataset.id === p.id));
+      document.getElementById('d-dims').textContent = '…';
+      renderSwatches(p);
+      mv.setAttribute('src', `/assets/models/furniture/${p.id}.glb`);
+      document.getElementById('hint').textContent = `${p.name} — AR → point at your floor → tap to place`;
+    }
+
+    mv.addEventListener('load', () => {
+      if (state.swatch) applyColor(state.swatch.color);
+      // show the ACTUAL loaded size (1:1 verification), not catalog values
+      try {
+        const d = mv.getDimensions();
+        document.getElementById('d-dims').textContent =
+          `${(d.x * 100).toFixed(1)} W × ${(d.z * 100).toFixed(1)} D × ${(d.y * 100).toFixed(1)} H cm`;
+      } catch (e) { /* ignore */ }
+    });
+
+    const catalog = await (await fetch('/assets/catalog.json?v=' + Date.now())).json();
+    state.products = catalog.products.filter((p) => ['radio', 'rack', 'throne', 'sofa'].includes(p.id));
+    const box = document.getElementById('models');
+    state.products.forEach((p) => {
+      const b = document.createElement('button');
+      b.textContent = p.name;
+      b.dataset.id = p.id;
+      b.addEventListener('click', () => selectProduct(p.id));
+      box.appendChild(b);
+    });
+    selectProduct('radio');
+  </script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+{
+  "_comment": "Single source of truth for furniture AR products. realSize = manufacturer dimension used to force 1:1 scale (uniform). expected = all three dims after scaling, used by tests (cm, +/-1).",
+  "products": [
+    {
+      "id": "sofa",
+      "name": "Lounge Corner Sofa",
+      "source": "assets/models/src/sofa_uv.glb", "simplify": 0.5,
+      "realSize": { "axis": "x", "cm": 190 },
+      "expected": { "w": 190, "h": 61.3, "d": 129.7 },
+      "maxTexture": 1024,
+      "options": {
+        "material": "Sofa_Fabric",
+        "repeatCm": 25, "uvMetres": 2,
+        "swatches": [
+          { "name": "Emerald Velvet", "color": "#1b4d3e", "roughness": 0.85, "texture": "fabric-velvet" },
+          { "name": "Charcoal Linen", "color": "#3a3a3d", "roughness": 0.9, "texture": "fabric-linen" },
+          { "name": "Warm Oat Linen", "color": "#d6ccbb", "roughness": 0.92, "texture": "fabric-linen" },
+          { "name": "Terracotta Leather", "color": "#a45a3c", "roughness": 0.55, "texture": "leather" },
+          { "name": "Midnight Boucle", "color": "#1f2d4a", "roughness": 0.95, "texture": "fabric-boucle" }
+        ]
+      }
+    },
+    {
+      "id": "rack",
+      "name": "Industrial Metal Rack",
+      "source": "assets/models/src/worn_metal_rack.glb", "jpeg": true,
+      "realSize": { "axis": "y", "cm": 190 },
+      "expected": { "w": 91.5, "h": 190, "d": 60 },
+      "maxTexture": 1024,
+      "options": {
+        "material": "worn_metal_rack",
+        "swatches": [
+          { "name": "Worn Steel", "color": "#ffffff" },
+          { "name": "Matte Black", "color": "#3a3a3a", "roughness": 0.7 },
+          { "name": "Forest Green", "color": "#5f7f63" },
+          { "name": "Rust Red", "color": "#b0573b" }
+        ]
+      }
+    },
+    {
+      "id": "throne",
+      "name": "Throne of Birds Chair",
+      "source": "assets/models/src/throne_of_birds.glb", "simplify": 0.35, "jpeg": true,
+      "realSize": { "axis": "y", "cm": 190 },
+      "expected": { "w": 118.4, "h": 190, "d": 114 },
+      "maxTexture": 2048,
+      "options": {
+        "material": "material_0",
+        "swatches": [
+          { "name": "Original", "color": "#ffffff" },
+          { "name": "Antique Gold", "color": "#d9b46a" },
+          { "name": "Ebony", "color": "#4a4a4a" }
+        ]
+      }
+    },
+    {
+      "id": "radio",
+      "name": "Unitra RM 312 Radio",
+      "source": "assets/models/src/iskra-unitra_rm_312_radio.glb", "jpeg": true,
+      "realSize": { "axis": "x", "cm": 27.5 }, "_note": "x = body width; height includes the extended antenna",
+      "maxTexture": 1024,
+      "options": {
+        "material": "MainBodyColor",
+        "swatches": [
+          { "name": "Original", "color": "#ffffff" },
+          { "name": "Cream", "color": "#efe6d2" },
+          { "name": "Signal Red", "color": "#c0392b" }
+        ]
+      }
+    },
+    {
+      "id": "a4",
+      "name": "Calibration: A4 Sheet (29.7 x 21 cm)",
+      "generated": "a4",
+      "expected": { "w": 29.7, "h": 0.2, "d": 21 }
+    }
+  ]
+}

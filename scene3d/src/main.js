@@ -179,7 +179,9 @@ async function init() {
     if (story.requested) return;
     story.requested = true;
     story.video = document.querySelector('.hero-center-frame video');
-    new TextureLoader().load('/assets/exhibition/swayambhu-spire-poster.jpg', (t) => {
+    const heroImg = document.querySelector('.hero-center-frame img');
+    const posterSrc = heroImg ? (heroImg.currentSrc || heroImg.src) : 'https://pub-f2ad2c43aa344d4bb911e991b04b1fbd.r2.dev/710e85bb-f813-48f3-98a1-1809d5d13a7c/original.jpg';
+    new TextureLoader().load(posterSrc, (t) => {
       t.colorSpace = SRGBColorSpace;
       t.flipY = false;
       cover(t, t.image.width, t.image.height);
