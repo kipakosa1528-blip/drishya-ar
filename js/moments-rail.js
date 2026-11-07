@@ -41,6 +41,8 @@
     const vSrc = card.getAttribute('data-video');
     if (vSrc) {
       const v = document.createElement('video');
+      v.crossOrigin = 'anonymous';
+      v.setAttribute('crossorigin', 'anonymous');
       v.src = vSrc;
       v.muted = true;
       v.loop = true;

@@ -189,6 +189,8 @@ async function init() {
     });
     const v = story.video;
     if (!v) return;
+    v.crossOrigin = 'anonymous';
+    v.setAttribute('crossorigin', 'anonymous');
     v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
     const tex = new VideoTexture(v);
     tex.colorSpace = SRGBColorSpace;
@@ -464,6 +466,8 @@ async function init() {
     }
     const v = f.video;
     if (!v) return;
+    v.crossOrigin = 'anonymous';
+    v.setAttribute('crossorigin', 'anonymous');
     const tex = new VideoTexture(v);
     tex.colorSpace = SRGBColorSpace;
     tex.flipY = false;
